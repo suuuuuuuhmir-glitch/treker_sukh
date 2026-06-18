@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Набор массы — трекер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14110F; --surface:#1C1815; --surface2:#251F1B; --line:#352E27;
+    --text:#F3EEE7; --muted:#9A9087; --accent:#FF6A2B; --accent-dim:rgba(255,106,43,.13);
+    --good:#7FB069; --good-dim:rgba(127,176,105,.16); --warn:#E8B33D;
+    --nav-h:64px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.45;font-size:15px;
+    padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Oswald',sans-serif;font-weight:600;margin:0;letter-spacing:.3px}
+  .num{font-family:'Oswald',sans-serif;font-weight:600;font-variant-numeric:tabular-nums}
+  .wrap{max-width:620px;margin:0 auto;padding:18px 16px 24px}
+  .tab{display:none}.tab.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* header */
+  .topbar{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+  .topbar .eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .topbar h2{font-size:26px;line-height:1;text-transform:uppercase}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+  .card.tight{padding:14px}
+  .muted{color:var(--muted)}
+  .row{display:flex;align-items:center;gap:12px}
+  .between{justify-content:space-between}
+
+  /* hero progress */
+  .hero{background:linear-gradient(160deg,#221C18,#1A1512);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;background:radial-gradient(circle,var(--accent-dim),transparent 70%)}
+  .dayline{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .dayline b{color:var(--accent)}
+  .weightbig{display:flex;align-items:flex-end;gap:10px;margin:6px 0 2px}
+  .weightbig .cur{font-size:56px;line-height:.9;font-weight:700}
+  .weightbig .unit{font-size:18px;color:var(--muted);padding-bottom:8px}
+  .weightbig .goal{margin-left:auto;text-align:right;color:var(--muted);font-size:13px;padding-bottom:6px}
+  .weightbig .goal b{color:var(--text);font-size:20px;display:block}
+  .bar{height:12px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:14px;border:1px solid var(--line)}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#FF9152);border-radius:99px;transition:width .5s ease}
+  .barlabel{display:flex;justify-content:space-between;margin-top:7px;font-size:12px;color:var(--muted)}
+
+  /* buttons */
+  button{font-family:inherit;cursor:pointer}
+  .btn{background:var(--accent);color:#1A1108;border:none;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;width:100%}
+  .btn:active{transform:scale(.98)}
+  .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .btn.sm{padding:9px 14px;font-size:14px;width:auto}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:7px 14px;font-weight:600;font-size:14px}
+  .chip.on{background:var(--accent);color:#1A1108;border-color:var(--accent)}
+
+  input[type=number],input[type=date]{
+    background:var(--surface2);border:1px solid var(--line);color:var(--text);
+    border-radius:10px;padding:10px;font-family:'Oswald',sans-serif;font-size:16px;width:100%;
+  }
+  input:focus{outline:2px solid var(--accent);outline-offset:0}
+  label.fld{font-size:12px;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+
+  /* segmented */
+  .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;margin-bottom:14px}
+  .seg button{flex:1;background:transparent;border:none;color:var(--muted);font-weight:700;padding:10px;border-radius:9px;font-size:14px;font-family:'Oswald',sans-serif;letter-spacing:.5px;text-transform:uppercase}
+  .seg button.on{background:var(--accent);color:#1A1108}
+
+  /* exercise */
+  .ex{border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden;background:var(--surface)}
+  .ex-head{padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+  .ex-head .idx{width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:var(--accent-dim);color:var(--accent);display:grid;place-items:center;font-family:'Oswald';font-weight:700}
+  .ex-head .nm{flex:1;min-width:0}
+  .ex-head .nm b{display:block;font-weight:600;font-size:15.5px}
+  .ex-head .nm small{color:var(--muted);font-size:12.5px}
+  .ex-head .sr{font-family:'Oswald';font-weight:600;color:var(--accent);font-size:15px;white-space:nowrap}
+  .ex-body{display:none;padding:0 14px 14px;border-top:1px solid var(--line)}
+  .ex.open .ex-body{display:block}
+  .cues{margin:12px 0;padding:0;list-style:none}
+  .cues li{position:relative;padding-left:18px;margin-bottom:6px;font-size:13.5px;color:#D8D0C7}
+  .cues li::before{content:"";position:absolute;left:2px;top:8px;width:6px;height:6px;border-radius:99px;background:var(--accent)}
+  .vid{display:inline-flex;align-items:center;gap:7px;color:var(--accent);text-decoration:none;font-weight:600;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px}
+  .sets{display:flex;flex-direction:column;gap:8px}
+  .setrow{display:grid;grid-template-columns:34px 1fr 1fr;gap:8px;align-items:center}
+  .setrow .sl{font-family:'Oswald';color:var(--muted);font-size:13px;text-align:center}
+  .setrow input{padding:9px;text-align:center}
+
+  .meal{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line)}
+  .meal:last-child{border-bottom:none}
+  .check{width:26px;height:26px;flex:0 0 26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;cursor:pointer;margin-top:1px;transition:.15s}
+  .check.on{background:var(--good);border-color:var(--good)}
+  .check svg{opacity:0}.check.on svg{opacity:1}
+  .meal .mt{flex:1}
+  .meal .mt b{font-weight:600;display:block}
+  .meal .mt small{color:var(--muted);font-size:12.5px}
+  .meal.done .mt b{text-decoration:line-through;color:var(--muted)}
+  .kcal{font-family:'Oswald';color:var(--accent);font-weight:600;font-size:13px;white-space:nowrap;margin-top:2px}
+
+  .stat3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+  .stat .v{font-family:'Oswald';font-weight:700;font-size:26px;line-height:1}
+  .stat .v.acc{color:var(--accent)}
+  .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+
+  .hist{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+  .hist:last-child{border:none}
+  .hist .tag{font-family:'Oswald';font-weight:700;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--accent-dim);color:var(--accent)}
+
+  .info{background:var(--accent-dim);border:1px solid rgba(255,106,43,.25);border-radius:14px;padding:14px;font-size:13.5px;color:#E9CDBC}
+  .info b{color:#FFB892}
+
+  /* bottom nav */
+  nav{position:fixed;left:0;right:0;bottom:0;height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+    padding-bottom:env(safe-area-inset-bottom);
+    background:rgba(20,17,15,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+    display:flex;z-index:50}
+  nav button{flex:1;background:none;border:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;letter-spacing:.3px;padding:8px 0}
+  nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  nav button.on{color:var(--accent)}
+  .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 18px);transform:translateX(-50%) translateY(20px);
+    background:var(--good);color:#10210A;padding:11px 18px;border-radius:12px;font-weight:700;opacity:0;
+    transition:.3s;z-index:60;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .sub{font-size:13px;color:var(--muted);margin:-4px 0 14px}
+</style>
+</head>
+<body>
+
+<!-- ============ СЕГОДНЯ ============ -->
+<section class="tab active" id="tab-today">
+  <div class="wrap">
+    <div class="topbar"><div><div class="eyebrow">Day 1 → Day 365</div><h2>Сегодня</h2></div></div>
+
+    <div class="hero">
+      <div class="dayline">День <b id="dayNum">1</b> · твой набор массы</div>
+      <div class="weightbig">
+        <span class="cur num" id="heroWeight">54</span><span class="unit">кг</span>
+        <span class="goal">цель<b class="num" id="heroGoal">63.5</b></span>
+      </div>
+      <div class="bar"><span id="heroBar" style="width:0%"></span></div>
+      <div class="barlabel"><span id="heroStart">старт 54 кг</span><span id="heroLeft">осталось +9.5 кг</span></div>
+    </div>
+
+    <div class="card">
+      <label class="fld">Записать сегодняшний вес</label>
+      <div class="row">
+        <input type="number" id="wInput" inputmode="decimal" step="0.1" placeholder="напр. 54.4">
+        <button class="btn sm" style="white-space:nowrap" onclick="addWeight()">Записать</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px">
+        <h3 style="font-size:17px">Тренировка дня</h3>
+        <span class="chip on num" id="todayDayTag">День A</span>
+      </div>
+      <p class="muted" style="margin:0 0 12px;font-size:13.5px" id="todayDayDesc">Ноги, грудь, спина, плечи, бицепс</p>
+      <button class="btn" onclick="goWorkout()">Открыть тренировку →</button>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:12px"><h3 style="font-size:17px">Дневной чек-лист</h3><span class="muted num" id="todayKcalTag">~2800 ккал</span></div>
+      <div class="row between" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <span>💊 Креатин 5 г</span>
+        <button class="chip" id="qCrea" onclick="toggleSupp('creatine')">отметить</button>
+      </div>
+      <div class="row between" style="padding:8px 0">
+        <span>🥤 Гейнер (порция)</span>
+        <button class="chip" id="qGain" onclick="toggleSupp('gainer')">отметить</button>
+      </div>
+      <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="switchTab('nutrition')">Весь план питания →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ТРЕНИРОВКИ ============ -->
+<section class="tab" id="tab-workout">
+  <div class="wrap">
+    <div class="topbar"><div><div class="eyebrow">3 раза в неделю · Пн / Ср / Пт</div><h2>Тренировки</h2></div></div>
+    <div class="seg">
+      <button id="segA" class="on" onclick="setDay('A')">День A</button>
+      <button id="segB" onclick="setDay('B')">День B</button>
+    </div>
+    <p class="sub" id="dayHint">Жми на упражнение — техника, видео и запись подходов.</p>
+    <div id="exList"></div>
+    <button class="btn" style="margin-top:6px" onclick="finishWorkout()">✓ Завершить тренировку</button>
+    <p class="sub" style="text-align:center;margin-top:14px">Главное правило: делаешь верхнюю цифру повторов легко → в следующий раз добавь вес.</p>
+  </div>
+</section>
+
+<!-- ============ ПИТАНИЕ ============ -->
+<section class="tab" id="tab-nutrition">
+  <div class="wrap">
+    <div class="topbar"><div><div class="eyebrow">Профицит · цель +9.5 кг</div><h2>Питание</h2></div></div>
+
+    <div class="stat3" style="margin-bottom:14px">
+      <div class="stat"><div class="v acc num">~2800</div><div class="l">ккал / день</div></div>
+      <div class="stat"><div class="v num">130–160</div><div class="l">г белка</div></div>
+      <div class="stat"><div class="v num">6</div><div class="l">приёмов</div></div>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:6px"><h3 style="font-size:17px">План на день</h3><span class="muted num" id="mealCount">0 / 6</span></div>
+      <div id="mealList"></div>
+    </div>
+
+    <div class="info">
+      <b>Почему так (по твоему скану):</b> вес 54 кг и ИМТ 18.7 — лёгкий недобор, жира всего 10.7%. Задача — не худеть, а набирать. Минералы и плотность костей ниже нормы → налегай на молочку (творог, сыр, кефир), яйца, зелень. Аппетит слабый → жидкие калории (гейнер, молоко) и калорийные добавки (масло, орехи, паста) — твой главный приём.
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3 style="font-size:16px;margin-bottom:8px">Гейнер Serious Mass</h3>
+      <p class="muted" style="font-size:13.5px;margin:0">Полная порция ~1250 ккал — её тяжело выпить. Бери <b style="color:var(--text)">половину (1 ложка) на молоке</b>, ~600 ккал. Это добавка к еде, а не вместо неё. Сверь цифры на своей банке.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:8px">Креатин</h3>
+      <p class="muted" style="font-size:13.5px;margin:0"><b style="color:var(--text)">5 г каждый день</b>, в любое время, даже в дни отдыха. Загрузка не нужна — важна стабильность, эффект копится за 2–4 недели.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ПРОГРЕСС ============ -->
+<section class="tab" id="tab-progress">
+  <div class="wrap">
+    <div class="topbar"><div><div class="eyebrow">Считаем только вверх</div><h2>Прогресс</h2></div></div>
+
+    <div class="stat3" style="margin-bottom:14px">
+      <div class="stat"><div class="v acc num" id="stGain">0.0</div><div class="l">набрано, кг</div></div>
+      <div class="stat"><div class="v num" id="stWorkouts">0</div><div class="l">тренировок</div></div>
+      <div class="stat"><div class="v num" id="stLeft">9.5</div><div class="l">до цели, кг</div></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:4px">График веса</h3>
+      <p class="sub" style="margin-bottom:8px">Пунктир — цель 63.5 кг</p>
+      <div id="chart"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:6px">История тренировок</h3>
+      <div id="histList"><p class="muted" style="font-size:13.5px">Пока пусто. Заверши первую тренировку — появится здесь.</p></div>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:10px"><h3 style="font-size:16px">Настройки</h3></div>
+      <div class="row" style="gap:10px">
+        <div style="flex:1"><label class="fld">Старт. вес</label><input type="number" id="setStart" step="0.1"></div>
+        <div style="flex:1"><label class="fld">Цель</label><input type="number" id="setGoal" step="0.1"></div>
+      </div>
+      <div style="margin-top:10px"><label class="fld">Дата старта</label><input type="date" id="setDate"></div>
+      <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="saveSettings()">Сохранить настройки</button>
+    </div>
+  </div>
+</section>
+
+<nav>
+  <button class="on" data-t="today" onclick="switchTab('today')"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>Сегодня</button>
+  <button data-t="workout" onclick="switchTab('workout')"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"/></svg>Тренировки</button>
+  <button data-t="nutrition" onclick="switchTab('nutrition')"><svg viewBox="0 0 24 24"><path d="M6 3v7a3 3 0 006 0V3M9 3v18M18 3c-1.5 1-2 3-2 5s.5 4 2 5v8"/></svg>Питание</button>
+  <button data-t="progress" onclick="switchTab('progress')"><svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16l4-5 3 3 5-7"/></svg>Прогресс</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- storage (works in Claude artifact AND when deployed) ---------- */
+const KEY='gymtracker_v1';
+const store={
+  async get(k){
+    if(window.storage){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch(e){return null;}}
+    try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}
+  },
+  async set(k,v){
+    const s=JSON.stringify(v);
+    if(window.storage){try{await window.storage.set(k,s);}catch(e){console.error(e);}return;}
+    try{localStorage.setItem(k,s);}catch(e){console.error(e);}
+  }
+};
+const todayKey=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+
+/* ---------- exercise data ---------- */
+const PLAN={
+  A:[
+    {id:'a1',name:'Приседания со штангой',m:'Ноги · ягодицы',sr:'3 × 8–10',
+     cues:['Ноги на ширине плеч, носки слегка наружу','Спина прямая, взгляд вперёд','Опускайся до параллели бедра с полом','Колени смотрят в сторону носков, толкай пятками'],yt:'приседания со штангой техника'},
+    {id:'a2',name:'Жим штанги лёжа',m:'Грудь · трицепс',sr:'3 × 8–10',
+     cues:['Лопатки сведены и прижаты к скамье','Опускай штангу к нижней части груди','Локти под углом ~45°, не разводи в стороны','Таз не отрывай от скамьи'],yt:'жим штанги лёжа техника'},
+    {id:'a3',name:'Тяга верхнего блока',m:'Спина · широчайшие',sr:'3 × 10',
+     cues:['Грудь подай вперёд, чуть отклони корпус','Тяни локтями вниз, сводя лопатки','Веди до верха груди','Не раскачивайся корпусом'],yt:'тяга верхнего блока к груди техника'},
+    {id:'a4',name:'Жим гантелей сидя',m:'Плечи',sr:'3 × 10',
+     cues:['Спина прижата к спинке скамьи','Выжимай вверх, не защёлкивая локти полностью','Опускай до уровня ушей','Контролируй движение вниз'],yt:'жим гантелей сидя на плечи'},
+    {id:'a5',name:'Подъём гантелей на бицепс',m:'Бицепс',sr:'3 × 12',
+     cues:['Локти прижаты к корпусу','Поднимай без рывка корпусом','В верхней точке доводи до пика','Опускай медленно, 2 секунды'],yt:'подъём на бицепс техника'}
+  ],
+  B:[
+    {id:'b1',name:'Румынская тяга',m:'Бицепс бедра · ягодицы',sr:'3 × 8–10',
+     cues:['Лёгкий сгиб в коленях, зафиксируй его','Отводи таз назад, штанга скользит вдоль ног','Спина прямая всё время','Чувствуй растяжение задней поверхности бедра'],yt:'румынская тяга техника'},
+    {id:'b2',name:'Отжимания на брусьях',m:'Грудь · трицепс',sr:'3 × 10',
+     cues:['Наклони корпус вперёд — больше на грудь','Опускайся до угла ~90° в локте','Не проваливай плечи','Тяжело — делай в гравитроне или жим под углом'],yt:'отжимания на брусьях техника'},
+    {id:'b3',name:'Тяга горизонтального блока',m:'Спина · середина',sr:'3 × 10',
+     cues:['Спина прямая, лёгкий наклон','Тяни рукоять к животу','Своди лопатки в конце','Не тяни поясницей, работай спиной'],yt:'тяга горизонтального блока техника'},
+    {id:'b4',name:'Махи гантелями в стороны',m:'Плечи · средняя дельта',sr:'3 × 12–15',
+     cues:['Бери лёгкий вес — тут не до рекордов','Локти чуть согнуты, зафиксированы','Поднимай до уровня плеч','Мизинцы чуть выше больших — «выливай воду»'],yt:'махи гантелями в стороны техника'},
+    {id:'b5',name:'Молот + разгибания на трицепс',m:'Руки',sr:'3 × 12',
+     cues:['Молот: нейтральный хват, локти на месте','Трицепс на блоке: локти прижаты','Полностью разгибай руки','Чередуй: подход бицепс → подход трицепс'],yt:'молот на бицепс разгибания трицепс'}
+  ]
+};
+const MEALS=[
+  {id:'m1',t:'Завтрак',d:'Овсянка на молоке + банан + 3 яйца + арахисовая паста',k:'~700'},
+  {id:'m2',t:'Перекус',d:'Орехи + сухофрукты, или полпорции гейнера',k:'~400'},
+  {id:'m3',t:'Обед',d:'Рис/гречка + курица или говядина + овощи на масле',k:'~700'},
+  {id:'m4',t:'Перед залом',d:'Макароны/рис + мясо (углеводы под нагрузку)',k:'~500'},
+  {id:'m5',t:'После зала',d:'Гейнер на молоке + креатин 5 г',k:'~600'},
+  {id:'m6',t:'Перед сном',d:'Творог или кефир (медленный белок на ночь)',k:'~250'}
+];
+
+/* ---------- state ---------- */
+let S={profile:{startDate:todayKey(),startWeight:54,targetWeight:63.5},weights:[],sessions:[],nutrition:{}};
+let curDay='A';
+const $=id=>document.getElementById(id);
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1700);}
+function save(){store.set(KEY,S);}
+
+async function init(){
+  const d=await store.get(KEY);
+  if(d)S=Object.assign(S,d);
+  if(!S.profile.startDate)S.profile.startDate=todayKey();
+  $('setStart').value=S.profile.startWeight;
+  $('setGoal').value=S.profile.targetWeight;
+  $('setDate').value=S.profile.startDate;
+  renderAll();
+}
+function renderAll(){renderToday();renderWorkout();renderNutrition();renderProgress();}
+
+/* ---------- helpers ---------- */
+function latestWeight(){return S.weights.length?S.weights[S.weights.length-1].kg:S.profile.startWeight;}
+function dayNumber(){
+  const s=new Date(S.profile.startDate),t=new Date(todayKey());
+  return Math.max(1,Math.round((t-s)/86400000)+1);
+}
+function suggestedDay(){return S.sessions.length%2===0?'A':'B';}
+
+/* ---------- TODAY ---------- */
+function renderToday(){
+  const cur=latestWeight(),start=S.profile.startWeight,goal=S.profile.targetWeight;
+  $('dayNum').textContent=dayNumber();
+  $('heroWeight').textContent=cur.toFixed(cur%1?1:0);
+  $('heroGoal').textContent=goal;
+  $('heroStart').textContent='старт '+start+' кг';
+  const left=Math.max(0,goal-cur);
+  $('heroLeft').textContent=left>0?('осталось +'+left.toFixed(1)+' кг'):'цель достигнута 🔥';
+  const pct=Math.min(100,Math.max(0,((cur-start)/(goal-start))*100));
+  $('heroBar').style.width=pct+'%';
+  const sd=suggestedDay();
+  $('todayDayTag').textContent='День '+sd;
+  $('todayDayDesc').textContent=sd==='A'?'Ноги, грудь, спина, плечи, бицепс':'Бицепс бедра, грудь, спина, плечи, руки';
+  const n=S.nutrition[todayKey()]||{};
+  setChip('qCrea',n.creatine);setChip('qGain',n.gainer);
+}
+function setChip(id,on){const e=$(id);if(!e)return;e.classList.toggle('on',!!on);e.textContent=on?'готово ✓':'отметить';}
+function goWorkout(){curDay=suggestedDay();switchTab('workout');setDay(curDay);}
+function toggleSupp(k){
+  const d=todayKey();S.nutrition[d]=S.nutrition[d]||{};
+  S.nutrition[d][k]=!S.nutrition[d][k];save();renderToday();renderNutrition();
+}
+
+/* ---------- WORKOUT ---------- */
+function setDay(d){
+  curDay=d;
+  $('segA').classList.toggle('on',d==='A');
+  $('segB').classList.toggle('on',d==='B');
+  renderWorkout();
+}
+function lastSetsFor(exId){
+  for(let i=S.sessions.length-1;i>=0;i--){const ex=S.sessions[i].ex[exId];if(ex)return ex;}
+  return null;
+}
+function renderWorkout(){
+  const list=$('exList');list.innerHTML='';
+  PLAN[curDay].forEach((ex,i)=>{
+    const last=lastSetsFor(ex.id);
+    const setsN=3;
+    let setsHtml='';
+    for(let s=0;s<setsN;s++){
+      const lw=last&&last[s]?last[s].w:'';
+      const lr=last&&last[s]?last[s].r:'';
+      setsHtml+=`<div class="setrow"><span class="sl">${s+1}</span>
+        <input type="number" inputmode="decimal" placeholder="${lw!==''?lw+' кг':'кг'}" data-ex="${ex.id}" data-s="${s}" data-f="w">
+        <input type="number" inputmode="numeric" placeholder="${lr!==''?lr+' повт':'повт'}" data-ex="${ex.id}" data-s="${s}" data-f="r"></div>`;
+    }
+    const cues=ex.cues.map(c=>`<li>${c}</li>`).join('');
+    const yt='https://www.youtube.com/results?search_query='+encodeURIComponent(ex.yt);
+    const el=document.createElement('div');
+    el.className='ex';
+    el.innerHTML=`
+      <div class="ex-head" onclick="this.parentNode.classList.toggle('open')">
+        <div class="idx">${i+1}</div>
+        <div class="nm"><b>${ex.name}</b><small>${ex.m}</small></div>
+        <div class="sr">${ex.sr}</div>
+      </div>
+      <div class="ex-body">
+        <ul class="cues">${cues}</ul>
+        <a class="vid" href="${yt}" target="_blank" rel="noopener">▶ Видео-техника на YouTube</a>
+        <div class="sets">${setsHtml}</div>
+      </div>`;
+    list.appendChild(el);
+  });
+  $('dayHint').textContent=curDay==='A'
+    ?'День A — база на низ + грудь/спина/плечи. Жми на упражнение для техники.'
+    :'День B — задняя цепь + акцент на руки (они у тебя отстают по скану).';
+}
+function finishWorkout(){
+  const inputs=document.querySelectorAll('#exList input');
+  const ex={};let any=false;
+  inputs.forEach(inp=>{
+    const id=inp.dataset.ex,s=+inp.dataset.s,f=inp.dataset.f;
+    if(inp.value===''){return;}
+    ex[id]=ex[id]||[];ex[id][s]=ex[id][s]||{w:'',r:''};
+    ex[id][s][f]=inp.value;any=true;
+  });
+  if(!any){toast('Запиши хотя бы один подход');return;}
+  S.sessions.push({date:todayKey(),day:curDay,ex});
+  save();renderAll();
+  toast('Тренировка записана 💪');
+}
+
+/* ---------- NUTRITION ---------- */
+function renderNutrition(){
+  const d=todayKey();const n=S.nutrition[d]||{};const checked=n.meals||[];
+  const list=$('mealList');list.innerHTML='';
+  MEALS.forEach(m=>{
+    const on=checked.includes(m.id);
+    const el=document.createElement('div');
+    el.className='meal'+(on?' done':'');
+    el.innerHTML=`
+      <div class="check ${on?'on':''}" onclick="toggleMeal('${m.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10210A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"/></svg></div>
+      <div class="mt"><b>${m.t}</b><small>${m.d}</small></div>
+      <div class="kcal">${m.k}</div>`;
+    list.appendChild(el);
+  });
+  $('mealCount').textContent=checked.length+' / 6';
+}
+function toggleMeal(id){
+  const d=todayKey();S.nutrition[d]=S.nutrition[d]||{};
+  let arr=S.nutrition[d].meals||[];
+  arr=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];
+  S.nutrition[d].meals=arr;save();renderNutrition();
+}
+
+/* ---------- PROGRESS ---------- */
+function renderProgress(){
+  const cur=latestWeight(),start=S.profile.startWeight,goal=S.profile.targetWeight;
+  $('stGain').textContent=(cur-start>=0?'+':'')+(cur-start).toFixed(1);
+  $('stWorkouts').textContent=S.sessions.length;
+  $('stLeft').textContent=Math.max(0,goal-cur).toFixed(1);
+  drawChart();
+  const h=$('histList');
+  if(!S.sessions.length){h.innerHTML='<p class="muted" style="font-size:13.5px">Пока пусто. Заверши первую тренировку — появится здесь.</p>';}
+  else{
+    h.innerHTML=S.sessions.slice().reverse().slice(0,12).map(s=>{
+      const cnt=Object.keys(s.ex).length;
+      const dt=new Date(s.date).toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+      return `<div class="hist"><div class="tag">${s.day}</div><div style="flex:1"><b>День ${s.day}</b><div class="muted" style="font-size:12.5px">${cnt} упражнений отмечено</div></div><div class="muted num" style="font-size:13px">${dt}</div></div>`;
+    }).join('');
+  }
+}
+function drawChart(){
+  const start=S.profile.startWeight,goal=S.profile.targetWeight;
+  const pts=[{date:S.profile.startDate,kg:start},...S.weights];
+  const W=560,H=180,pad=30;
+  const kgs=pts.map(p=>p.kg).concat([goal,start]);
+  let min=Math.min(...kgs)-1,max=Math.max(...kgs)+1;
+  if(max-min<3){max=min+3;}
+  const x=i=>pad+(pts.length<=1?0:i*((W-pad*2)/(pts.length-1)));
+  const y=v=>H-pad-((v-min)/(max-min))*(H-pad*2);
+  const gy=y(goal);
+  let path='',dots='';
+  pts.forEach((p,i)=>{path+=(i?'L':'M')+x(i)+' '+y(p.kg)+' ';dots+=`<circle cx="${x(i)}" cy="${y(p.kg)}" r="3.5" fill="#FF6A2B"/>`;});
+  // area
+  let area=path?`M${pad} ${H-pad} `+path.replace('M','L')+`L${x(pts.length-1)} ${H-pad} Z`:'';
+  const single=pts.length<=1;
+  $('chart').innerHTML=`
+  <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF6A2B" stop-opacity=".28"/><stop offset="1" stop-color="#FF6A2B" stop-opacity="0"/></linearGradient></defs>
+    <line x1="${pad}" y1="${gy}" x2="${W-pad}" y2="${gy}" stroke="#7FB069" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <text x="${W-pad}" y="${gy-7}" fill="#7FB069" font-size="11" text-anchor="end" font-family="Oswald">цель ${goal}</text>
+    ${!single?`<path d="${area}" fill="url(#g)"/>`:''}
+    ${!single?`<path d="${path}" fill="none" stroke="#FF6A2B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`:''}
+    ${dots}
+    <text x="${pad}" y="${H-8}" fill="#9A9087" font-size="10" font-family="Oswald">старт</text>
+    <text x="${W-pad}" y="${H-8}" fill="#9A9087" font-size="10" text-anchor="end" font-family="Oswald">сейчас</text>
+  </svg>
+  ${single?'<p class="sub" style="text-align:center;margin-top:4px">Запиши вес ещё пару раз — линия пойдёт вверх.</p>':''}`;
+}
+
+/* ---------- actions ---------- */
+function addWeight(){
+  const v=parseFloat($('wInput').value);
+  if(!v||v<30||v>200){toast('Введи корректный вес');return;}
+  const d=todayKey();
+  const idx=S.weights.findIndex(w=>w.date===d);
+  if(idx>=0)S.weights[idx].kg=v;else S.weights.push({date:d,kg:v});
+  $('wInput').value='';save();renderAll();
+  toast('Вес записан: '+v+' кг');
+}
+function saveSettings(){
+  const st=parseFloat($('setStart').value),gl=parseFloat($('setGoal').value),dt=$('setDate').value;
+  if(st)S.profile.startWeight=st;
+  if(gl)S.profile.targetWeight=gl;
+  if(dt)S.profile.startDate=dt;
+  save();renderAll();toast('Сохранено');
+}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  $('tab-'+t).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  window.scrollTo(0,0);
+}
+init();
+</script>
+</body>
+</html>
