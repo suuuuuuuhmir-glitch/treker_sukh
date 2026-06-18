@@ -1,0 +1,25 @@
+{
+  "name": "Набор массы — Трекер",
+  "short_name": "Масса",
+  "description": "Персональный трекер набора мышечной массы",
+  "start_url": "tracker.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14110F",
+  "theme_color": "#14110F",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ]
+}
