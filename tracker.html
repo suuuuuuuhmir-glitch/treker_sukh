@@ -535,11 +535,9 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     </div>
     <div class="field"><label class="lbl">Дата старта</label><input type="date" id="setDate"></div>
     <div class="field">
-      <label class="lbl">Таймер отдыха, сек</label>
-      <div class="seg" style="margin-bottom:0">
-        <button id="t60" onclick="setRestTimer(60)">60 с</button>
-        <button id="t90" onclick="setRestTimer(90)">90 с</button>
-        <button id="t120" onclick="setRestTimer(120)">120 с</button>
+      <label class="lbl">Таймер отдыха между подходами</label>
+      <div class="info" style="margin-bottom:0;font-size:13px">
+        После каждого подхода автоматически стартует <b>90-секундный таймер</b>. Когда он заканчивается — вибрация и звук. Это сигнал: мышцы восстановились, пора делать следующий подход. Именно 90 секунд оптимальны для набора массы — и не слишком мало, и не слишком долго.
       </div>
     </div>
     <div class="field" id="notifSetting"></div>
@@ -688,6 +686,10 @@ function todayKey(){
   const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
+function tomorrowKey(){
+  const d=new Date(); d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function fmtDate(s,opts={day:'numeric',month:'short'}){
   return new Date(s+'T12:00:00').toLocaleDateString('ru-RU',opts);
 }
@@ -797,7 +799,7 @@ function load(){
     if(raw){
       S=JSON.parse(raw);
       S.profile=S.profile||{};
-      S.profile.startDate=S.profile.startDate||todayKey();
+      S.profile.startDate=S.profile.startDate||tomorrowKey();
       S.profile.startWeight=S.profile.startWeight??54;
       S.profile.targetWeight=S.profile.targetWeight??63.5;
       S.profile.schedule=S.profile.schedule||[1,3,5];
@@ -808,7 +810,7 @@ function load(){
       S.settings=S.settings||{restTimer:90,notifications:false};
     } else {
       S={
-        profile:{startDate:todayKey(),startWeight:54,targetWeight:63.5,schedule:[1,3,5]},
+        profile:{startDate:tomorrowKey(),startWeight:54,targetWeight:63.5,schedule:[1,3,5]},
         weights:[],sessions:[],
         plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),
         nutrition:{},
@@ -817,7 +819,7 @@ function load(){
       migrateV1();
     }
   }catch(e){
-    S={profile:{startDate:todayKey(),startWeight:54,targetWeight:63.5,schedule:[1,3,5]},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),nutrition:{},settings:{restTimer:90,notifications:false}};
+    S={profile:{startDate:tomorrowKey(),startWeight:54,targetWeight:63.5,schedule:[1,3,5]},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),nutrition:{},settings:{restTimer:90,notifications:false}};
   }
 }
 function migrateV1(){
@@ -1258,7 +1260,6 @@ function renderProgress(){
   $('setStart').value=start;
   $('setGoal').value=goal;
   $('setDate').value=S.profile.startDate;
-  updateRestTimerBtns();
   renderNotifSetting();
 
   drawWeightChart();
@@ -1423,18 +1424,6 @@ function saveSettings(){
   if(dt) S.profile.startDate=dt;
   save(); renderToday(); renderProgress();
   toast('Настройки сохранены','ok');
-}
-function setRestTimer(sec){
-  S.settings.restTimer=sec;
-  save(); updateRestTimerBtns();
-  toast('Таймер: '+sec+' с');
-}
-function updateRestTimerBtns(){
-  const t=S.settings.restTimer||90;
-  [60,90,120].forEach(s=>{
-    const btn=$('t'+s);
-    if(btn) btn.classList.toggle('on',t===s);
-  });
 }
 function renderNotifSetting(){
   const el=$('notifSetting');
