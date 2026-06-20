@@ -303,6 +303,10 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .notif-bar{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .notif-bar span{flex:1;font-size:13.5px}
 .notif-bar button{background:var(--accent);color:#1A0C00;border:none;border-radius:8px;padding:7px 12px;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;flex-shrink:0}
+.date-nav{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 6px;margin-bottom:12px}
+.date-nav-btn{background:none;border:none;color:var(--accent);font-size:22px;cursor:pointer;padding:0 10px;line-height:1;display:flex;align-items:center}
+.date-nav-btn:disabled{color:var(--line);cursor:default}
+.date-nav-lbl{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--text);text-align:center}
 </style>
 </head>
 <body>
@@ -434,6 +438,12 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     </div>
   </div>
 
+  <div class="date-nav">
+    <button class="date-nav-btn" id="nutrPrevBtn" onclick="shiftNutrDay(-1)">‹</button>
+    <div class="date-nav-lbl" id="nutrDateLabel">Сегодня</div>
+    <button class="date-nav-btn" id="nutrNextBtn" onclick="shiftNutrDay(1)" disabled>›</button>
+  </div>
+
   <div class="stats3">
     <div class="stat"><div class="v acc">~2800</div><div class="l">ккал / день</div></div>
     <div class="stat"><div class="v">130–160</div><div class="l">г белка</div></div>
@@ -457,14 +467,14 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
         <div style="font-weight:600">💊 Креатин 5 г</div>
         <div class="muted" style="font-size:12px">каждый день, даже в дни отдыха</div>
       </div>
-      <button class="chip" id="nCrea" onclick="toggleSupp('creatine')">отметить</button>
+      <button class="chip" id="nCrea" onclick="toggleSupp('creatine', nutritionDate)">отметить</button>
     </div>
     <div class="row between" style="padding:8px 0">
       <div>
         <div style="font-weight:600">🥤 Гейнер Serious Mass</div>
         <div class="muted" style="font-size:12px">половина порции ~600 ккал на молоке</div>
       </div>
-      <button class="chip" id="nGain" onclick="toggleSupp('gainer')">отметить</button>
+      <button class="chip" id="nGain" onclick="toggleSupp('gainer', nutritionDate)">отметить</button>
     </div>
   </div>
 
@@ -675,6 +685,7 @@ let wip    = {};   // { exId: [{w,r,done}] }
 let timer  = { active:false, remaining:0, total:90, iid:null };
 let activeStrengthEx = null;
 let progEditorDay = 'A';
+let nutritionDate = todayKey();
 
 /* ============================================================
    UTILS
@@ -882,6 +893,7 @@ function switchTab(name){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
   window.scrollTo(0,0);
   if(name==='progress') renderProgress();
+  if(name==='nutrition'){ nutritionDate=todayKey(); renderNutrition(); }
 }
 
 /* ============================================================
@@ -972,11 +984,13 @@ function goWorkout(){
   switchTab('workout');
   setDay(sd);
 }
-function toggleSupp(k){
-  const d=todayKey();
+function toggleSupp(k, d){
+  d=d||todayKey();
   S.nutrition[d]=S.nutrition[d]||{};
   S.nutrition[d][k]=!S.nutrition[d][k];
-  save(); renderToday(); renderNutrition();
+  save();
+  if(d===todayKey()) renderToday();
+  renderNutrition();
 }
 
 /* ============================================================
@@ -1210,9 +1224,26 @@ function playBeep(){
 /* ============================================================
    NUTRITION TAB
    ============================================================ */
+function shiftNutrDay(delta){
+  const d=new Date(nutritionDate+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const newKey=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  // Don't go into the future
+  if(newKey>todayKey()) return;
+  nutritionDate=newKey;
+  renderNutrition();
+}
 function renderNutrition(){
-  const d=todayKey();
-  const n=S.nutrition[d]||{};
+  // Date navigator label
+  const today=todayKey();
+  const isToday=nutritionDate===today;
+  const yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yKey=yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
+  let label=isToday?'Сегодня':(nutritionDate===yKey?'Вчера':fmtDate(nutritionDate,{day:'numeric',month:'long'}));
+  const lbl=$('nutrDateLabel'); if(lbl) lbl.textContent=label;
+  const nextBtn=$('nutrNextBtn'); if(nextBtn) nextBtn.disabled=isToday;
+
+  const n=S.nutrition[nutritionDate]||{};
   const checked=n.meals||[];
   const list=$('mealList'); list.innerHTML='';
   DEFAULT_MEALS.forEach(m=>{
@@ -1237,12 +1268,12 @@ function renderNutrition(){
   setChip('nGain',n.gainer);
 }
 function toggleMeal(id){
-  const d=todayKey();
-  S.nutrition[d]=S.nutrition[d]||{};
-  let arr=S.nutrition[d].meals||[];
+  S.nutrition[nutritionDate]=S.nutrition[nutritionDate]||{};
+  let arr=S.nutrition[nutritionDate].meals||[];
   arr=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];
-  S.nutrition[d].meals=arr;
-  save(); renderNutrition(); renderToday();
+  S.nutrition[nutritionDate].meals=arr;
+  save(); renderNutrition();
+  if(nutritionDate===todayKey()) renderToday();
 }
 
 /* ============================================================
