@@ -177,13 +177,22 @@ label.lbl{font-size:11.5px;color:var(--muted);display:block;margin-bottom:5px;te
 .meal-kcal{font-family:'Oswald',sans-serif;color:var(--accent);font-weight:600;font-size:13px;white-space:nowrap;margin-top:2px;flex-shrink:0}
 
 /* ===================== HISTORY ===================== */
-.hist{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.hist{border-bottom:1px solid var(--line)}
 .hist:last-child{border-bottom:none}
+.hist-row{display:flex;gap:12px;align-items:center;padding:12px 0;cursor:pointer;user-select:none}
 .hist-badge{font-family:'Oswald',sans-serif;font-weight:700;width:36px;height:36px;flex:0 0 36px;border-radius:9px;display:grid;place-items:center;background:var(--accent-dim);color:var(--accent);font-size:15px}
 .hist-body{flex:1;min-width:0}
 .hist-title{font-weight:600;font-size:14.5px}
 .hist-sub{color:var(--muted);font-size:12px;margin-top:2px}
 .hist-meta{color:var(--muted);font-size:12px;text-align:right;flex-shrink:0}
+.hist-chev{color:var(--muted);flex-shrink:0;transition:transform .2s}
+.hist.open .hist-chev{transform:rotate(180deg)}
+.hist-detail{display:none;padding:0 0 12px 48px}
+.hist.open .hist-detail{display:block}
+.hist-ex{margin-bottom:10px}
+.hist-ex-nm{font-weight:600;font-size:13.5px;margin-bottom:4px;color:var(--text)}
+.hist-set{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--line);border-radius:7px;padding:4px 9px;font-size:12.5px;font-family:'Oswald',sans-serif;margin:0 4px 4px 0;color:var(--muted)}
+.hist-set.done{background:var(--good-dim);border-color:rgba(127,176,105,.3);color:var(--good)}
 
 /* ===================== INFO BOX ===================== */
 .info{background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:var(--r);padding:14px;font-size:13.5px;color:#E9CDBC;margin-bottom:12px}
@@ -1303,19 +1312,45 @@ function renderHistory(){
     h.innerHTML=`<div class="empty"><div class="ei">🏋️</div><p>Пока пусто. Заверши первую тренировку — она появится здесь.</p></div>`;
     return;
   }
-  h.innerHTML=S.sessions.slice().reverse().slice(0,20).map(s=>{
+  // Build a lookup of all exercises from both days
+  const exMap={};
+  [...(S.plan.A||[]),...(S.plan.B||[])].forEach(e=>exMap[e.id]=e.name);
+
+  h.innerHTML=S.sessions.slice().reverse().slice(0,20).map((s,i)=>{
     const vol=s.volume||calcTonnage(s);
     const exCnt=Object.keys(s.ex).length;
     const dt=fmtDate(s.date);
-    return `<div class="hist">
-      <div class="hist-badge">${s.day}</div>
-      <div class="hist-body">
-        <div class="hist-title">День ${s.day}</div>
-        <div class="hist-sub">${exCnt} упр.${vol?' · '+vol+' кг':''}</div>
+
+    // Build detail HTML
+    let detailHtml='';
+    Object.entries(s.ex).forEach(([exId,sets])=>{
+      if(!Array.isArray(sets)||!sets.length) return;
+      const nm=exMap[exId]||exId;
+      const setsHtml=sets.map((st,si)=>{
+        const w=st.w||'?'; const r=st.r||'?';
+        const done=!!st.done;
+        return `<span class="hist-set${done?' done':''}">${si+1}. ${w}кг × ${r}</span>`;
+      }).join('');
+      detailHtml+=`<div class="hist-ex"><div class="hist-ex-nm">${nm}</div><div>${setsHtml}</div></div>`;
+    });
+
+    return `<div class="hist" id="hist-${i}">
+      <div class="hist-row" onclick="toggleHist('hist-${i}')">
+        <div class="hist-badge">${s.day}</div>
+        <div class="hist-body">
+          <div class="hist-title">День ${s.day}</div>
+          <div class="hist-sub">${exCnt} упр.${vol?' · '+vol+' кг':''}</div>
+        </div>
+        <div class="hist-meta">${dt}</div>
+        <svg class="hist-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </div>
-      <div class="hist-meta">${dt}</div>
+      <div class="hist-detail">${detailHtml||'<span class="muted" style="font-size:13px">Нет данных по подходам</span>'}</div>
     </div>`;
   }).join('');
+}
+function toggleHist(id){
+  const el=document.getElementById(id);
+  if(el) el.classList.toggle('open');
 }
 
 /* ============================================================
