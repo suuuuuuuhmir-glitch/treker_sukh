@@ -1005,7 +1005,14 @@ function toggleSupp(k, d){
 /* ============================================================
    WORKOUT TAB
    ============================================================ */
-function setDay(d){
+async function setDay(d){
+  if(d===curDay) return;
+  // Warn if there's unsaved WIP for the current day
+  const hasWip=Object.values(wip).some(sets=>sets.some(s=>s.w||s.r||s.done));
+  if(hasWip){
+    const ok=await showConfirm(`Есть незаписанные данные для Дня ${curDay}. Переключить день и потерять их?`,'Переключить');
+    if(!ok) return;
+  }
   curDay=d;
   $('segA').classList.toggle('on',d==='A');
   $('segB').classList.toggle('on',d==='B');
@@ -1014,8 +1021,7 @@ function setDay(d){
   if(savedWip&&savedWip.day===d){
     wip=savedWip.data;
     $('wipIndicator').style.display='block';
-  } else if(savedWip&&savedWip.day!==d){
-    // Different day — clear WIP
+  } else {
     wip={};clearWip();
     $('wipIndicator').style.display='none';
   }
