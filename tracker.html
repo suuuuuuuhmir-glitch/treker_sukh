@@ -1337,6 +1337,7 @@ function toggleMeal(id){
 const PHOTO_DB='gymtracker_photos_v1';
 const PHOTO_STORE='photos';
 let _photoDB=null;
+let _photoCache=[];
 
 function openPhotoDB(){
   if(_photoDB) return Promise.resolve(_photoDB);
@@ -1349,7 +1350,11 @@ function openPhotoDB(){
           .createIndex('date','date',{unique:false});
       }
     };
-    req.onsuccess=e=>{_photoDB=e.target.result;res(_photoDB);};
+    req.onsuccess=e=>{
+      _photoDB=e.target.result;
+      _photoDB.onclose=()=>{_photoDB=null;};
+      res(_photoDB);
+    };
     req.onerror=rej;
   });
 }
@@ -1404,6 +1409,7 @@ async function renderPhotoGallery(){
       req.onsuccess=()=>res(req.result);req.onerror=rej;
     });
     photos.sort((a,b)=>b.ts-a.ts);
+    _photoCache=photos;
     const addBtn=`<button class="photo-add" onclick="$('photoInput').click()">
       <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
       Фото
@@ -1420,39 +1426,34 @@ async function renderPhotoGallery(){
 }
 
 let _lbId=null;
-async function openLightbox(id){
-  try{
-    const db=await openPhotoDB();
-    const p=await new Promise((res,rej)=>{
-      const req=db.transaction(PHOTO_STORE,'readonly').objectStore(PHOTO_STORE).get(id);
-      req.onsuccess=()=>res(req.result);req.onerror=rej;
-    });
-    if(!p) return;
-    _lbId=id;
-    $('lbImg').src=p.data;
-    $('lbDate').textContent=fmtDate(p.date);
-    $('lightbox').classList.add('open');
-  }catch(e){}
+function openLightbox(id){
+  const p=_photoCache.find(x=>x.id===id);
+  if(!p) return;
+  _lbId=id;
+  $('lbImg').src=p.data;
+  $('lbDate').textContent=fmtDate(p.date);
+  $('lightbox').classList.add('open');
 }
 function closeLightbox(){
   $('lightbox').classList.remove('open');
   setTimeout(()=>{$('lbImg').src='';_lbId=null;},250);
 }
 async function deleteCurrentPhoto(){
-  if(_lbId===null) return;
+  const idToDel=_lbId;
+  if(idToDel===null||idToDel===undefined) return;
   const ok=await showConfirm('Удалить это фото?','Удалить');
   if(!ok) return;
+  closeLightbox();
   try{
     const db=await openPhotoDB();
     await new Promise((res,rej)=>{
       const tx=db.transaction(PHOTO_STORE,'readwrite');
-      tx.objectStore(PHOTO_STORE).delete(_lbId);
-      tx.oncomplete=res;tx.onerror=rej;
+      const req=tx.objectStore(PHOTO_STORE).delete(idToDel);
+      req.onsuccess=res;req.onerror=rej;
     });
-    closeLightbox();
-    renderPhotoGallery();
     toast('Фото удалено','ok');
-  }catch(e){toast('Ошибка','err');}
+    renderPhotoGallery();
+  }catch(e){toast('Ошибка удаления','err');}
 }
 
 function renderProgress(){
