@@ -287,14 +287,13 @@ label.lbl{font-size:11.5px;color:var(--muted);display:block;margin-bottom:5px;te
 .photo-add{aspect-ratio:1;border-radius:var(--r-sm);border:1.5px dashed var(--line);background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
 .photo-add:active{border-color:var(--accent);color:var(--accent)}
 .photo-add svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:120;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:120;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .lightbox.open{opacity:1;pointer-events:auto}
-.lightbox-img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:var(--r-sm);display:block}
-.lightbox-bar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent)}
-.lb-date{color:rgba(255,255,255,.8);font-size:13px;font-weight:600}
-.lb-btns{display:flex;gap:8px}
-.lb-btn{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:99px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
-.lb-btn.del{color:var(--danger)}
+.lightbox-img{max-width:100%;max-height:72vh;object-fit:contain;border-radius:var(--r-sm);display:block}
+.lightbox-close{position:absolute;top:calc(14px + env(safe-area-inset-top));right:16px;background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:99px;width:36px;height:36px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.lb-date{color:rgba(255,255,255,.7);font-size:13px;margin-top:14px;font-weight:500}
+.lb-bottom{position:absolute;bottom:0;left:0;right:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+.lb-del{background:var(--danger-dim);border:1px solid var(--danger);color:var(--danger);border-radius:var(--r-sm);padding:13px 32px;font-size:15px;font-weight:700;cursor:pointer;width:100%;max-width:320px}
 
 /* ===================== NAV ===================== */
 nav{
@@ -653,14 +652,12 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 <!-- ==================== LIGHTBOX ==================== -->
 <div class="lightbox" id="lightbox">
-  <div class="lightbox-bar">
-    <span class="lb-date" id="lbDate"></span>
-    <div class="lb-btns">
-      <button class="lb-btn del" onclick="deleteCurrentPhoto()">Удалить</button>
-      <button class="lb-btn" onclick="closeLightbox()">✕</button>
-    </div>
-  </div>
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
   <img class="lightbox-img" id="lbImg" src="" alt="">
+  <div class="lb-date" id="lbDate"></div>
+  <div class="lb-bottom">
+    <button class="lb-del" onclick="deleteCurrentPhoto()">Удалить фото</button>
+  </div>
 </div>
 <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoInput(this)">
 
@@ -1445,15 +1442,19 @@ async function deleteCurrentPhoto(){
   if(!ok) return;
   closeLightbox();
   try{
+    _photoDB=null; // force fresh connection
     const db=await openPhotoDB();
     await new Promise((res,rej)=>{
       const tx=db.transaction(PHOTO_STORE,'readwrite');
-      const req=tx.objectStore(PHOTO_STORE).delete(idToDel);
-      req.onsuccess=res;req.onerror=rej;
+      tx.oncomplete=res;
+      tx.onerror=e=>rej(e.target.error);
+      tx.onabort=e=>rej(e.target.error);
+      tx.objectStore(PHOTO_STORE).delete(idToDel);
     });
+    _photoCache=_photoCache.filter(p=>p.id!==idToDel);
     toast('Фото удалено','ok');
     renderPhotoGallery();
-  }catch(e){toast('Ошибка удаления','err');}
+  }catch(e){toast('Ошибка: '+(e&&e.message||e),'err');}
 }
 
 function renderProgress(){
