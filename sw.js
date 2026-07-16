@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'gymtracker-shell-v3';
+const SHELL_CACHE = 'gymtracker-shell-v4';
 const FONT_CACHE  = 'gymtracker-fonts-v2';
 const SHELL_FILES = ['tracker.html', 'manifest.json', 'icon.svg'];
 
@@ -6,18 +6,20 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(SHELL_CACHE)
       .then(c => c.addAll(SHELL_FILES))
-      .then(() => self.skipWaiting())
+      .then(()=>self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== SHELL_CACHE && k !== FONT_CACHE).map(k => caches.delete(k))
-      )
-    ).then(() => clients.claim())
+    caches.keys().then(keys=>
+      Promise.all(keys.filter(k=>k!==SHELL_CACHE&&k!==FONT_CACHE).map(k=>caches.delete(k)))
+    ).then(()=>clients.claim())
   );
+});
+
+self.addEventListener('message', e => {
+  if(e.data&&e.data.type==='SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('fetch', e => {
