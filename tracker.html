@@ -278,6 +278,24 @@ label.lbl{font-size:11.5px;color:var(--muted);display:block;margin-bottom:5px;te
 .toast.ok{background:var(--good);color:#0A1C05;border-color:var(--good)}
 .toast.err{background:var(--danger);color:#fff;border-color:var(--danger)}
 
+/* ===================== PHOTOS ===================== */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px}
+.photo-thumb{aspect-ratio:1;border-radius:var(--r-sm);overflow:hidden;position:relative;cursor:pointer;background:var(--surface2)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb:active{opacity:.8}
+.photo-date-lbl{position:absolute;bottom:0;left:0;right:0;padding:3px 5px;background:rgba(0,0,0,.65);font-size:9.5px;color:rgba(255,255,255,.85);text-align:center}
+.photo-add{aspect-ratio:1;border-radius:var(--r-sm);border:1.5px dashed var(--line);background:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
+.photo-add:active{border-color:var(--accent);color:var(--accent)}
+.photo-add svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:120;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.lightbox.open{opacity:1;pointer-events:auto}
+.lightbox-img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:var(--r-sm);display:block}
+.lightbox-bar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top));background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent)}
+.lb-date{color:rgba(255,255,255,.8);font-size:13px;font-weight:600}
+.lb-btns{display:flex;gap:8px}
+.lb-btn{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:99px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.lb-btn.del{color:var(--danger)}
+
 /* ===================== NAV ===================== */
 nav{
   position:fixed;left:0;right:0;bottom:0;
@@ -538,6 +556,11 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   </div>
 
   <div class="card">
+    <div class="card-head"><h3 class="card-title">Фото прогресса</h3></div>
+    <div class="photo-grid" id="photoGrid"></div>
+  </div>
+
+  <div class="card">
     <h3 class="card-title" style="margin-bottom:12px">Экспорт / Импорт</h3>
     <div class="row" style="gap:8px">
       <button class="btn ghost sm" style="flex:1" onclick="exportData()">↑ Экспорт JSON</button>
@@ -627,6 +650,19 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     </div>
   </div>
 </div>
+
+<!-- ==================== LIGHTBOX ==================== -->
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-bar">
+    <span class="lb-date" id="lbDate"></span>
+    <div class="lb-btns">
+      <button class="lb-btn del" onclick="deleteCurrentPhoto()">Удалить</button>
+      <button class="lb-btn" onclick="closeLightbox()">✕</button>
+    </div>
+  </div>
+  <img class="lightbox-img" id="lbImg" src="" alt="">
+</div>
+<input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoInput(this)">
 
 <!-- ==================== CONFIRM ==================== -->
 <div class="confirm-bg" id="confirmBg">
@@ -1182,6 +1218,7 @@ function finishWorkout(){
   renderToday();
   toast(`День ${curDay} завершён · тоннаж ${vol} кг 💪`,'ok');
   stopRestTimer();
+  setTimeout(()=>{ $('photoInput').click(); },900);
 }
 
 /* ============================================================
@@ -1294,6 +1331,130 @@ function toggleMeal(id){
 /* ============================================================
    PROGRESS TAB
    ============================================================ */
+/* ============================================================
+   PHOTOS (IndexedDB)
+   ============================================================ */
+const PHOTO_DB='gymtracker_photos_v1';
+const PHOTO_STORE='photos';
+let _photoDB=null;
+
+function openPhotoDB(){
+  if(_photoDB) return Promise.resolve(_photoDB);
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(PHOTO_DB,1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(PHOTO_STORE)){
+        db.createObjectStore(PHOTO_STORE,{keyPath:'id',autoIncrement:true})
+          .createIndex('date','date',{unique:false});
+      }
+    };
+    req.onsuccess=e=>{_photoDB=e.target.result;res(_photoDB);};
+    req.onerror=rej;
+  });
+}
+
+function compressImage(file){
+  return new Promise(res=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=900;
+      let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){
+        if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+        else{w=Math.round(w*MAX/h);h=MAX;}
+      }
+      const c=document.createElement('canvas');
+      c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg',0.75));
+    };
+    img.src=url;
+  });
+}
+
+async function handlePhotoInput(inp){
+  const file=inp.files[0];
+  if(!file) return;
+  inp.value='';
+  try{
+    toast('Сохраняю…');
+    const data=await compressImage(file);
+    const db=await openPhotoDB();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction(PHOTO_STORE,'readwrite');
+      tx.objectStore(PHOTO_STORE).add({date:todayKey(),data,ts:Date.now()});
+      tx.oncomplete=res;tx.onerror=rej;
+    });
+    toast('Фото сохранено 📸','ok');
+    renderPhotoGallery();
+  }catch(e){toast('Не удалось сохранить','err');}
+}
+
+async function renderPhotoGallery(){
+  const grid=$('photoGrid');
+  if(!grid) return;
+  try{
+    const db=await openPhotoDB();
+    const photos=await new Promise((res,rej)=>{
+      const tx=db.transaction(PHOTO_STORE,'readonly');
+      const req=tx.objectStore(PHOTO_STORE).getAll();
+      req.onsuccess=()=>res(req.result);req.onerror=rej;
+    });
+    photos.sort((a,b)=>b.ts-a.ts);
+    const addBtn=`<button class="photo-add" onclick="$('photoInput').click()">
+      <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      Фото
+    </button>`;
+    if(!photos.length){
+      grid.innerHTML=addBtn+`<div style="grid-column:span 2;display:flex;align-items:center;padding-left:8px"><p class="sub" style="font-size:12px;line-height:1.5">Сфоткайся после тренировки — здесь будет твой прогресс.</p></div>`;
+      return;
+    }
+    grid.innerHTML=addBtn+photos.map(p=>`<div class="photo-thumb" onclick="openLightbox(${p.id})">
+      <img src="${p.data}" loading="lazy" alt="">
+      <div class="photo-date-lbl">${fmtDate(p.date)}</div>
+    </div>`).join('');
+  }catch(e){grid.innerHTML='<p class="sub">Ошибка загрузки</p>';}
+}
+
+let _lbId=null;
+async function openLightbox(id){
+  try{
+    const db=await openPhotoDB();
+    const p=await new Promise((res,rej)=>{
+      const req=db.transaction(PHOTO_STORE,'readonly').objectStore(PHOTO_STORE).get(id);
+      req.onsuccess=()=>res(req.result);req.onerror=rej;
+    });
+    if(!p) return;
+    _lbId=id;
+    $('lbImg').src=p.data;
+    $('lbDate').textContent=fmtDate(p.date);
+    $('lightbox').classList.add('open');
+  }catch(e){}
+}
+function closeLightbox(){
+  $('lightbox').classList.remove('open');
+  setTimeout(()=>{$('lbImg').src='';_lbId=null;},250);
+}
+async function deleteCurrentPhoto(){
+  if(_lbId===null) return;
+  const ok=await showConfirm('Удалить это фото?','Удалить');
+  if(!ok) return;
+  try{
+    const db=await openPhotoDB();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction(PHOTO_STORE,'readwrite');
+      tx.objectStore(PHOTO_STORE).delete(_lbId);
+      tx.oncomplete=res;tx.onerror=rej;
+    });
+    closeLightbox();
+    renderPhotoGallery();
+    toast('Фото удалено','ok');
+  }catch(e){toast('Ошибка','err');}
+}
+
 function renderProgress(){
   const cur=latestWeight(),start=S.profile.startWeight,goal=S.profile.targetWeight;
   $('stGain').textContent=(cur-start>=0?'+':'')+(cur-start).toFixed(1);
@@ -1311,6 +1472,7 @@ function renderProgress(){
   drawWeightChart();
   renderStrengthTabs();
   renderHistory();
+  renderPhotoGallery();
 }
 function renderHistory(){
   const h=$('histList');
