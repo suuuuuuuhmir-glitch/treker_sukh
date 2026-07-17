@@ -944,7 +944,11 @@ function repairHistoryData(){
     });
   });
 
-  if(fixed>0) save();
+  if(fixed>0){
+    // Recalculate volume for all sessions now that reps/weights are filled
+    S.sessions.forEach(sess=>{ sess.volume=calcTonnage(sess); });
+    save();
+  }
   return fixed;
 }
 
