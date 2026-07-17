@@ -1147,8 +1147,14 @@ function toggleSetDone(exId,si){
   // Collect current input values
   const wInp=document.querySelector(`input[data-ex="${exId}"][data-si="${si}"][data-f="w"]`);
   const rInp=document.querySelector(`input[data-ex="${exId}"][data-si="${si}"][data-f="r"]`);
-  if(wInp&&wInp.value) wip[exId][si].w=wInp.value;
-  if(rInp&&rInp.value) wip[exId][si].r=rInp.value;
+  if(wInp){
+    const wFallback=wInp.placeholder?wInp.placeholder.replace(/^→\s*/,''):'';
+    wip[exId][si].w=wInp.value||(wFallback!=='вес'?wFallback:'')||wip[exId][si].w;
+  }
+  if(rInp){
+    const rFallback=rInp.placeholder&&rInp.placeholder!=='повт'?rInp.placeholder:'';
+    wip[exId][si].r=rInp.value||rFallback||wip[exId][si].r;
+  }
 
   const wasDone=wip[exId][si].done;
   wip[exId][si].done=!wasDone;
