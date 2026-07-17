@@ -895,6 +895,71 @@ function migrateV1(){
 }
 
 /* ============================================================
+   HISTORY DATA REPAIR
+   ============================================================ */
+function repairHistoryReps(){
+  let fixed=0;
+  S.sessions.forEach((sess,sessIdx)=>{
+    Object.keys(sess.ex).forEach(exId=>{
+      const sets=sess.ex[exId];
+      if(!sets||!sets.length) return;
+
+      // Collect known r values within this session for this exercise
+      const knownR=sets.map(s=>(s.r&&s.r!=='')?s.r:null);
+
+      sets.forEach((set,si)=>{
+        if(set.r&&set.r!=='') return; // already has value
+
+        let fill=null;
+
+        // 1. Same set index known in this session
+        if(knownR[si]) fill=knownR[si];
+
+        // 2. Any known r in this session
+        if(!fill) fill=knownR.find(v=>v!==null)||null;
+
+        // 3. Previous sessions, same exercise, same set index
+        if(!fill){
+          for(let i=sessIdx-1;i>=0;i--){
+            const ps=S.sessions[i].ex[exId];
+            if(!ps) continue;
+            if(ps[si]&&ps[si].r&&ps[si].r!==''){fill=ps[si].r;break;}
+          }
+        }
+
+        // 4. Previous sessions, same exercise, any set
+        if(!fill){
+          for(let i=sessIdx-1;i>=0;i--){
+            const ps=S.sessions[i].ex[exId];
+            if(!ps) continue;
+            const any=ps.find(s=>s.r&&s.r!=='');
+            if(any){fill=any.r;break;}
+          }
+        }
+
+        // 5. Next sessions (in case first session is missing)
+        if(!fill){
+          for(let i=sessIdx+1;i<S.sessions.length;i++){
+            const ps=S.sessions[i].ex[exId];
+            if(!ps) continue;
+            const any=ps.find(s=>s.r&&s.r!=='');
+            if(any){fill=any.r;break;}
+          }
+        }
+
+        set.r=fill||'10';
+        fixed++;
+      });
+    });
+  });
+
+  if(fixed>0){
+    save();
+  }
+  return fixed;
+}
+
+/* ============================================================
    TOAST
    ============================================================ */
 let toastTimer=null;
@@ -1194,13 +1259,18 @@ function updateWkTonnage(){
   }
 }
 function finishWorkout(){
-  // Collect all input values from DOM
+  // Collect all input values from DOM (use placeholder as fallback)
   document.querySelectorAll('#exList input').forEach(inp=>{
     const {ex,si,f}=inp.dataset;
-    if(!inp.value) return;
     if(!wip[ex])wip[ex]=[];
     if(!wip[ex][si])wip[ex][si]={w:'',r:'',done:false};
-    wip[ex][si][f]=inp.value;
+    if(inp.value){
+      wip[ex][si][f]=inp.value;
+    } else if(inp.placeholder){
+      if(f==='r'&&inp.placeholder!=='повт') wip[ex][si][f]=inp.placeholder;
+      if(f==='w'&&inp.placeholder!=='вес'&&!inp.placeholder.startsWith('→'))
+        wip[ex][si][f]=inp.placeholder;
+    }
   });
 
   const hasAny=Object.values(wip).some(sets=>sets.some(s=>s.w||s.r));
@@ -1772,6 +1842,7 @@ function init(){
   $('segA').classList.toggle('on',curDay==='A');
   $('segB').classList.toggle('on',curDay==='B');
 
+  repairHistoryReps();
   renderAll();
   checkWorkoutNotification();
 
