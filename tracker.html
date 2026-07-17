@@ -897,65 +897,54 @@ function migrateV1(){
 /* ============================================================
    HISTORY DATA REPAIR
    ============================================================ */
-function repairHistoryReps(){
+function repairHistoryData(){
   let fixed=0;
+
+  function findInSessions(sessions,sessIdx,exId,si,field,searchNext){
+    // Previous sessions
+    const start=searchNext?sessIdx+1:sessIdx-1;
+    const end=searchNext?sessions.length:-1;
+    const step=searchNext?1:-1;
+    for(let i=start;i!==end;i+=step){
+      const ps=sessions[i].ex[exId];
+      if(!ps) continue;
+      if(ps[si]&&ps[si][field]&&ps[si][field]!=='') return ps[si][field];
+    }
+    // Any set in any direction
+    for(let i=start;i!==end;i+=step){
+      const ps=sessions[i].ex[exId];
+      if(!ps) continue;
+      const any=ps.find(s=>s[field]&&s[field]!=='');
+      if(any) return any[field];
+    }
+    return null;
+  }
+
   S.sessions.forEach((sess,sessIdx)=>{
     Object.keys(sess.ex).forEach(exId=>{
       const sets=sess.ex[exId];
       if(!sets||!sets.length) return;
 
-      // Collect known r values within this session for this exercise
-      const knownR=sets.map(s=>(s.r&&s.r!=='')?s.r:null);
+      ['r','w'].forEach(field=>{
+        const knownVals=sets.map(s=>(s[field]&&s[field]!=='')?s[field]:null);
 
-      sets.forEach((set,si)=>{
-        if(set.r&&set.r!=='') return; // already has value
+        sets.forEach((set,si)=>{
+          if(set[field]&&set[field]!=='') return;
 
-        let fill=null;
+          let fill=knownVals[si]                                       // 1. same set in session
+            ||knownVals.find(v=>v!==null)                             // 2. any set in session
+            ||findInSessions(S.sessions,sessIdx,exId,si,field,false)  // 3. prev sessions
+            ||findInSessions(S.sessions,sessIdx,exId,si,field,true);  // 4. next sessions
 
-        // 1. Same set index known in this session
-        if(knownR[si]) fill=knownR[si];
+          if(field==='r') fill=fill||'10'; // reps: default 10; weight: don't guess
 
-        // 2. Any known r in this session
-        if(!fill) fill=knownR.find(v=>v!==null)||null;
-
-        // 3. Previous sessions, same exercise, same set index
-        if(!fill){
-          for(let i=sessIdx-1;i>=0;i--){
-            const ps=S.sessions[i].ex[exId];
-            if(!ps) continue;
-            if(ps[si]&&ps[si].r&&ps[si].r!==''){fill=ps[si].r;break;}
-          }
-        }
-
-        // 4. Previous sessions, same exercise, any set
-        if(!fill){
-          for(let i=sessIdx-1;i>=0;i--){
-            const ps=S.sessions[i].ex[exId];
-            if(!ps) continue;
-            const any=ps.find(s=>s.r&&s.r!=='');
-            if(any){fill=any.r;break;}
-          }
-        }
-
-        // 5. Next sessions (in case first session is missing)
-        if(!fill){
-          for(let i=sessIdx+1;i<S.sessions.length;i++){
-            const ps=S.sessions[i].ex[exId];
-            if(!ps) continue;
-            const any=ps.find(s=>s.r&&s.r!=='');
-            if(any){fill=any.r;break;}
-          }
-        }
-
-        set.r=fill||'10';
-        fixed++;
+          if(fill){ set[field]=fill; fixed++; }
+        });
       });
     });
   });
 
-  if(fixed>0){
-    save();
-  }
+  if(fixed>0) save();
   return fixed;
 }
 
@@ -1268,8 +1257,10 @@ function finishWorkout(){
       wip[ex][si][f]=inp.value;
     } else if(inp.placeholder){
       if(f==='r'&&inp.placeholder!=='повт') wip[ex][si][f]=inp.placeholder;
-      if(f==='w'&&inp.placeholder!=='вес'&&!inp.placeholder.startsWith('→'))
-        wip[ex][si][f]=inp.placeholder;
+      if(f==='w'&&inp.placeholder!=='вес'){
+        const wRaw=inp.placeholder.replace(/^→\s*/,'');
+        if(wRaw) wip[ex][si][f]=wRaw;
+      }
     }
   });
 
@@ -1842,7 +1833,7 @@ function init(){
   $('segA').classList.toggle('on',curDay==='A');
   $('segB').classList.toggle('on',curDay==='B');
 
-  repairHistoryReps();
+  repairHistoryData();
   renderAll();
   checkWorkoutNotification();
 
