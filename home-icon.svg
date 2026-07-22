@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0F1712" rx="80"/>
+  <!-- box lid -->
+  <rect x="86" y="188" width="340" height="58" rx="16" fill="#274436"/>
+  <!-- handle -->
+  <rect x="222" y="146" width="68" height="56" rx="16" fill="none" stroke="#274436" stroke-width="18"/>
+  <!-- box body -->
+  <rect x="106" y="232" width="300" height="172" rx="20" fill="#1B2A22" stroke="#2E4A3A" stroke-width="4"/>
+  <!-- status dots -->
+  <circle cx="180" cy="318" r="24" fill="#34D399"/>
+  <circle cx="256" cy="318" r="24" fill="#FBBF24"/>
+  <circle cx="332" cy="318" r="24" fill="#F87171"/>
+</svg>

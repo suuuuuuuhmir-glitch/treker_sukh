@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Домашние запасы</title>
+<meta name="description" content="Трекер домашних запасов: категории, статусы, автосписок покупок">
+<meta name="theme-color" content="#0F1712">
+<link rel="manifest" href="home-manifest.json">
+<link rel="icon" href="home-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="home-icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Запасы">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1712; --surface:#182420; --surface2:#1F2E27; --line:#2B3B33;
+  --text:#F2F5F3; --muted:#8FA79B;
+  --accent:#34D399; --accent-dim:rgba(52,211,153,.15);
+  --yellow:#FBBF24; --yellow-dim:rgba(251,191,36,.15);
+  --red:#F87171; --red-dim:rgba(248,113,113,.15);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  min-height:100vh;min-height:100dvh;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  overscroll-behavior-y:contain;
+}
+h1,h2,h3,h4{font-family:'Oswald',system-ui,sans-serif;font-weight:600;margin:0;letter-spacing:.3px}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;color:inherit}
+
+/* Header */
+header{
+  position:sticky;top:0;z-index:10;
+  background:linear-gradient(180deg,var(--bg) 70%,rgba(15,23,18,0));
+  padding:calc(18px + env(safe-area-inset-top)) 18px 14px;
+}
+header h1{font-size:24px}
+.header-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.badge-alert{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--red-dim);color:var(--red);border:1px solid rgba(248,113,113,.3);
+  border-radius:99px;padding:6px 12px;font-weight:600;font-size:13px;white-space:nowrap;
+  transition:.2s;
+}
+.badge-alert.ok{background:var(--accent-dim);color:var(--accent);border-color:rgba(52,211,153,.3)}
+
+main{padding:0 14px 24px}
+
+/* Views */
+.view{display:none;animation:fadeIn .25s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Category card */
+.category{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  margin-bottom:14px;overflow:hidden;
+}
+.category-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;cursor:pointer;
+}
+.category-head .name{font-family:'Oswald',sans-serif;font-size:17px;display:flex;align-items:center;gap:8px}
+.category-head .count{color:var(--muted);font-size:13px;font-weight:500}
+.category-head .chev{color:var(--muted);transition:.25s;font-size:13px}
+.category.collapsed .chev{transform:rotate(-90deg)}
+.category.collapsed .items{max-height:0;padding-top:0;padding-bottom:0}
+.items{padding:0 8px 10px;transition:max-height .3s ease}
+
+.item-row{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 8px;border-radius:12px;
+  transition:background .15s;
+}
+.item-row:active{background:var(--surface2)}
+.dot{
+  width:26px;height:26px;border-radius:50%;flex:0 0 26px;
+  border:2px solid transparent;
+  display:grid;place-items:center;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .25s, border-color .25s;
+}
+.dot.green{background:var(--accent)}
+.dot.yellow{background:var(--yellow)}
+.dot.red{background:var(--red)}
+.dot.pop{transform:scale(1.35)}
+.item-name{flex:1;font-size:15.5px;font-weight:500}
+.item-name.dim{color:var(--muted)}
+.item-edit{
+  width:34px;height:34px;flex:0 0 34px;border-radius:10px;
+  display:grid;place-items:center;color:var(--muted);font-size:18px;
+}
+.item-edit:active{background:var(--surface2);color:var(--text)}
+
+.add-item-btn{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:12px 8px;color:var(--accent);font-weight:600;font-size:14.5px;
+  border-radius:12px;
+}
+.add-item-btn:active{background:var(--surface2)}
+
+.add-category-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  padding:16px;color:var(--muted);font-weight:600;font-size:14.5px;
+  border:1.5px dashed var(--line);border-radius:16px;margin-top:6px;
+  transition:.15s;
+}
+.add-category-btn:active{border-color:var(--accent);color:var(--accent)}
+
+/* Shopping list */
+.shop-toolbar{display:flex;gap:10px;margin-bottom:16px}
+.shop-copy-btn{
+  flex:1;background:var(--surface);border:1px solid var(--line);color:var(--text);
+  padding:14px;border-radius:14px;font-weight:600;font-size:14.5px;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;
+}
+.shop-copy-btn:active{background:var(--surface2);transform:scale(.98)}
+.shop-group{margin-bottom:16px}
+.shop-group h3{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:0 6px 8px;font-weight:600}
+.shop-row{
+  display:flex;align-items:center;gap:12px;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:8px;
+  transition:opacity .25s, transform .25s;
+}
+.shop-row.bought{opacity:0;transform:scale(.92) translateX(12px)}
+.shop-row .mark{
+  width:24px;height:24px;border-radius:8px;border:2px solid var(--line);flex:0 0 24px;
+  display:grid;place-items:center;font-size:14px;color:transparent;transition:.15s;
+}
+.shop-row:active .mark{border-color:var(--accent)}
+.shop-row .txt{flex:1}
+.shop-row .txt .n{font-weight:500;font-size:15px}
+.shop-row .txt .c{font-size:12.5px;color:var(--muted)}
+.shop-row .lvl{font-size:18px}
+
+.empty-state{
+  text-align:center;padding:60px 20px;color:var(--muted);
+}
+.empty-state .emoji{font-size:42px;margin-bottom:14px;display:block}
+.empty-state p{font-size:15px;line-height:1.5}
+
+/* Bottom tab bar */
+nav.tabbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:rgba(24,36,32,.92);backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);
+  display:flex;padding-bottom:env(safe-area-inset-bottom);
+}
+nav.tabbar button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:12px 4px 10px;color:var(--muted);font-size:11.5px;font-weight:600;
+  position:relative;
+}
+nav.tabbar button .ic{font-size:21px}
+nav.tabbar button.active{color:var(--accent)}
+.tab-badge{
+  position:absolute;top:6px;right:calc(50% - 26px);
+  background:var(--red);color:#1a0d0d;font-size:10px;font-weight:800;
+  min-width:16px;height:16px;border-radius:99px;display:grid;place-items:center;padding:0 4px;
+}
+
+/* Bottom sheet modal */
+.sheet-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.sheet-backdrop.open{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:31;
+  background:var(--surface);border-radius:22px 22px 0 0;
+  padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(105%);transition:transform .3s cubic-bezier(.32,.72,0,1);
+  max-height:85vh;overflow-y:auto;
+}
+.sheet-backdrop.open .sheet{transform:translateY(0)}
+.sheet h2{font-size:19px;margin-bottom:16px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:7px;font-weight:600}
+.field input,.field select{
+  width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--text);
+  border-radius:12px;padding:13px 14px;font-size:15.5px;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.status-pick{display:flex;gap:10px}
+.status-pick button{
+  flex:1;padding:14px 0;border-radius:12px;border:2px solid var(--line);
+  font-size:22px;background:var(--surface2);transition:.15s;
+}
+.status-pick button.sel{border-color:currentColor;transform:scale(1.05)}
+.status-pick button[data-s="green"].sel{color:var(--accent);background:var(--accent-dim)}
+.status-pick button[data-s="yellow"].sel{color:var(--yellow);background:var(--yellow-dim)}
+.status-pick button[data-s="red"].sel{color:var(--red);background:var(--red-dim)}
+.sheet-actions{display:flex;gap:10px;margin-top:6px}
+.btn{
+  flex:1;padding:15px;border-radius:14px;font-weight:600;font-size:15px;text-align:center;transition:.15s;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#04241a}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--line)}
+.btn-danger{background:var(--red-dim);color:var(--red)}
+
+/* Toast */
+#toast{
+  position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(20px);
+  background:#1F2E27;border:1px solid var(--line);color:var(--text);
+  padding:12px 20px;border-radius:99px;font-size:14px;font-weight:500;
+  opacity:0;pointer-events:none;transition:.25s;z-index:40;white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <h1>Домашние запасы</h1>
+    <span class="badge-alert" id="alertBadge"></span>
+  </div>
+</header>
+
+<main>
+  <section class="view active" id="view-stock"></section>
+  <section class="view" id="view-shop"></section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-view="stock">
+    <span class="ic">📦</span><span>Запасы</span>
+  </button>
+  <button class="tab-btn" data-view="shop">
+    <span class="ic">🛒</span><span>Покупки</span>
+    <span class="tab-badge" id="shopBadge" style="display:none">0</span>
+  </button>
+</nav>
+
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'homeInventory_v1';
+let state;
+let currentView = 'stock';
+
+function uid(){ return 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+function seedData(){
+  const cats = [
+    {id:'kitchen', name:'Кухня'},
+    {id:'bath', name:'Ванная'},
+    {id:'chem', name:'Бытовая химия'},
+    {id:'meds', name:'Аптечка'},
+  ];
+  const items = [
+    {id:uid(), name:'Молоко', categoryId:'kitchen', status:'green'},
+    {id:uid(), name:'Хлеб', categoryId:'kitchen', status:'yellow'},
+    {id:uid(), name:'Яйца', categoryId:'kitchen', status:'green'},
+    {id:uid(), name:'Растительное масло', categoryId:'kitchen', status:'green'},
+    {id:uid(), name:'Крупы', categoryId:'kitchen', status:'green'},
+    {id:uid(), name:'Шампунь', categoryId:'bath', status:'green'},
+    {id:uid(), name:'Зубная паста', categoryId:'bath', status:'yellow'},
+    {id:uid(), name:'Туалетная бумага', categoryId:'bath', status:'red'},
+    {id:uid(), name:'Мыло', categoryId:'bath', status:'green'},
+    {id:uid(), name:'Стиральный порошок', categoryId:'chem', status:'green'},
+    {id:uid(), name:'Средство для посуды', categoryId:'chem', status:'yellow'},
+    {id:uid(), name:'Мешки для мусора', categoryId:'chem', status:'red'},
+    {id:uid(), name:'Парацетамол', categoryId:'meds', status:'green'},
+    {id:uid(), name:'Пластыри', categoryId:'meds', status:'green'},
+    {id:uid(), name:'Активированный уголь', categoryId:'meds', status:'yellow'},
+  ];
+  return {categories:cats, items:items, collapsed:{}};
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const seeded = seedData();
+  save(seeded);
+  return seeded;
+}
+function save(s){
+  state = s || state;
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ console.error(e); }
+}
+
+function nextStatus(s){ return s==='green' ? 'yellow' : s==='yellow' ? 'red' : 'green'; }
+const STATUS_EMOJI = {green:'🟢', yellow:'🟡', red:'🔴'};
+const STATUS_LABEL = {green:'Есть', yellow:'Заканчивается', red:'Нет'};
+
+function itemsByCategory(catId){ return state.items.filter(i=>i.categoryId===catId); }
+
+function render(){
+  renderStock();
+  renderShop();
+  renderAlertBadge();
+}
+
+function renderAlertBadge(){
+  const bad = state.items.filter(i=>i.status!=='green').length;
+  const badge = document.getElementById('alertBadge');
+  const tabBadge = document.getElementById('shopBadge');
+  if(bad===0){
+    badge.textContent = 'Всё есть 🎉';
+    badge.classList.add('ok');
+    tabBadge.style.display = 'none';
+  } else {
+    badge.textContent = `${bad} докупить`;
+    badge.classList.remove('ok');
+    tabBadge.style.display = 'grid';
+    tabBadge.textContent = bad;
+  }
+}
+
+function renderStock(){
+  const el = document.getElementById('view-stock');
+  el.innerHTML = '';
+  state.categories.forEach(cat=>{
+    const items = itemsByCategory(cat.id);
+    const collapsed = !!state.collapsed[cat.id];
+    const card = document.createElement('div');
+    card.className = 'category' + (collapsed ? ' collapsed' : '');
+    card.innerHTML = `
+      <div class="category-head" data-cat="${cat.id}">
+        <span class="name">${escapeHtml(cat.name)} <span class="count">${items.length}</span></span>
+        <span class="chev">▼</span>
+      </div>
+      <div class="items">
+        ${items.map(it=>itemRowHtml(it)).join('')}
+        <button class="add-item-btn" data-add-item="${cat.id}">+ Добавить предмет</button>
+      </div>
+    `;
+    el.appendChild(card);
+  });
+  const addCatBtn = document.createElement('button');
+  addCatBtn.className = 'add-category-btn';
+  addCatBtn.id = 'addCategoryBtn';
+  addCatBtn.textContent = '+ Добавить категорию';
+  el.appendChild(addCatBtn);
+}
+
+function itemRowHtml(it){
+  return `
+    <div class="item-row" data-item="${it.id}">
+      <button class="dot ${it.status}" data-dot="${it.id}"></button>
+      <span class="item-name ${it.status==='green'?'':'dim'}">${escapeHtml(it.name)}</span>
+      <button class="item-edit" data-edit="${it.id}">⋮</button>
+    </div>
+  `;
+}
+
+function renderShop(){
+  const el = document.getElementById('view-shop');
+  const needed = state.items.filter(i=>i.status!=='green');
+  el.innerHTML = '';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'shop-toolbar';
+  toolbar.innerHTML = `<button class="shop-copy-btn" id="copyListBtn">📋 Скопировать список</button>`;
+  el.appendChild(toolbar);
+
+  if(needed.length===0){
+    el.innerHTML += `
+      <div class="empty-state">
+        <span class="emoji">🎉</span>
+        <p>Все запасы пополнены.<br>Список покупок пуст.</p>
+      </div>`;
+    return;
+  }
+
+  state.categories.forEach(cat=>{
+    const items = itemsByCategory(cat.id).filter(i=>i.status!=='green')
+      .sort((a,b)=> (a.status==='red'?0:1) - (b.status==='red'?0:1));
+    if(items.length===0) return;
+    const group = document.createElement('div');
+    group.className = 'shop-group';
+    group.innerHTML = `
+      <h3>${escapeHtml(cat.name)}</h3>
+      ${items.map(it=>`
+        <div class="shop-row" data-shop="${it.id}">
+          <span class="lvl">${STATUS_EMOJI[it.status]}</span>
+          <div class="txt"><div class="n">${escapeHtml(it.name)}</div><div class="c">${STATUS_LABEL[it.status]}</div></div>
+          <span class="mark">✓</span>
+        </div>
+      `).join('')}
+    `;
+    el.appendChild(group);
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function vibrate(ms){ try{ navigator.vibrate && navigator.vibrate(ms); }catch(e){} }
+
+/* ---- Sheets (bottom modals) ---- */
+function openSheet(html){
+  document.getElementById('sheet').innerHTML = html;
+  document.getElementById('sheetBackdrop').classList.add('open');
+}
+function closeSheet(){
+  document.getElementById('sheetBackdrop').classList.remove('open');
+}
+
+function openItemSheet(item, categoryId){
+  const catId = item ? item.categoryId : categoryId;
+  const status = item ? item.status : 'green';
+  const catsOptions = state.categories.map(c=>`<option value="${c.id}" ${c.id===catId?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
+  openSheet(`
+    <h2>${item ? 'Изменить предмет' : 'Новый предмет'}</h2>
+    <div class="field">
+      <label>Название</label>
+      <input id="fName" type="text" value="${item ? escapeHtml(item.name) : ''}" placeholder="Например, Кофе" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Категория</label>
+      <select id="fCategory">${catsOptions}</select>
+    </div>
+    <div class="field">
+      <label>Статус</label>
+      <div class="status-pick" id="fStatus">
+        <button type="button" data-s="green" class="${status==='green'?'sel':''}">🟢</button>
+        <button type="button" data-s="yellow" class="${status==='yellow'?'sel':''}">🟡</button>
+        <button type="button" data-s="red" class="${status==='red'?'sel':''}">🔴</button>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      ${item ? '<button class="btn btn-danger" id="fDelete">Удалить</button>' : '<button class="btn btn-secondary" id="fCancel">Отмена</button>'}
+      <button class="btn btn-primary" id="fSave">Сохранить</button>
+    </div>
+  `);
+  document.getElementById('fStatus').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-s]');
+    if(!b) return;
+    document.querySelectorAll('#fStatus button').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel');
+  });
+  const cancelBtn = document.getElementById('fCancel');
+  if(cancelBtn) cancelBtn.addEventListener('click', closeSheet);
+  const delBtn = document.getElementById('fDelete');
+  if(delBtn) delBtn.addEventListener('click', ()=>{
+    state.items = state.items.filter(i=>i.id!==item.id);
+    save();
+    render();
+    closeSheet();
+    toast('Предмет удалён');
+  });
+  document.getElementById('fSave').addEventListener('click', ()=>{
+    const name = document.getElementById('fName').value.trim();
+    if(!name){ toast('Введите название'); return; }
+    const category = document.getElementById('fCategory').value;
+    const sel = document.querySelector('#fStatus button.sel');
+    const st = sel ? sel.dataset.s : 'green';
+    if(item){
+      item.name = name; item.categoryId = category; item.status = st;
+    } else {
+      state.items.push({id:uid(), name, categoryId:category, status:st});
+    }
+    save();
+    render();
+    closeSheet();
+    toast(item ? 'Сохранено' : 'Добавлено');
+  });
+}
+
+function openCategorySheet(){
+  openSheet(`
+    <h2>Новая категория</h2>
+    <div class="field">
+      <label>Название</label>
+      <input id="fCatName" type="text" placeholder="Например, Гараж" autocomplete="off">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-secondary" id="fCancel">Отмена</button>
+      <button class="btn btn-primary" id="fSave">Добавить</button>
+    </div>
+  `);
+  document.getElementById('fCancel').addEventListener('click', closeSheet);
+  document.getElementById('fSave').addEventListener('click', ()=>{
+    const name = document.getElementById('fCatName').value.trim();
+    if(!name){ toast('Введите название'); return; }
+    state.categories.push({id:uid(), name});
+    save();
+    render();
+    closeSheet();
+    toast('Категория добавлена');
+  });
+}
+
+/* ---- Event delegation ---- */
+document.getElementById('view-stock').addEventListener('click', e=>{
+  const dot = e.target.closest('[data-dot]');
+  if(dot){
+    const it = state.items.find(i=>i.id===dot.dataset.dot);
+    it.status = nextStatus(it.status);
+    save();
+    dot.classList.add('pop');
+    setTimeout(()=>dot.classList.remove('pop'), 200);
+    dot.className = 'dot pop ' + it.status;
+    vibrate(12);
+    render();
+    return;
+  }
+  const editBtn = e.target.closest('[data-edit]');
+  if(editBtn){
+    const it = state.items.find(i=>i.id===editBtn.dataset.edit);
+    openItemSheet(it);
+    return;
+  }
+  const addItem = e.target.closest('[data-add-item]');
+  if(addItem){
+    openItemSheet(null, addItem.dataset.addItem);
+    return;
+  }
+  const head = e.target.closest('.category-head');
+  if(head){
+    const id = head.dataset.cat;
+    state.collapsed[id] = !state.collapsed[id];
+    save();
+    renderStock();
+    return;
+  }
+  if(e.target.id === 'addCategoryBtn'){
+    openCategorySheet();
+  }
+});
+
+document.getElementById('view-shop').addEventListener('click', e=>{
+  const row = e.target.closest('[data-shop]');
+  if(!row) return;
+  const it = state.items.find(i=>i.id===row.dataset.shop);
+  row.classList.add('bought');
+  vibrate(15);
+  setTimeout(()=>{
+    it.status = 'green';
+    save();
+    render();
+    toast('Отмечено как куплено');
+  }, 240);
+});
+
+document.addEventListener('click', e=>{
+  if(e.target.id === 'copyListBtn'){
+    const needed = state.items.filter(i=>i.status!=='green');
+    let text = 'Список покупок:\n';
+    state.categories.forEach(cat=>{
+      const items = itemsByCategory(cat.id).filter(i=>i.status!=='green');
+      if(items.length===0) return;
+      text += `\n${cat.name}:\n`;
+      items.forEach(i=> text += `- ${i.name}\n`);
+    });
+    navigator.clipboard && navigator.clipboard.writeText(text.trim()).then(()=>{
+      toast('Список скопирован');
+    }).catch(()=>{
+      toast('Не удалось скопировать');
+    });
+  }
+});
+
+document.getElementById('sheetBackdrop').addEventListener('click', e=>{
+  if(e.target.id === 'sheetBackdrop') closeSheet();
+});
+
+state = load();
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    document.getElementById('view-stock').classList.toggle('active', currentView==='stock');
+    document.getElementById('view-shop').classList.toggle('active', currentView==='shop');
+  });
+});
+
+render();
+
+/* ---- PWA: service worker registration, scoped only to this page ---- */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('home-sw.js', {scope:'home.html'}).then(reg=>{
+    reg.addEventListener('updatefound', ()=>{
+      const nw = reg.installing;
+      nw && nw.addEventListener('statechange', ()=>{
+        if(nw.state==='installed' && navigator.serviceWorker.controller){
+          navigator.serviceWorker.addEventListener('controllerchange', ()=>location.reload());
+          nw.postMessage({type:'SKIP_WAITING'});
+        }
+      });
+    });
+  }).catch(()=>{});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "Домашние запасы — Трекер",
+  "short_name": "Запасы",
+  "description": "Трекер домашних запасов: категории, статусы, автосписок покупок",
+  "start_url": "home.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0F1712",
+  "theme_color": "#0F1712",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "home-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "home-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ]
+}
