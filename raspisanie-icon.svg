@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#131A2E" rx="80"/>
+  <!-- полосы дня: пары / зал / смена -->
+  <rect x="100" y="152" width="312" height="54" rx="20" fill="#2E4F7C"/>
+  <rect x="100" y="229" width="196" height="54" rx="20" fill="#2B7A5E"/>
+  <rect x="100" y="306" width="260" height="54" rx="20" fill="#C07A2E"/>
+</svg>

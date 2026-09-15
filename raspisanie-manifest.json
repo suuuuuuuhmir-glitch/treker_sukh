@@ -1,0 +1,25 @@
+{
+  "name": "Расписание — пары, зал, смены",
+  "short_name": "Расписание",
+  "description": "Личное расписание: пары, зал, смены, режим дня и привычки",
+  "start_url": "raspisanie.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDEFF5",
+  "theme_color": "#EDEFF5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "raspisanie-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "raspisanie-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
+    }
+  ]
+}
