@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'raspisanie-shell-v1';
+const SHELL_CACHE = 'raspisanie-shell-v2';
 const SHELL_FILES = ['raspisanie.html', 'raspisanie-manifest.json', 'raspisanie-icon.svg'];
 
 self.addEventListener('install', e => {

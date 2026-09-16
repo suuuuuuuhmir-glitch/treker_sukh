@@ -117,6 +117,7 @@
   .blk.pary   { background: var(--pary); }
   .blk.zal    { background: var(--zal); }
   .blk.rabota { background: var(--rabota); }
+  .blk.my     { background: var(--ink-soft); }
   .now-mark {
     position: absolute; top: -3px; bottom: -3px;
     width: 2px; background: var(--ink);
@@ -141,7 +142,16 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
+    gap: 10px;
+    width: 100%;
     margin-bottom: 7px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
   }
   .day-name { font-weight: 700; font-size: 15px; }
   .day-time { font-size: 13px; color: var(--ink-soft); }
@@ -162,11 +172,67 @@
   .tag.zal.done { background: var(--zal); color: #fff; border-color: var(--zal); }
   .tag.rabota { border-color: rgba(192,122,46,.45); color: var(--rabota); }
   .tag.rabota.on { background: var(--rabota); color: #fff; border-color: var(--rabota); }
-  .tag.stop   { border-color: rgba(174,59,51,.35); color: var(--stop); background: rgba(174,59,51,.06); cursor: default; }
+  .tag.my     { border-color: var(--line); color: var(--ink-soft); }
+  .tag.my.done { background: var(--ink-soft); color: #fff; border-color: var(--ink-soft); }
+  .tag.more   { border-color: var(--line); color: var(--mute); }
 
-  /* ---- смена: куда и до скольки ---- */
-  .shift-form { display: flex; align-items: center; gap: 6px; margin-top: 9px; }
-  .shift-form input {
+  /* ---- раскрытый день: ручная правка ---- */
+  .exp { margin-top: 11px; padding-top: 4px; border-top: 1px solid var(--line); }
+  .row-wrap { display: flex; align-items: center; gap: 2px; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    padding: 9px 0;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+  }
+  .row-t {
+    flex: none; width: 44px;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .row-b { flex: 1; min-width: 0; }
+  .row-n { display: block; }
+  .row-s { display: block; font-size: 12px; color: var(--mute); }
+  .row-x {
+    flex: none;
+    width: 21px; height: 21px;
+    border: 1.5px solid var(--line);
+    border-radius: 7px;
+    display: grid; place-items: center;
+    font-size: 12px; color: transparent;
+  }
+  .row.on  .row-x { background: var(--zal); border-color: var(--zal); color: #fff; }
+  .row.off .row-x { background: var(--stop); border-color: var(--stop); color: #fff; }
+  .row.off .row-t, .row.off .row-n { color: var(--mute); text-decoration: line-through; }
+  .del {
+    flex: none;
+    width: 30px; height: 30px;
+    border: 0; background: transparent;
+    color: var(--mute); font-size: 19px; line-height: 1;
+    border-radius: 8px; cursor: pointer;
+  }
+  .mini {
+    flex: none;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--mute);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .fld {
     font-family: inherit;
     font-size: 16px;
     padding: 7px 10px;
@@ -176,6 +242,25 @@
     color: var(--ink);
     min-width: 0;
   }
+  .add { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .add .t  { flex: 1 1 100%; }
+  .add .f, .add .u { flex: 1 1 0; }
+  .add .go {
+    flex: 1 1 100%;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: #fff;
+    border-radius: 9px;
+    padding: 7px 15px;
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .note { width: 100%; margin-top: 8px; resize: vertical; line-height: 1.4; }
+  .exp-lab { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); margin: 12px 0 2px; }
+
+  /* ---- смена: куда и до скольки ---- */
+  .shift-form { display: flex; align-items: center; gap: 6px; margin-top: 9px; }
   .shift-form .where { flex: 1; }
   .shift-form .till  { flex: none; width: 106px; }
   .till-lab { flex: none; font-size: 13px; color: var(--mute); }
@@ -253,7 +338,7 @@
   .hb-d.now { border-color: var(--ink); border-width: 1.5px; }
 
   /* ---- итоги недели ---- */
-  .stats { display: flex; gap: 8px; margin-bottom: 14px; }
+  .stats { display: flex; gap: 8px; margin-bottom: 10px; }
   .stat {
     flex: 1;
     min-width: 0;
@@ -271,6 +356,18 @@
   }
   .stat-l { font-size: 11px; color: var(--mute); margin-top: 3px; }
 
+  .sync {
+    font-size: 12px;
+    color: var(--mute);
+    background: transparent;
+    border: 0;
+    padding: 0 0 12px;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .sync.err { color: var(--stop); }
+
   .rules {
     margin-top: 26px;
     padding-top: 18px;
@@ -286,7 +383,7 @@
   @media (prefers-reduced-motion: no-preference) {
     .tag { transition: background .14s, color .14s; }
   }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -314,13 +411,14 @@
 <div id="habits"></div>
 
 <h2>Неделя</h2>
+<button class="sync" id="sync"></button>
 <div class="stats" id="stats"></div>
 <div id="week"></div>
 
 <div class="rules">
   <h2>Правила</h2>
   <ol>
-    <li>Перед вторником и пятницей смен нет. Утром 8:30 — не встанешь.</li>
+    <li>Если завтра пары в 8:30 — смену не берёшь. Не встанешь.</li>
     <li>Приехал домой → душ → одежда на завтра → спать. Телефон не берёшь.</li>
     <li>Отбой: после смены до 2:00, в обычный день — 24:00.</li>
     <li>Домашка: четверг и понедельник до пар, воскресенье днём.</li>
@@ -328,21 +426,26 @@
   </ol>
 </div>
 
-<p class="hint">Нажми на «смена», когда берёшь ночь — впишешь куда и до скольки. На «зал» — когда сходил. На время пар — если пропустил. Всё сохраняется на этом устройстве.</p>
+<p class="hint">Пары подтягиваются из календаря группы сами. Нажми на день — раскроется: там отмечаешь пропуски, зал, вписываешь своё и заметку. Смену можно взять в любой день. Всё, что отметил, хранится на этом устройстве.</p>
 
 <script>
-const PARY = {
-  1: [["15:40","17:10","Теорвер"],["17:20","18:50","Бухучёт"]],
-  2: [["8:30","10:00","Проектный менеджмент"],["10:10","11:40","Оргповедение"],["11:50","13:20","Физра"]],
-  3: [["10:10","11:40","Физра"],["11:50","13:20","Иностранный"]],
-  4: [["14:00","15:30","Эконометрика"],["15:40","17:10","Иностранный"],["17:20","18:50","Теорвер"]],
-  5: [["8:30","10:00","Теорвер"],["10:10","11:40","Бухучёт"],["11:50","13:20","Эконометрика"]],
-  6: [], 0: []
-};
-const ZAL   = { 1:"12:00", 4:"11:00", 5:"14:00" };
-const NOCH  = { 0:"ok", 1:"no", 2:"warn", 3:"ok", 4:"no", 5:"ok", 6:"ok" };
+const FEED = "https://feed.pleh.tech/functions/v1/calendar-export?type=group&id=03913409-f9ae-11ef-beda-005056912e01&period=month";
+
 const NAMES = ["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"];
 const MON   = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
+// Длинные названия из деканата → как ты их называешь.
+const SHORT = [
+  [/^Теория вероятностей/i,                      "Теорвер"],
+  [/^Бухгалтерский/i,                            "Бухучёт"],
+  [/^Организационное поведение/i,                "Оргповедение"],
+  [/^Проектный менеджмент/i,                     "Проектный мен."],
+  [/^Эконометрика/i,                             "Эконометрика"],
+  [/^Иностранный язык/i,                         "Иностранный"],
+  [/^Элективные дисциплины по физической/i,      "Физра"]
+];
+// Зал по умолчанию — просто подсказка времени, отметить можно в любой день.
+const ZAL_PLAN = { 1:"12:00", 4:"11:00", 5:"14:00" };
 
 const ROUTINE = {
   m: { head: "Утро",  items: ["встал","душ","оделся","вышел"] },
@@ -355,19 +458,22 @@ const HABITS = [
 ];
 
 const KEY = "sukh-raspisanie-v1";
-let data = { shifts: {}, gym: {}, routine: {}, habits: {}, skip: {} };
+let data = {
+  shifts: {}, gym: {}, routine: {}, habits: {},
+  skip: {},            // дата → [uid пропущенных пар]
+  hide: {},            // дата → [uid пар, которых не будет]
+  own:  {},            // дата → [{id, title, from, to}]
+  note: {},            // дата → текст
+  feed: { at: 0, days: {} }
+};
+let openDay = null;
+let syncState = "idle";
 
 const min  = t => +t.split(":")[0]*60 + +t.split(":")[1];
 const hhmm = m => String(Math.floor(m/60)%24).padStart(2,"0")+":"+String(m%60).padStart(2,"0");
 const iso  = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
-
-function wakeMin(dow){
-  const p = PARY[dow];
-  if (p.length) return min(p[0][0]) - 45;
-  if (ZAL[dow])  return min(ZAL[dow]) - 60;
-  return 600;
-}
+const list = (o,k) => o[k] || (o[k] = []);
 
 function load(){
   try {
@@ -380,36 +486,95 @@ function save(){
   catch(e){ console.error("не сохранилось", e); }
 }
 
-function render(){
-  const now = new Date();
-  const dow = now.getDay();
-  const key = iso(now);
+/* ---------- календарь группы ---------- */
 
-  document.getElementById("dateLine").textContent =
-    NAMES[dow].toLowerCase() + ", " + now.getDate() + " " + MON[now.getMonth()];
+function shortTitle(summary){
+  let s = summary.replace(/\s*\[pleh\.tech\]\s*$/, "").trim();
+  let kind = "";
+  const m = s.match(/\s*\(([^)]+)\)\s*$/);
+  if (m){ kind = /лекц/i.test(m[1]) ? "лекция" : "практика"; s = s.slice(0, m.index).trim(); }
+  for (const [re, short] of SHORT) if (re.test(s)) return { title: short, kind };
+  return { title: s.split(/\s+/).slice(0,2).join(" "), kind };
+}
 
-  const w = wakeMin(dow);
-  document.getElementById("wakeNum").textContent = hhmm(w);
-  const p = PARY[dow];
-  document.getElementById("todayPary").innerHTML = p.length
-    ? "Пары <b>" + p[0][0] + " — " + p[p.length-1][1] + "</b>, " + p.length + " шт."
-    : (ZAL[dow] ? "Пар нет. Зал в <b>" + ZAL[dow] + "</b>." : "Пар нет.");
+function shortRoom(loc){
+  if (!loc) return "";
+  const s = loc.replace(/\\,/g, ",").replace(/\\n/g, " ").replace(/корпус корпус/gi, "корпус");
+  const m = s.match(/аудитория\s+([^,]+),\s*(\d+)\s*корпус/i);
+  return m ? ("ауд. " + m[1].trim() + ", к." + m[2]) : s.split(",")[0].trim();
+}
 
-  const v = document.getElementById("verdict");
-  const st = NOCH[dow];
-  const txt = {
-    ok:   ["✓","Сегодня можно брать ночь — завтра утро свободное."],
-    no:   ["✕","Сегодня смену не берёшь. Завтра пары в 8:30."],
-    warn: ["!","Можно, но домой до 12. Завтра пары в 10:10."]
-  }[st];
-  v.className = "verdict " + st;
-  v.innerHTML = '<span class="mark">'+txt[0]+'</span><span>'+txt[1]+'</span>';
+function parseICS(text){
+  const lines = text.replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
+  const days = {};
+  let ev = null;
+  for (const line of lines){
+    if (line === "BEGIN:VEVENT"){ ev = {}; continue; }
+    if (line === "END:VEVENT"){
+      if (ev && ev.DTSTART && ev.SUMMARY){
+        const s = ev.DTSTART, e = ev.DTEND || ev.DTSTART;
+        const date = s.slice(0,4)+"-"+s.slice(4,6)+"-"+s.slice(6,8);
+        const t = shortTitle(ev.SUMMARY);
+        list(days, date).push({
+          uid:  ev.UID || (date + s.slice(9,13)),
+          title: t.title,
+          kind:  t.kind,
+          from:  s.slice(9,11)+":"+s.slice(11,13),
+          to:    e.slice(9,11)+":"+e.slice(11,13),
+          room:  shortRoom(ev.LOCATION)
+        });
+      }
+      ev = null; continue;
+    }
+    if (!ev) continue;
+    const i = line.indexOf(":");
+    if (i < 0) continue;
+    ev[line.slice(0, i).split(";")[0]] = line.slice(i+1);
+  }
+  Object.values(days).forEach(d => d.sort((a,b) => min(a.from) - min(b.from)));
+  return days;
+}
 
-  drawStrip(dow, key);
-  drawRoutine(now);
-  drawHabits(now);
-  drawStats(now);
-  drawWeek(now, key);
+async function syncFeed(){
+  syncState = "load";
+  try {
+    const r = await fetch(FEED, { cache: "no-cache" });
+    if (!r.ok) throw new Error(r.status);
+    const fresh = parseICS(await r.text());
+    if (!Object.keys(fresh).length) throw new Error("пусто");
+    // Фид отдаёт месяц вперёд — старые дни держим сами, иначе потеряем статистику недели.
+    const merged = Object.assign({}, data.feed.days, fresh);
+    const cutoff = iso(addDays(new Date(), -60));
+    Object.keys(merged).forEach(k => { if (k < cutoff) delete merged[k]; });
+    data.feed = { at: Date.now(), days: merged };
+    save();
+    syncState = "ok";
+  } catch(e){
+    syncState = data.feed.at ? "cache" : "fail";
+  }
+  render();
+}
+
+/* ---------- что стоит в дне ---------- */
+
+function pairsOf(key){
+  const hidden = data.hide[key] || [];
+  return (data.feed.days[key] || []).filter(p => !hidden.includes(p.uid));
+}
+function ownOf(key){ return data.own[key] || []; }
+function isSkipped(key, uid){ return (data.skip[key] || []).includes(uid); }
+
+function zalTime(key, dow){
+  const own = ownOf(key).find(o => o.title.toLowerCase() === "зал");
+  return own ? own.from : (ZAL_PLAN[dow] || "");
+}
+
+function wakeOf(key, dow){
+  const p = pairsOf(key);
+  if (p.length) return min(p[0].from) - 45;
+  const z = zalTime(key, dow);
+  if (z) return min(z) - 60;
+  return 600;
 }
 
 function shiftEnd(sh){
@@ -418,24 +583,80 @@ function shiftEnd(sh){
   return end;
 }
 
-function drawStrip(dow, key){
+/* ---------- рендер ---------- */
+
+function render(){
+  const now = new Date();
+  const key = iso(now);
+  const dow = now.getDay();
+
+  document.getElementById("dateLine").textContent =
+    NAMES[dow].toLowerCase() + ", " + now.getDate() + " " + MON[now.getMonth()];
+
+  document.getElementById("wakeNum").textContent = hhmm(wakeOf(key, dow));
+
+  const p = pairsOf(key);
+  const z = zalTime(key, dow);
+  document.getElementById("todayPary").innerHTML = p.length
+    ? "Пары <b>" + p[0].from + " — " + p[p.length-1].to + "</b>, " + p.length + " шт."
+    : (z ? "Пар нет. Зал в <b>" + z + "</b>." : "Пар нет.");
+
+  drawVerdict(now);
+  drawStrip(key, dow);
+  drawRoutine(now);
+  drawHabits(now);
+  drawSync();
+  drawStats(now);
+  drawWeek(now, key);
+}
+
+function drawVerdict(now){
+  const el = document.getElementById("verdict");
+  const p = pairsOf(iso(addDays(now, 1)));
+  let st, mark, text;
+  if (!p.length){
+    st = "ok";   mark = "✓"; text = "Сегодня можно брать ночь — завтра пар нет.";
+  } else {
+    const first = min(p[0].from);
+    if (first <= 9*60){
+      st = "no";   mark = "✕"; text = "Сегодня смену лучше не брать. Завтра пары в " + p[0].from + ".";
+    } else if (first <= 11*60){
+      st = "warn"; mark = "!"; text = "Можно, но домой пораньше. Завтра пары в " + p[0].from + ".";
+    } else {
+      st = "ok";   mark = "✓"; text = "Сегодня можно брать ночь — завтра пары только в " + p[0].from + ".";
+    }
+  }
+  el.className = "verdict " + st;
+  el.innerHTML = '<span class="mark">'+mark+'</span><span></span>';
+  el.lastChild.textContent = text;
+}
+
+function drawStrip(key, dow){
   const S = 6*60, E = 26*60, span = E - S;
   const el = document.getElementById("strip");
   el.innerHTML = "";
   const add = (a, b, cls) => {
+    if (b <= S || a >= E) return;
     const d = document.createElement("div");
     d.className = "blk " + cls;
-    d.style.left  = ((a-S)/span*100) + "%";
-    d.style.width = ((b-a)/span*100) + "%";
+    d.style.left  = ((Math.max(a,S)-S)/span*100) + "%";
+    d.style.width = ((Math.min(b,E)-Math.max(a,S))/span*100) + "%";
     el.appendChild(d);
   };
-  PARY[dow].forEach(x => add(min(x[0]), min(x[1]), "pary"));
-  if (ZAL[dow]) add(min(ZAL[dow]), min(ZAL[dow])+60, "zal");
-  if (data.shifts[key]) add(17*60, Math.min(shiftEnd(data.shifts[key]), E), "rabota");
+
+  pairsOf(key).forEach(x => add(min(x.from), min(x.to), "pary"));
+
+  const own = ownOf(key);
+  const zal = own.find(o => o.title.toLowerCase() === "зал");
+  if (zal) add(min(zal.from), min(zal.to || hhmm(min(zal.from)+60)), "zal");
+  else if (ZAL_PLAN[dow]) add(min(ZAL_PLAN[dow]), min(ZAL_PLAN[dow])+60, "zal");
+  own.filter(o => o !== zal).forEach(o => add(min(o.from), min(o.to || hhmm(min(o.from)+60)), "my"));
+
+  if (data.shifts[key]) add(17*60, shiftEnd(data.shifts[key]), "rabota");
 
   const n = new Date();
   const cur = n.getHours()*60 + n.getMinutes();
-  if (cur >= S && cur <= E) {
+  if (cur >= S && cur <= E){
     const m = document.createElement("div");
     m.className = "now-mark";
     m.style.left = ((cur-S)/span*100) + "%";
@@ -501,9 +722,8 @@ function drawHabits(now){
   const today = iso(now);
 
   HABITS.forEach(h => {
-    const on = habGet(h.id, today);
     const b = document.createElement("button");
-    b.className = "habit" + (on ? " on" : "");
+    b.className = "habit" + (habGet(h.id, today) ? " on" : "");
 
     const name = document.createElement("span");
     name.className = "hb-name";
@@ -525,6 +745,23 @@ function drawHabits(now){
   });
 }
 
+function drawSync(){
+  const el = document.getElementById("sync");
+  el.className = "sync" + (syncState === "fail" ? " err" : "");
+  if (syncState === "load"){ el.textContent = "расписание обновляется…"; }
+  else if (syncState === "fail"){ el.textContent = "расписание не загрузилось — нажми, чтобы повторить"; }
+  else {
+    const mins = Math.round((Date.now() - data.feed.at) / 60000);
+    const when = !data.feed.at ? "—"
+      : mins < 1  ? "только что"
+      : mins < 60 ? mins + " мин назад"
+      : Math.round(mins/60) + " ч назад";
+    el.textContent = (syncState === "cache" ? "нет связи, показываю сохранённое · " : "расписание обновлено ")
+      + when + " · обновить";
+  }
+  el.onclick = syncFeed;
+}
+
 function weekDays(now){
   const mon = new Date(now);
   mon.setDate(now.getDate() - ((now.getDay()+6) % 7));
@@ -541,7 +778,7 @@ function drawStats(now){
   weekDays(now).forEach(([d, dow, key]) => {
     if (data.shifts[key]) shifts++;
     if (data.gym[key])    gym++;
-    if (data.skip[key])   skipped += PARY[dow].length;
+    skipped += (data.skip[key] || []).length;
   });
 
   const box = document.getElementById("stats");
@@ -556,6 +793,135 @@ function drawStats(now){
   });
 }
 
+// state: "on" — сделано, "off" — пропущено/отменено, "" — не отмечено.
+// onTap отсутствует → строка не нажимается и галку не показываем.
+function makeRow(time, name, sub, state, onTap){
+  const b = document.createElement(onTap ? "button" : "div");
+  b.className = "row" + (state ? " " + state : "");
+  b.innerHTML = '<span class="row-t"></span><span class="row-b">' +
+                '<span class="row-n"></span><span class="row-s"></span></span>' +
+                (onTap ? '<span class="row-x">' + (state === "off" ? "✕" : "✓") + '</span>' : "");
+  b.querySelector(".row-t").textContent = time;
+  b.querySelector(".row-n").textContent = name;
+  const s = b.querySelector(".row-s");
+  if (sub) s.textContent = sub; else s.remove();
+  if (onTap) b.onclick = onTap;
+  return b;
+}
+
+function drawExpanded(card, key, dow){
+  const exp = document.createElement("div");
+  exp.className = "exp";
+
+  const pairs = data.feed.days[key] || [];
+  if (pairs.length){
+    const lab = document.createElement("div");
+    lab.className = "exp-lab";
+    lab.textContent = "Пары";
+    exp.appendChild(lab);
+  }
+  pairs.forEach(p => {
+    const hidden = (data.hide[key] || []).includes(p.uid);
+    const skipped = isSkipped(key, p.uid);
+    const sub = [p.kind, p.room].filter(Boolean).join(", ");
+    const wrap = document.createElement("div");
+    wrap.className = "row-wrap";
+    wrap.appendChild(makeRow(p.from, p.title, hidden ? "отменили" : sub,
+      hidden || skipped ? "off" : "",
+      hidden ? null : () => {
+        const s = list(data.skip, key);
+        const i = s.indexOf(p.uid);
+        if (i >= 0) s.splice(i,1); else s.push(p.uid);
+        save(); render();
+      }));
+    const x = document.createElement("button");
+    x.className = "mini";
+    x.textContent = hidden ? "вернуть" : "отменили";
+    x.onclick = () => {
+      const h = list(data.hide, key);
+      const i = h.indexOf(p.uid);
+      if (i >= 0) h.splice(i,1);
+      else {
+        h.push(p.uid);
+        const s = list(data.skip, key);
+        const j = s.indexOf(p.uid);
+        if (j >= 0) s.splice(j,1);
+      }
+      save(); render();
+    };
+    wrap.appendChild(x);
+    exp.appendChild(wrap);
+  });
+
+  const labMy = document.createElement("div");
+  labMy.className = "exp-lab";
+  labMy.textContent = "Своё";
+  exp.appendChild(labMy);
+
+  const zal = ownOf(key).find(o => o.title.toLowerCase() === "зал");
+  if (!zal){
+    exp.appendChild(makeRow(ZAL_PLAN[dow] || "", "зал", ZAL_PLAN[dow] ? "" : "в любой день",
+      data.gym[key] ? "on" : "", () => { habToggle("gym", key); save(); render(); }));
+  }
+
+  ownOf(key).forEach(o => {
+    const isZal = o.title.toLowerCase() === "зал";
+    const wrap = document.createElement("div");
+    wrap.className = "row-wrap";
+    wrap.appendChild(makeRow(o.from, o.title, o.to ? "до " + o.to : "",
+      (isZal ? data.gym[key] : o.done) ? "on" : "", () => {
+        if (isZal) habToggle("gym", key); else o.done = o.done ? 0 : 1;
+        save(); render();
+      }));
+    const x = document.createElement("button");
+    x.className = "del";
+    x.textContent = "×";
+    x.title = "удалить";
+    x.onclick = () => {
+      const arr = list(data.own, key);
+      arr.splice(arr.indexOf(o), 1);
+      if (isZal) delete data.gym[key];
+      save(); render();
+    };
+    wrap.appendChild(x);
+    exp.appendChild(wrap);
+  });
+
+  const add = document.createElement("div");
+  add.className = "add";
+  const t = document.createElement("input");
+  t.className = "fld t"; t.type = "text"; t.placeholder = "что вписать — зал, работа, врач…";
+  const f = document.createElement("input");
+  f.className = "fld f"; f.type = "time"; f.value = "12:00";
+  const u = document.createElement("input");
+  u.className = "fld u"; u.type = "time"; u.value = "13:00";
+  const go = document.createElement("button");
+  go.className = "go"; go.textContent = "добавить";
+  go.onclick = () => {
+    const title = t.value.trim();
+    if (!title) { t.focus(); return; }
+    list(data.own, key).push({ id: Date.now(), title, from: f.value || "12:00", to: u.value || "" });
+    data.own[key].sort((a,b) => min(a.from) - min(b.from));
+    save(); render();
+  };
+  add.append(t, f, u, go);
+  exp.appendChild(add);
+
+  const note = document.createElement("textarea");
+  note.className = "fld note";
+  note.rows = 2;
+  note.placeholder = "заметка на день";
+  note.value = data.note[key] || "";
+  note.oninput = () => {
+    if (note.value.trim()) data.note[key] = note.value;
+    else delete data.note[key];
+    save();
+  };
+  exp.appendChild(note);
+
+  card.appendChild(exp);
+}
+
 function drawWeek(now, todayKey){
   const box = document.getElementById("week");
   box.innerHTML = "";
@@ -563,65 +929,75 @@ function drawWeek(now, todayKey){
   weekDays(now).forEach(([d, dow, key]) => {
     const card = document.createElement("div");
     card.className = "day" + (key === todayKey ? " is-today" : "");
+    const open = openDay === key;
 
-    const p = PARY[dow];
-    const top = document.createElement("div");
+    const p = pairsOf(key);
+    const top = document.createElement("button");
     top.className = "day-top";
-    top.innerHTML = '<span class="day-name">'+NAMES[dow]+'</span>' +
+    top.innerHTML = '<span class="day-name"></span>' +
       (p.length
-        ? '<span class="day-time">подъём '+hhmm(wakeMin(dow))+'</span>'
+        ? '<span class="day-time">подъём ' + hhmm(wakeOf(key, dow)) + '</span>'
         : '<span class="day-time free">пар нет</span>');
+    top.querySelector(".day-name").textContent = NAMES[dow];
+    top.onclick = () => { openDay = open ? null : key; render(); };
     card.appendChild(top);
 
     const tags = document.createElement("div");
     tags.className = "tags";
 
     if (p.length){
+      const allSkipped = p.every(x => isSkipped(key, x.uid));
       const t = document.createElement("button");
-      t.className = "tag pary" + (data.skip[key] ? " skip" : "");
-      t.textContent = p[0][0] + "–" + p[p.length-1][1];
-      t.onclick = () => {
-        if (data.skip[key]) delete data.skip[key]; else data.skip[key] = 1;
-        save(); render();
-      };
+      t.className = "tag pary" + (allSkipped ? " skip" : "");
+      t.textContent = p[0].from + "–" + p[p.length-1].to;
+      t.onclick = () => { openDay = open ? null : key; render(); };
       tags.appendChild(t);
     }
 
-    if (ZAL[dow]){
+    const zt = zalTime(key, dow);
+    if (zt || data.gym[key]){
       const g = document.createElement("button");
       g.className = "tag zal" + (data.gym[key] ? " done" : "");
-      g.textContent = data.gym[key] ? "зал ✓" : "зал " + ZAL[dow];
+      g.textContent = data.gym[key] ? "зал ✓" : "зал " + zt;
       g.onclick = () => { habToggle("gym", key); save(); render(); };
       tags.appendChild(g);
     }
 
-    if (NOCH[dow] === "no"){
-      const s = document.createElement("span");
-      s.className = "tag stop";
-      s.textContent = "смен нет";
-      tags.appendChild(s);
-    } else {
-      const sh = data.shifts[key];
-      const s = document.createElement("button");
-      s.className = "tag rabota" + (sh ? " on" : "");
-      s.textContent = sh ? "смена ✓" : "смена";
-      s.onclick = () => {
-        if (data.shifts[key]) delete data.shifts[key];
-        else data.shifts[key] = { where: "", till: "02:00" };
-        save(); render();
-      };
-      tags.appendChild(s);
+    const sh = data.shifts[key];
+    const s = document.createElement("button");
+    s.className = "tag rabota" + (sh ? " on" : "");
+    s.textContent = sh ? (sh.where ? "смена · " + sh.where : "смена ✓") : "смена";
+    s.onclick = () => {
+      if (data.shifts[key]) delete data.shifts[key];
+      else data.shifts[key] = { where: "", till: "02:00" };
+      save(); render();
+    };
+    tags.appendChild(s);
+
+    ownOf(key).filter(o => o.title.toLowerCase() !== "зал").forEach(o => {
+      const t = document.createElement("button");
+      t.className = "tag my" + (o.done ? " done" : "");
+      t.textContent = o.title + " " + o.from;
+      t.onclick = () => { o.done = o.done ? 0 : 1; save(); render(); };
+      tags.appendChild(t);
+    });
+
+    if (!open && data.note[key]){
+      const n = document.createElement("button");
+      n.className = "tag more";
+      n.textContent = "заметка";
+      n.onclick = () => { openDay = key; render(); };
+      tags.appendChild(n);
     }
 
     card.appendChild(tags);
 
-    const sh = data.shifts[key];
     if (sh){
       const f = document.createElement("div");
       f.className = "shift-form";
 
       const where = document.createElement("input");
-      where.className = "where";
+      where.className = "fld where";
       where.type = "text";
       where.placeholder = "куда";
       where.value = sh.where || "";
@@ -632,16 +1008,16 @@ function drawWeek(now, todayKey){
       lab.textContent = "до";
 
       const till = document.createElement("input");
-      till.className = "till";
+      till.className = "fld till";
       till.type = "time";
       till.value = sh.till || "02:00";
       till.onchange = () => { sh.till = till.value || "02:00"; save(); render(); };
 
-      f.appendChild(where);
-      f.appendChild(lab);
-      f.appendChild(till);
+      f.append(where, lab, till);
       card.appendChild(f);
     }
+
+    if (open) drawExpanded(card, key, dow);
 
     box.appendChild(card);
   });
@@ -649,10 +1025,12 @@ function drawWeek(now, todayKey){
 
 load();
 render();
+syncFeed();
 
 // Метка «сейчас» ползёт, вечерний чек-лист появляется в 22:00 — но не сбиваем ввод.
 setInterval(() => {
-  if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+  const a = document.activeElement;
+  if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) return;
   render();
 }, 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
