@@ -1978,9 +1978,13 @@ function renderSyncSettings(){
 function saveSyncSettings(){
   // none of these can contain spaces; iOS paste/autocorrect likes to add them
   const clean=id=>$(id).value.replace(/\s+/g,'');
-  const token=clean('syncToken'), owner=clean('syncOwner'),
+  let token=$('syncToken').value.replace(/[^A-Za-z0-9_]/g,''); // tokens are [A-Za-z0-9_] only const owner=clean('syncOwner'),
         repo=clean('syncRepo'), path=(clean('syncPath')||'gymtracker.json').replace(/^\/+/,'');
   if(!token||!owner||!repo){toast('Заполни токен, владельца и репозиторий','err');return;}
+  // a token pasted on top of an old one: keep the last one
+  const pats=token.match(/github_pat_[A-Za-z0-9_]+?(?=github_pat_|$)/g);
+  if(pats) token=pats[pats.length-1];
+  if(!/^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(token)){toast('Токен вставлен неправильно, он должен начинаться с github_pat_','err');return;}
   const same=syncCfg&&syncCfg.owner===owner&&syncCfg.repo===repo&&syncCfg.path===path;
   syncCfg={...(same?syncCfg:{}),token,owner,repo,path,lastError:''};
   if(!same){delete syncCfg.sha;delete syncCfg.lastJson;delete syncCfg.lastSync;}
