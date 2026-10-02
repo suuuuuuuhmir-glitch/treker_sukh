@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'gymtracker-shell-v12';
+const SHELL_CACHE = 'gymtracker-shell-v13';
 const FONT_CACHE  = 'gymtracker-fonts-v2';
 const SHELL_FILES = ['tracker.html', 'manifest.json', 'icon.svg'];
 

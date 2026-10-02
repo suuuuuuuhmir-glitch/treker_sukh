@@ -175,6 +175,30 @@ label.lbl{font-size:11.5px;color:var(--muted);display:block;margin-bottom:5px;te
 .meal-nm{font-weight:600;margin-bottom:2px}
 .meal-desc{color:var(--muted);font-size:12.5px}
 .meal-kcal{font-family:'Oswald',sans-serif;color:var(--accent);font-weight:600;font-size:13px;white-space:nowrap;margin-top:2px;flex-shrink:0}
+/* ===================== FOOD LOG ===================== */
+textarea.food-in{background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:var(--r-sm);padding:10px 12px;font-family:inherit;font-size:16px;width:100%;min-height:64px;resize:vertical;-webkit-appearance:none;display:block}
+textarea.food-in:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.food-quick{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.food-quick .chip{padding:5px 11px;font-size:13px}
+.food-prev{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;margin-top:10px}
+.food-it{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13.5px}
+.food-it .nm{min-width:0}
+.food-it .q{color:var(--muted);font-size:12px}
+.food-it .kp{font-family:'Oswald',sans-serif;white-space:nowrap;color:var(--text)}
+.food-it.unk .nm{color:var(--danger)}
+.food-tot{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:6px;padding-top:8px;font-family:'Oswald',sans-serif;font-weight:600}
+.food-entry{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.food-entry:last-child{border-bottom:none}
+.food-entry .tm{font-family:'Oswald',sans-serif;color:var(--muted);font-size:13px;width:42px;flex:0 0 42px;padding-top:1px}
+.food-entry .bd{flex:1;min-width:0}
+.food-entry .tx{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.food-entry .ds{color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.food-entry .kc{font-family:'Oswald',sans-serif;color:var(--accent);font-weight:600;font-size:13.5px;white-space:nowrap;text-align:right}
+.food-entry .kc small{display:block;color:var(--muted);font-weight:400;font-size:11.5px}
+.food-del{background:none;border:none;color:var(--muted);font-size:18px;line-height:1;padding:0 2px;cursor:pointer}
+.macro-row{margin-bottom:12px}
+.macro-row .row{justify-content:space-between;font-size:13px;margin-bottom:5px}
+.macro-row .row b{font-family:'Oswald',sans-serif;font-size:15px}
 
 /* ===================== HISTORY ===================== */
 .hist{border-bottom:1px solid var(--line)}
@@ -404,16 +428,17 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <span style="font-size:14.5px">🥤 Гейнер (порция)</span>
       <button class="chip" id="qGain" onclick="toggleSupp('gainer')">отметить</button>
     </div>
-    <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="switchTab('nutrition')">Весь план питания →</button>
+    <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="switchTab('nutrition')">Питание →</button>
   </div>
 
   <div class="card">
     <div class="card-head">
       <h3 class="card-title">Питание</h3>
-      <span class="muted" id="todayMealsCount" style="font-size:13.5px;font-family:'Oswald',sans-serif">0 / 6</span>
+      <span class="muted" id="todayMealsCount" style="font-size:13.5px;font-family:'Oswald',sans-serif">0 / 2600 ккал</span>
     </div>
     <div class="pbar" style="height:8px"><div class="pbar-fill" id="todayMealsBar" style="width:0%"></div></div>
-    <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="switchTab('nutrition')">Отметить приёмы пищи →</button>
+    <div class="muted" id="todayProtein" style="font-size:12.5px;margin-top:6px">белок 0 / 110 г</div>
+    <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="switchTab('nutrition')">Записать еду →</button>
   </div>
 </div>
 </section>
@@ -470,18 +495,33 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     <button class="date-nav-btn" id="nutrNextBtn" onclick="shiftNutrDay(1)" disabled>›</button>
   </div>
 
-  <div class="stats3">
-    <div class="stat"><div class="v acc">~2800</div><div class="l">ккал / день</div></div>
-    <div class="stat"><div class="v">130–160</div><div class="l">г белка</div></div>
-    <div class="stat"><div class="v" id="mealCountStat">0/6</div><div class="l">приёмов</div></div>
+  <div class="card">
+    <div class="macro-row">
+      <div class="row"><span>Калории</span><span><b id="nKcal">0</b> <span class="muted">/ <span id="nKcalT">2600</span> ккал</span></span></div>
+      <div class="pbar" style="height:8px"><div class="pbar-fill" id="nKcalBar" style="width:0%"></div></div>
+    </div>
+    <div class="macro-row" style="margin-bottom:4px">
+      <div class="row"><span>Белок</span><span><b id="nProt">0</b> <span class="muted">/ <span id="nProtT">110</span> г</span></span></div>
+      <div class="pbar" style="height:8px"><div class="pbar-fill" id="nProtBar" style="width:0%"></div></div>
+    </div>
+    <div class="muted" id="nLeft" style="font-size:12.5px;margin-top:8px"></div>
   </div>
 
   <div class="card">
     <div class="card-head">
-      <h3 class="card-title">План на день</h3>
-      <span class="muted" id="mealCountLabel" style="font-size:13.5px;font-family:'Oswald',sans-serif">0 / 6</span>
+      <h3 class="card-title">Что съел</h3>
+      <span class="muted" id="mealCountLabel" style="font-size:13.5px;font-family:'Oswald',sans-serif">0 записей</span>
     </div>
-    <div id="mealList"></div>
+    <textarea class="food-in" id="foodInput" rows="2" placeholder="гречка 200, курица 150, 3 яйца"></textarea>
+    <div class="food-quick" id="foodQuick"></div>
+    <div class="row" style="gap:8px">
+      <button class="btn sm" style="flex:1" onclick="foodPreview()">Посчитать</button>
+      <button class="btn ghost sm" id="foodAiBtn" style="flex:1;display:none" onclick="foodAiText()">🤖 ИИ</button>
+      <button class="btn ghost sm" id="foodPhotoBtn" style="flex:1;display:none" onclick="foodPhotoPick()">📷 Фото</button>
+    </div>
+    <div id="foodPreviewBox"></div>
+    <div id="foodLog" style="margin-top:6px"></div>
+    <p class="sub" style="margin:10px 0 0">Пиши через запятую. Без граммов берётся обычная порция, «3 яйца» считается штуками. Если продукта нет в базе, допиши калории сам: «громовка 450ккал 20б».</p>
   </div>
 
   <div class="card">
@@ -591,12 +631,27 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   </div>
 
   <div class="card">
+    <h3 class="card-title" style="margin-bottom:6px">Подсчёт еды через ИИ</h3>
+    <p class="sub" id="aiStatus" style="margin:0 0 10px">Не настроено — еда считается по встроенной базе продуктов.</p>
+    <p class="sub" style="margin-top:0">Необязательно. С ключом Claude API в разделе «Питание» появятся кнопки «ИИ» и «Фото»: трекер сам оценит калории по описанию или фото. Ключ создаётся на console.anthropic.com, оплачивается отдельно (примерно 1 ₽ за запрос) и хранится только на этом устройстве.</p>
+    <div class="field"><label class="lbl">API-ключ</label><input type="password" id="aiKey" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="row" style="gap:8px">
+      <button class="btn sm" style="flex:1" onclick="saveAiKey()">Сохранить</button>
+      <button class="btn ghost sm" style="flex:1" onclick="clearAiKey()">Удалить</button>
+    </div>
+  </div>
+
+  <div class="card">
     <h3 class="card-title" style="margin-bottom:14px">Настройки</h3>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Старт. вес, кг</label><input type="number" id="setStart" step="0.1"></div>
       <div><label class="lbl">Цель, кг</label><input type="number" id="setGoal" step="0.1"></div>
     </div>
     <div class="field"><label class="lbl">Дата старта</label><input type="date" id="setDate"></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Цель, ккал/день</label><input type="number" id="setKcal" inputmode="numeric" step="50"></div>
+      <div><label class="lbl">Цель, белок г</label><input type="number" id="setProt" inputmode="numeric" step="5"></div>
+    </div>
     <div class="field">
       <label class="lbl">Таймер отдыха между подходами</label>
       <div class="info" style="margin-bottom:0;font-size:13px">
@@ -682,6 +737,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   </div>
 </div>
 <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoInput(this)">
+<input type="file" id="foodPhotoInput" accept="image/*" style="display:none" onchange="foodPhotoChosen(this)">
 
 <!-- ==================== CONFIRM ==================== -->
 <div class="confirm-bg" id="confirmBg">
@@ -703,15 +759,6 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 const KEY    = 'gymtracker_v2';
 const KEY_V1 = 'gymtracker_v1';
 const KEY_WIP = 'gymtracker_wip';
-
-const DEFAULT_MEALS = [
-  {id:'m1',name:'Завтрак',     desc:'Овсянка на молоке + банан + 3 яйца + арахисовая паста',k:700},
-  {id:'m2',name:'Перекус',     desc:'Орехи + сухофрукты, или полпорции гейнера',k:400},
-  {id:'m3',name:'Обед',        desc:'Рис/гречка + курица или говядина + овощи на масле',k:700},
-  {id:'m4',name:'Перед залом', desc:'Макароны/рис + мясо (углеводы под нагрузку)',k:500},
-  {id:'m5',name:'После зала',  desc:'Гейнер на молоке + креатин 5 г',k:600},
-  {id:'m6',name:'Перед сном',  desc:'Творог или кефир (медленный белок на ночь)',k:250},
-];
 
 const DEFAULT_PLAN = {
   A:[
@@ -901,6 +948,8 @@ function normalizeState(){
   S.profile.startWeight=S.profile.startWeight??54;
   S.profile.targetWeight=S.profile.targetWeight??63.5;
   S.profile.schedule=S.profile.schedule||[1,3,5];
+  S.profile.kcalTarget=S.profile.kcalTarget||2600;
+  S.profile.proteinTarget=S.profile.proteinTarget||110;
   S.weights=S.weights||[];
   S.sessions=S.sessions||[];
   S.plan=S.plan||JSON.parse(JSON.stringify(DEFAULT_PLAN));
@@ -1068,10 +1117,11 @@ function renderToday(){
   setChip('qCrea',n.creatine);
   setChip('qGain',n.gainer);
 
-  // Meals progress
-  const meals=n.meals||[];
-  $('todayMealsCount').textContent=meals.length+' / 6';
-  $('todayMealsBar').style.width=(meals.length/6*100)+'%';
+  // Food totals
+  const tot=foodTotals(todayKey());
+  $('todayMealsCount').textContent=tot.k+' / '+kcalTarget()+' ккал';
+  $('todayMealsBar').style.width=Math.min(100,tot.k/kcalTarget()*100)+'%';
+  $('todayProtein').textContent='белок '+tot.p+' / '+protTarget()+' г';
 
   // Weight history (last 3)
   const wh=$('wHistory');
@@ -1383,6 +1433,7 @@ function shiftNutrDay(delta){
   // Don't go into the future
   if(newKey>todayKey()) return;
   nutritionDate=newKey;
+  foodDraft=null; renderFoodPreview();
   renderNutrition();
 }
 function renderNutrition(){
@@ -1396,36 +1447,298 @@ function renderNutrition(){
   const nextBtn=$('nutrNextBtn'); if(nextBtn) nextBtn.disabled=isToday;
 
   const n=S.nutrition[nutritionDate]||{};
-  const checked=n.meals||[];
-  const list=$('mealList'); list.innerHTML='';
-  DEFAULT_MEALS.forEach(m=>{
-    const on=checked.includes(m.id);
-    const div=document.createElement('div');
-    div.className='meal'+(on?' done':'');
-    div.innerHTML=`
-      <button class="meal-chk${on?' done':''}" onclick="toggleMeal('${m.id}')" aria-label="${on?'Снять':'Отметить'} ${m.name}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"/></svg>
-      </button>
-      <div class="meal-body">
-        <div class="meal-nm">${m.name}</div>
-        <div class="meal-desc">${m.desc}</div>
-      </div>
-      <div class="meal-kcal">~${m.k} ккал</div>`;
-    list.appendChild(div);
-  });
-  const cnt=checked.length;
-  $('mealCountLabel').textContent=cnt+' / 6';
-  $('mealCountStat').textContent=cnt+'/6';
   setChip('nCrea',n.creatine);
   setChip('nGain',n.gainer);
+  renderFoodLog();
 }
-function toggleMeal(id){
+/* ============================================================
+   FOOD LOG
+   S.nutrition[date].log = [{id,t,text,items:[{n,g,k,p,unk?}],k,p,src}]
+   Text is parsed against FOOD_DB (per 100 g, ready-to-eat);
+   with a Claude API key the text or a photo can be sent to the model.
+   ============================================================ */
+// k, p — ккал и белок на 100 г; d — обычная порция, г; pc — вес 1 шт, г; sp — вес 1 ложки, г
+const FOOD_DB = [
+  {n:'Гречка',            s:['греч'],                       k:110,p:4.2, d:200},
+  {n:'Рис',               s:['рис'],                        k:130,p:2.7, d:200},
+  {n:'Макароны',          s:['макарон','паста','спагет'],   k:140,p:5,   d:200},
+  {n:'Овсянка',           s:['овсян','геркулес'],           k:100,p:3.5, d:250},
+  {n:'Каша',              s:['каша','кашу','каши'],         k:110,p:3.5, d:250},
+  {n:'Картофель',         s:['картоф','картош'],            k:90, p:2,   d:200},
+  {n:'Пюре',              s:['пюре'],                       k:105,p:2.2, d:200},
+  {n:'Картофель фри',     s:['фри'],                        k:300,p:3.5, d:120},
+  {n:'Хлеб',              s:['хлеб','батон','тост'],        k:250,p:8,   d:60, pc:30},
+  {n:'Лаваш',             s:['лаваш'],                      k:275,p:9,   d:80},
+  {n:'Курица',            s:['куриц','курин','кура','грудк','филе'], k:165,p:31,d:150},
+  {n:'Куриные бёдра',     s:['бедр','бедер','окороч','голен'], k:210,p:25,d:200},
+  {n:'Говядина',          s:['говяд','стейк'],              k:220,p:26,  d:150},
+  {n:'Свинина',           s:['свин'],                       k:260,p:25,  d:150},
+  {n:'Индейка',           s:['индей','индюш'],              k:150,p:29,  d:150},
+  {n:'Котлета',           s:['котлет','тефтел','фрикадел'], k:230,p:17,  d:160, pc:80},
+  {n:'Фарш',              s:['фарш'],                       k:250,p:17,  d:150},
+  {n:'Рыба',              s:['рыб','минта','треск','хек'],  k:120,p:22,  d:150},
+  {n:'Лосось',            s:['лосос','семг','форел'],       k:200,p:20,  d:150},
+  {n:'Тунец',             s:['тунец','тунц'],               k:110,p:24,  d:120},
+  {n:'Яйца',              s:['яйц','яиц','яичниц','омлет'], k:155,p:13,  d:110, pc:55},
+  {n:'Сосиски',           s:['сосис','сардел'],             k:260,p:11,  d:100, pc:50},
+  {n:'Колбаса',           s:['колбас'],                     k:300,p:13,  d:50,  pc:15},
+  {n:'Пельмени',          s:['пельмен','вареник'],          k:250,p:11,  d:250, pc:12},
+  {n:'Творог',            s:['творог','творож'],            k:120,p:17,  d:200},
+  {n:'Сырники',           s:['сырник'],                     k:220,p:14,  d:180, pc:60},
+  {n:'Сыр',               s:['сыр'],                        k:350,p:25,  d:30,  pc:20},
+  {n:'Молоко',            s:['молок'],                      k:52, p:2.9, d:250},
+  {n:'Кефир',             s:['кефир','ряженк','айран'],     k:50, p:3,   d:250},
+  {n:'Йогурт',            s:['йогурт'],                     k:80, p:4,   d:150, pc:150},
+  {n:'Сметана',           s:['сметан'],                     k:200,p:2.5, d:30,  sp:20},
+  {n:'Масло сливочное',   s:['масл','сливоч'],              k:740,p:0.5, d:10,  sp:10},
+  {n:'Масло растительное',s:['оливк','подсолн','растит'],   k:900,p:0,   d:10,  sp:10},
+  {n:'Арахисовая паста',  s:['арахисов','паста арах'],      k:600,p:25,  d:30,  sp:20},
+  {n:'Орехи',             s:['орех','арахис','миндал','кешью','фундук'], k:620,p:20,d:30},
+  {n:'Банан',             s:['банан'],                      k:90, p:1.1, d:120, pc:120},
+  {n:'Яблоко',            s:['яблок'],                      k:50, p:0.4, d:150, pc:150},
+  {n:'Фрукты',            s:['груш','апельс','мандар','фрукт','виноград'], k:50,p:0.7,d:150,pc:130},
+  {n:'Сухофрукты',        s:['сухофр','изюм','кураг','финик','чернослив'], k:280,p:3,d:50},
+  {n:'Мёд',               s:['мед','варен','джем'],         k:320,p:0.5, d:20,  sp:10},
+  {n:'Сахар',             s:['сахар'],                      k:400,p:0,   d:10,  sp:7},
+  {n:'Шоколад',           s:['шоколад'],                    k:540,p:6,   d:25},
+  {n:'Печенье',           s:['печень','вафл','пряник'],     k:450,p:7,   d:50,  pc:12},
+  {n:'Блины',             s:['блин','олад'],                k:230,p:6,   d:150, pc:50},
+  {n:'Шаурма',            s:['шаурм','шаверм'],             k:220,p:10,  d:350, pc:350},
+  {n:'Пицца',             s:['пицц'],                       k:260,p:11,  d:200, pc:100},
+  {n:'Бургер',            s:['бургер','чизбург','гамбург'], k:250,p:13,  d:220, pc:220},
+  {n:'Плов',              s:['плов'],                       k:180,p:7,   d:300},
+  {n:'Суп',               s:['суп','борщ','щи ','солянк','бульон','рассольн'], k:50,p:2.5,d:300},
+  {n:'Салат',             s:['салат'],                      k:80, p:2,   d:150},
+  {n:'Овощи',             s:['овощ','огур','помид','томат','капуст','морков','брокол'], k:30,p:1.5,d:150},
+  {n:'Гейнер',            s:['гейнер','serious','сириус'],  k:374,p:15,  d:167, sp:167},
+  {n:'Протеин',           s:['протеин','сывороточ'],        k:380,p:75,  d:30,  sp:30},
+  {n:'Сок',               s:['сок','морс','компот'],        k:45, p:0.5, d:250},
+  {n:'Газировка',         s:['кола','газир','лимонад','пепси','фанта','энергет'], k:42,p:0,d:330},
+  {n:'Капучино',          s:['капучин','латте','какао'],    k:45, p:2.2, d:300},
+  {n:'Чай / кофе / вода', s:['чай','кофе','вода','воды','воду'], k:0,p:0,d:250},
+];
+const FOOD_QUICK = ['гречка 200','рис 200','курица 150','бёдра 200','3 яйца','творог 200','молоко 250','банан','хлеб 2 шт','орехи 30','гейнер'];
+const GAINER_TICK = {k:600,p:25};   // отметка «Гейнер» в добавках = полпорции на молоке
+
+let foodDraft=null;   // {text, items, src}
+
+function kcalTarget(){return (S.profile&&S.profile.kcalTarget)||2600;}
+function protTarget(){return (S.profile&&S.profile.proteinTarget)||110;}
+function esc(str){return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function foodNorm(str){return ' '+String(str).toLowerCase().replace(/ё/g,'е')+' ';}
+function round1(x){return Math.round(x*10)/10;}
+
+function foodTotals(d){
+  const n=S.nutrition[d]||{};
+  let k=0,p=0;
+  (n.log||[]).forEach(e=>{k+=e.k||0;p+=e.p||0;});
+  if(n.gainer){k+=GAINER_TICK.k;p+=GAINER_TICK.p;}
+  return {k:Math.round(k),p:Math.round(p)};
+}
+
+// "гречка 200, курица 150 и 3 яйца" → [{n,g,k,p}] ; unknown pieces get unk:true
+function parseFood(text){
+  const pieces=foodNorm(text)
+    .split(/[,;\n+]|\s(?:и|с|со|plus)\s/)
+    .map(x=>x.trim()).filter(Boolean);
+  return pieces.map(parseFoodPiece).filter(Boolean);
+}
+function parseFoodPiece(raw){
+  const NB='(?![а-яa-z])';   // \b does not work with Cyrillic
+  let t=' '+raw.replace(/\d+(?:[.,]\d+)?\s*%/g,' ')+' ';   // "творог 5%" — not a quantity
+  // explicit numbers: "450ккал", "20б" / "20 г белка"
+  const mk=t.match(/(\d+(?:[.,]\d+)?)\s*(?:ккал|kcal|кал)/);
+  const mp=t.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(?:б'+NB+'|г\\s*белк|белк)'));
+  let best=null,bestLen=0;
+  FOOD_DB.forEach(f=>f.s.forEach(st=>{
+    if(t.includes(st)&&st.length>bestLen){best=f;bestLen=st.length;}
+  }));
+  if(mk){
+    const name=t.replace(new RegExp('\\d+(?:[.,]\\d+)?\\s*(?:ккал|kcal|кал|б'+NB+'|г\\s*белк\\S*|белк\\S*|г'+NB+'|гр'+NB+')','g'),' ').replace(/\s+/g,' ').trim();
+    return {n:cap(name||'Продукт'),g:null,k:Math.round(parseFloat(mk[1].replace(',','.'))),p:mp?round1(parseFloat(mp[1].replace(',','.'))):0};
+  }
+  if(!best) return {n:cap(raw.trim()),g:null,k:0,p:0,unk:true};
+  // quantity: prefer a number that has a unit
+  const re=new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(кг|г'+NB+'|гр'+NB+'|грам\\S*|мл|л'+NB+'|литр\\S*|шт\\S*|штук\\S*|лож\\S*|порц\\S*|стакан\\S*|круж\\S*|кус\\S*|ломт\\S*|тарел\\S*)?','g');
+  const all=[...t.matchAll(re)];
+  const mq=all.find(m=>m[2])||all[0];
+  const half=!mq&&/\sпол(?:овин|\s|[а-я]{3,})/.test(t);
+  let g=best.d;
+  if(mq){
+    const v=parseFloat(mq[1].replace(',','.')), u=mq[2]||'';
+    if(/^кг|^л(?![а-я])|^литр/.test(u)) g=v*1000;
+    else if(/^г|^мл/.test(u)) g=v;
+    else if(/^лож/.test(u)) g=v*(best.sp||15);
+    else if(/^порц|^тарел/.test(u)) g=v*best.d;
+    else if(/^стакан|^круж/.test(u)) g=v*250;
+    else if(/^кус|^ломт/.test(u)) g=v*(best.pc||30);
+    else if(/^шт/.test(u)) g=v*(best.pc||best.d);
+    else if(v<=12) g=v*(best.pc||best.sp||best.d);   // "3 яйца", "2 банана"
+    else g=v;                                          // "гречка 200"
+  } else if(half) g=best.d/2;
+  g=Math.round(g);
+  return {n:best.n,g,k:Math.round(best.k*g/100),p:round1(best.p*g/100)};
+}
+function cap(x){x=String(x).trim();return x.charAt(0).toUpperCase()+x.slice(1);}
+
+function foodQuickAdd(txt){
+  const el=$('foodInput');
+  el.value=el.value.trim()?el.value.trim().replace(/,$/,'')+', '+txt:txt;
+  el.focus();
+}
+function foodPreview(){
+  const text=$('foodInput').value.trim();
+  if(!text){toast('Напиши, что съел','err');return;}
+  foodDraft={text,items:parseFood(text),src:'db'};
+  renderFoodPreview();
+}
+function renderFoodPreview(){
+  const box=$('foodPreviewBox');
+  if(!foodDraft){box.innerHTML='';return;}
+  const it=foodDraft.items;
+  let k=0,p=0; it.forEach(x=>{k+=x.k;p+=x.p;});
+  const unk=it.filter(x=>x.unk);
+  box.innerHTML=`<div class="food-prev">
+    ${it.map(x=>`<div class="food-it${x.unk?' unk':''}"><div class="nm">${esc(x.n)}${x.g?` <span class="q">${x.g} г</span>`:''}${x.unk?' <span class="q">— не нашёл</span>':''}</div><div class="kp">${x.unk?'?':x.k+' ккал · '+round1(x.p)+' б'}</div></div>`).join('')}
+    <div class="food-tot"><span>Итого</span><span>${Math.round(k)} ккал · ${Math.round(p)} г белка</span></div>
+    ${foodDraft.note?`<div class="muted" style="font-size:12px;margin-top:6px">${esc(foodDraft.note)}</div>`:''}
+    ${unk.length?`<div class="muted" style="font-size:12px;margin-top:6px">Для «${esc(unk.map(x=>x.n).join('», «'))}» допиши калории, например «${esc(unk[0].n.toLowerCase())} 300ккал 15б»${aiKey()?', или нажми «ИИ»':''}.</div>`:''}
+    <div class="row" style="gap:8px;margin-top:10px">
+      <button class="btn sm" style="flex:1" onclick="foodCommit()">Записать</button>
+      <button class="btn ghost sm" style="flex:1" onclick="foodCancel()">Отмена</button>
+    </div>
+  </div>`;
+}
+function foodCancel(){foodDraft=null;renderFoodPreview();}
+function foodCommit(){
+  if(!foodDraft)return;
+  const items=foodDraft.items;
+  let k=0,p=0; items.forEach(x=>{k+=x.k;p+=x.p;});
+  const now=new Date();
+  const t=nutritionDate===todayKey()?String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'):'';
   S.nutrition[nutritionDate]=S.nutrition[nutritionDate]||{};
-  let arr=S.nutrition[nutritionDate].meals||[];
-  arr=arr.includes(id)?arr.filter(x=>x!==id):[...arr,id];
-  S.nutrition[nutritionDate].meals=arr;
+  const n=S.nutrition[nutritionDate];
+  n.log=n.log||[];
+  n.log.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),t,text:foodDraft.text,items,k:Math.round(k),p:round1(p),src:foodDraft.src});
+  foodDraft=null; renderFoodPreview();
+  $('foodInput').value='';
   save(); renderNutrition();
   if(nutritionDate===todayKey()) renderToday();
+  toast('Записано: '+Math.round(k)+' ккал','ok');
+}
+function foodDelete(id){
+  const n=S.nutrition[nutritionDate]; if(!n||!n.log)return;
+  n.log=n.log.filter(e=>e.id!==id);
+  save(); renderNutrition();
+  if(nutritionDate===todayKey()) renderToday();
+}
+function renderFoodLog(){
+  const n=S.nutrition[nutritionDate]||{};
+  const log=n.log||[];
+  const tot=foodTotals(nutritionDate);
+  const kt=kcalTarget(),pt=protTarget();
+  $('nKcal').textContent=tot.k; $('nKcalT').textContent=kt;
+  $('nProt').textContent=tot.p; $('nProtT').textContent=pt;
+  $('nKcalBar').style.width=Math.min(100,tot.k/kt*100)+'%';
+  $('nProtBar').style.width=Math.min(100,tot.p/pt*100)+'%';
+  const lk=kt-tot.k, lp=pt-tot.p;
+  $('nLeft').textContent=(lk<=0&&lp<=0)?'Цель на день выполнена 💪':
+    'Осталось: '+(lk>0?lk+' ккал':'калории ✓')+' · '+(lp>0?lp+' г белка':'белок ✓');
+  $('mealCountLabel').textContent=log.length+' '+plural(log.length,'запись','записи','записей');
+  $('foodQuick').innerHTML=FOOD_QUICK.map(q=>`<button class="chip" onclick="foodQuickAdd('${q}')">${q}</button>`).join('');
+  const ai=!!aiKey();
+  $('foodAiBtn').style.display=ai?'':'none';
+  $('foodPhotoBtn').style.display=ai?'':'none';
+  const rows=log.map(e=>`<div class="food-entry">
+      <div class="tm">${esc(e.t||'')}</div>
+      <div class="bd"><div class="tx">${esc(e.text)}${e.src==='ai'?' <span class="muted" style="font-weight:400;font-size:11px">ИИ</span>':''}</div>
+        <div class="ds">${esc((e.items||[]).map(x=>x.n+(x.g?' '+x.g+' г':'')).join(', '))}</div></div>
+      <div class="kc">${e.k} ккал<small>${Math.round(e.p)} г белка</small></div>
+      <button class="food-del" onclick="foodDelete('${e.id}')" aria-label="Удалить">×</button>
+    </div>`);
+  if(n.gainer) rows.push(`<div class="food-entry"><div class="tm"></div><div class="bd"><div class="tx">Гейнер</div><div class="ds">отмечен в добавках</div></div><div class="kc">${GAINER_TICK.k} ккал<small>${GAINER_TICK.p} г белка</small></div><span style="width:22px"></span></div>`);
+  $('foodLog').innerHTML=rows.length?rows.join(''):'<div class="muted" style="font-size:13px;padding:8px 0">Пока ничего не записано.</div>';
+}
+function plural(n,a,b,c){const m10=n%10,m100=n%100;return m10===1&&m100!==11?a:(m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c);}
+
+/* ---------- Optional: Claude API (user's own key, kept on device) ---------- */
+const KEY_AI='gymtracker_ai_v1';
+const AI_MODEL='claude-opus-5-5';
+function aiKey(){try{return localStorage.getItem(KEY_AI)||'';}catch(e){return '';}}
+function saveAiKey(){
+  const k=$('aiKey').value.replace(/\s+/g,'');
+  if(!/^sk-ant-/.test(k)){toast('Ключ должен начинаться с sk-ant-','err');return;}
+  try{localStorage.setItem(KEY_AI,k);}catch(e){}
+  $('aiKey').value=''; renderAiSetting(); renderNutrition();
+  toast('Ключ сохранён','ok');
+}
+function clearAiKey(){
+  try{localStorage.removeItem(KEY_AI);}catch(e){}
+  $('aiKey').value=''; renderAiSetting(); renderNutrition();
+}
+function renderAiSetting(){
+  const el=$('aiStatus'); if(!el)return;
+  const k=aiKey();
+  el.textContent=k?'Включено · ключ …'+k.slice(-4):'Не настроено — еда считается по встроенной базе продуктов.';
+}
+const FOOD_SCHEMA={type:'object',additionalProperties:false,required:['items','note'],properties:{
+  items:{type:'array',items:{type:'object',additionalProperties:false,required:['name','grams','kcal','protein'],properties:{
+    name:{type:'string'},grams:{type:'number'},kcal:{type:'number'},protein:{type:'number'}}}},
+  note:{type:'string'}}};
+async function aiEstimate(text,imageB64){
+  const content=[];
+  if(imageB64) content.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:imageB64}});
+  content.push({type:'text',text:(imageB64?'Оцени еду на фото.':'Оцени эту еду.')+(text?' Описание: '+text:'')});
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'x-api-key':aiKey(),'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:AI_MODEL,max_tokens:4000,
+      output_config:{effort:'low',format:{type:'json_schema',schema:FOOD_SCHEMA}},
+      system:'Ты помогаешь вести дневник питания для набора массы. Раздели еду на отдельные продукты, оцени вес каждого в граммах (в готовом виде), калории и белок в граммах. Названия пиши по-русски коротко. В note одной фразой: что можно добавить, чтобы было сытнее и больше белка, или пустая строка.',
+      messages:[{role:'user',content}],
+    }),
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error((data.error&&data.error.message)||('HTTP '+res.status));
+  if(data.stop_reason==='refusal') throw new Error('модель отказалась отвечать');
+  const tb=(data.content||[]).find(b=>b.type==='text');
+  const out=JSON.parse(tb?tb.text:'{}');
+  return {items:(out.items||[]).map(x=>({n:cap(x.name),g:Math.round(x.grams)||null,k:Math.round(x.kcal),p:round1(x.protein)})),note:out.note||''};
+}
+async function foodAiRun(text,img){
+  const box=$('foodPreviewBox');
+  box.innerHTML='<div class="food-prev muted" style="font-size:13px">🤖 Считаю…</div>';
+  try{
+    const r=await aiEstimate(text,img);
+    foodDraft={text:text||'Фото еды',items:r.items,note:r.note,src:'ai'};
+    renderFoodPreview();
+  }catch(e){
+    box.innerHTML='';
+    toast('ИИ: '+e.message,'err');
+  }
+}
+function foodAiText(){
+  const text=$('foodInput').value.trim();
+  if(!text){toast('Напиши, что съел','err');return;}
+  foodAiRun(text,null);
+}
+function foodPhotoPick(){$('foodPhotoInput').click();}
+function foodPhotoChosen(inp){
+  const f=inp.files&&inp.files[0]; inp.value='';
+  if(!f)return;
+  const img=new Image(), url=URL.createObjectURL(f);
+  img.onload=()=>{
+    const max=1024, sc=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);
+    const b64=c.toDataURL('image/jpeg',0.8).split(',')[1];
+    foodAiRun($('foodInput').value.trim(),b64);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);toast('Не удалось открыть фото','err');};
+  img.src=url;
 }
 
 /* ============================================================
@@ -1570,6 +1883,8 @@ function renderProgress(){
 
   // Settings inputs
   $('setStart').value=start;
+  $('setKcal').value=kcalTarget();
+  $('setProt').value=protTarget();
   $('setGoal').value=goal;
   $('setDate').value=S.profile.startDate;
   renderNotifSetting();
@@ -1761,7 +2076,10 @@ function saveSettings(){
   if(st&&st>0) S.profile.startWeight=st;
   if(gl&&gl>0) S.profile.targetWeight=gl;
   if(dt) S.profile.startDate=dt;
-  save(); renderToday(); renderProgress();
+  const kt=parseInt($('setKcal').value,10),pt=parseInt($('setProt').value,10);
+  if(kt>=1000&&kt<=6000) S.profile.kcalTarget=kt;
+  if(pt>=30&&pt<=400) S.profile.proteinTarget=pt;
+  save(); renderToday(); renderProgress(); renderNutrition();
   toast('Настройки сохранены','ok');
 }
 function renderNotifSetting(){
@@ -2083,6 +2401,7 @@ function init(){
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   renderAll();
   initSyncCard();
+  renderAiSetting();
   pullSync(false); // take a newer copy from GitHub, or send ours
   checkWorkoutNotification();
 
