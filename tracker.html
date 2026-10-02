@@ -1978,7 +1978,9 @@ function renderSyncSettings(){
 function saveSyncSettings(){
   // none of these can contain spaces; iOS paste/autocorrect likes to add them
   const clean=id=>$(id).value.replace(/\s+/g,'');
-  let token=$('syncToken').value.replace(/[^A-Za-z0-9_]/g,''); // tokens are [A-Za-z0-9_] only const owner=clean('syncOwner'),
+  // tokens are [A-Za-z0-9_] only
+  let token=$('syncToken').value.replace(/[^A-Za-z0-9_]/g,'');
+  const owner=clean('syncOwner'),
         repo=clean('syncRepo'), path=(clean('syncPath')||'gymtracker.json').replace(/^\/+/,'');
   if(!token||!owner||!repo){toast('Заполни токен, владельца и репозиторий','err');return;}
   // a token pasted on top of an old one: keep the last one
