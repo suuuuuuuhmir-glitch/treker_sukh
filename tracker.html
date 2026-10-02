@@ -569,7 +569,12 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   </div>
 
   <div class="card">
-    <h3 class="card-title" style="margin-bottom:8px">Автосинхронизация с GitHub</h3>
+    <div class="card-head" style="margin-bottom:6px">
+      <h3 class="card-title">Синхронизация с GitHub</h3>
+      <button class="btn ghost sm" id="syncToggle" onclick="toggleSyncBody()">Скрыть</button>
+    </div>
+    <p class="sub" id="syncStatus" style="margin:0">Не настроено</p>
+    <div id="syncBody" style="margin-top:12px">
     <p class="sub" style="margin-top:0">После каждого изменения данные сами отправляются JSON-файлом в твой приватный репозиторий. Фото не отправляются. Токен хранится только на этом устройстве.</p>
     <div class="field"><label class="lbl">Токен (fine-grained)</label><input type="password" id="syncToken" placeholder="github_pat_..." autocomplete="off"></div>
     <div class="g2" style="margin-bottom:10px">
@@ -577,11 +582,11 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <div><label class="lbl">Репозиторий</label><input type="text" id="syncRepo" placeholder="treker-data" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     </div>
     <div class="field"><label class="lbl">Файл</label><input type="text" id="syncPath" placeholder="gymtracker.json" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-    <p class="sub" id="syncStatus" style="margin:0 0 12px">Не настроено</p>
     <div class="row" style="gap:8px">
       <button class="btn sm" style="flex:1" onclick="saveSyncSettings()">Сохранить</button>
       <button class="btn ghost sm" style="flex:1" onclick="syncNow(true)">Синхр. сейчас</button>
       <button class="btn ghost sm" style="flex:1" onclick="disableSync()">Отключить</button>
+    </div>
     </div>
   </div>
 
@@ -1968,6 +1973,12 @@ function renderSyncStatus(text){
   if(syncCfg.lastError) t+=' · ⚠ '+syncCfg.lastError;
   el.textContent=t;
 }
+// Settings are folded away once sync is set up; the status line stays visible.
+function setSyncBody(open){
+  $('syncBody').style.display=open?'':'none';
+  $('syncToggle').textContent=open?'Скрыть':'Настроить';
+}
+function toggleSyncBody(){setSyncBody($('syncBody').style.display==='none');}
 function renderSyncSettings(){
   $('syncToken').value=syncCfg?syncCfg.token||'':'';
   $('syncOwner').value=syncCfg?syncCfg.owner||'':'';
@@ -1975,6 +1986,7 @@ function renderSyncSettings(){
   $('syncPath').value=syncCfg?syncCfg.path||'':'';
   renderSyncStatus();
 }
+function initSyncCard(){renderSyncSettings();setSyncBody(!syncReady());}
 function saveSyncSettings(){
   // none of these can contain spaces; iOS paste/autocorrect likes to add them
   const clean=id=>$(id).value.replace(/\s+/g,'');
@@ -2070,7 +2082,7 @@ function init(){
   // Ask the browser not to evict our data under storage pressure
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   renderAll();
-  renderSyncSettings();
+  initSyncCard();
   pullSync(false); // take a newer copy from GitHub, or send ours
   checkWorkoutNotification();
 
