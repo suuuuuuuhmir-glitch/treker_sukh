@@ -1976,8 +1976,10 @@ function renderSyncSettings(){
   renderSyncStatus();
 }
 function saveSyncSettings(){
-  const token=$('syncToken').value.trim(), owner=$('syncOwner').value.trim(),
-        repo=$('syncRepo').value.trim(), path=($('syncPath').value.trim()||'gymtracker.json').replace(/^\/+/,'');
+  // none of these can contain spaces; iOS paste/autocorrect likes to add them
+  const clean=id=>$(id).value.replace(/\s+/g,'');
+  const token=clean('syncToken'), owner=clean('syncOwner'),
+        repo=clean('syncRepo'), path=(clean('syncPath')||'gymtracker.json').replace(/^\/+/,'');
   if(!token||!owner||!repo){toast('Заполни токен, владельца и репозиторий','err');return;}
   const same=syncCfg&&syncCfg.owner===owner&&syncCfg.repo===repo&&syncCfg.path===path;
   syncCfg={...(same?syncCfg:{}),token,owner,repo,path,lastError:''};
