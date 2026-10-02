@@ -114,7 +114,7 @@ button{font-family:inherit;cursor:pointer}
 .chip.good-on{background:var(--good);color:#0A1C05;border-color:var(--good)}
 
 /* ===================== INPUTS ===================== */
-input[type=number],input[type=date],input[type=text]{
+input[type=number],input[type=date],input[type=text],input[type=password]{
   background:var(--surface2);border:1px solid var(--line);color:var(--text);
   border-radius:var(--r-sm);padding:10px 12px;
   font-family:'Oswald',sans-serif;font-size:16px;width:100%;
@@ -569,6 +569,23 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   </div>
 
   <div class="card">
+    <h3 class="card-title" style="margin-bottom:8px">Автосинхронизация с GitHub</h3>
+    <p class="sub" style="margin-top:0">После каждого изменения данные сами отправляются JSON-файлом в твой приватный репозиторий. Фото не отправляются. Токен хранится только на этом устройстве.</p>
+    <div class="field"><label class="lbl">Токен (fine-grained)</label><input type="password" id="syncToken" placeholder="github_pat_..." autocomplete="off"></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Владелец</label><input type="text" id="syncOwner" placeholder="логин GitHub" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div><label class="lbl">Репозиторий</label><input type="text" id="syncRepo" placeholder="treker-data" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    </div>
+    <div class="field"><label class="lbl">Файл</label><input type="text" id="syncPath" placeholder="gymtracker.json" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <p class="sub" id="syncStatus" style="margin:0 0 12px">Не настроено</p>
+    <div class="row" style="gap:8px">
+      <button class="btn sm" style="flex:1" onclick="saveSyncSettings()">Сохранить</button>
+      <button class="btn ghost sm" style="flex:1" onclick="syncNow(true)">Синхр. сейчас</button>
+      <button class="btn ghost sm" style="flex:1" onclick="disableSync()">Отключить</button>
+    </div>
+  </div>
+
+  <div class="card">
     <h3 class="card-title" style="margin-bottom:14px">Настройки</h3>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Старт. вес, кг</label><input type="number" id="setStart" step="0.1"></div>
@@ -837,8 +854,14 @@ function getSuggestion(exId,day){
 /* ============================================================
    STORAGE
    ============================================================ */
+// S without updatedAt, to tell real edits from no-op saves
+let _savedJson='';
+function stateJson(){const {updatedAt,...rest}=S;return JSON.stringify(rest);}
 function save(){
+  const j=stateJson();
+  if(j!==_savedJson){S.updatedAt=Date.now();_savedJson=j;}
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){console.error(e);}
+  scheduleSync();
 }
 function saveWip(){
   try{localStorage.setItem(KEY_WIP,JSON.stringify({day:curDay,data:wip}));}catch(e){}
@@ -851,16 +874,7 @@ function load(){
     const raw=localStorage.getItem(KEY);
     if(raw){
       S=JSON.parse(raw);
-      S.profile=S.profile||{};
-      S.profile.startDate=S.profile.startDate||tomorrowKey();
-      S.profile.startWeight=S.profile.startWeight??54;
-      S.profile.targetWeight=S.profile.targetWeight??63.5;
-      S.profile.schedule=S.profile.schedule||[1,3,5];
-      S.weights=S.weights||[];
-      S.sessions=S.sessions||[];
-      S.plan=S.plan||JSON.parse(JSON.stringify(DEFAULT_PLAN));
-      S.nutrition=S.nutrition||{};
-      S.settings=S.settings||{restTimer:90,notifications:false};
+      normalizeState();
     } else {
       S={
         profile:{startDate:tomorrowKey(),startWeight:54,targetWeight:63.5,schedule:[1,3,5]},
@@ -871,9 +885,22 @@ function load(){
       };
       migrateV1();
     }
+    _savedJson=stateJson();
   }catch(e){
     S={profile:{startDate:tomorrowKey(),startWeight:54,targetWeight:63.5,schedule:[1,3,5]},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),nutrition:{},settings:{restTimer:90,notifications:false}};
   }
+}
+function normalizeState(){
+  S.profile=S.profile||{};
+  S.profile.startDate=S.profile.startDate||tomorrowKey();
+  S.profile.startWeight=S.profile.startWeight??54;
+  S.profile.targetWeight=S.profile.targetWeight??63.5;
+  S.profile.schedule=S.profile.schedule||[1,3,5];
+  S.weights=S.weights||[];
+  S.sessions=S.sessions||[];
+  S.plan=S.plan||JSON.parse(JSON.stringify(DEFAULT_PLAN));
+  S.nutrition=S.nutrition||{};
+  S.settings=S.settings||{restTimer:90,notifications:false};
 }
 function migrateV1(){
   try{
@@ -1780,6 +1807,199 @@ function importData(){
 }
 
 /* ============================================================
+   GITHUB SYNC
+   Keeps a copy of S (same JSON as exportData(), no photos) in a
+   private repo via the contents API, both ways: local changes are
+   pushed, and on open the newer copy (by S.updatedAt) wins, so the
+   browser and the home-screen app end up with the same data.
+   Config (incl. token) lives in its own key, never in S.
+   ============================================================ */
+const KEY_SYNC='gymtracker_sync_v1';
+const SYNC_DELAY=4000, SYNC_RETRY=60000;
+let syncCfg=null, syncTimer=null, syncBusy=false, syncAgain=false;
+
+function loadSyncCfg(){
+  try{syncCfg=JSON.parse(localStorage.getItem(KEY_SYNC))||null;}catch(e){syncCfg=null;}
+}
+function storeSyncCfg(){
+  try{
+    if(syncCfg) localStorage.setItem(KEY_SYNC,JSON.stringify(syncCfg));
+    else localStorage.removeItem(KEY_SYNC);
+  }catch(e){}
+}
+function syncReady(){return !!(syncCfg&&syncCfg.token&&syncCfg.owner&&syncCfg.repo&&syncCfg.path);}
+
+function scheduleSync(delay=SYNC_DELAY){
+  if(!syncReady()) return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(()=>syncNow(false),delay);
+}
+function b64utf8(str){
+  const bytes=new TextEncoder().encode(str);
+  let bin='';
+  for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
+  return btoa(bin);
+}
+function unb64utf8(b64){
+  const bin=atob(b64.replace(/\s/g,''));
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function syncUrl(){
+  const path=syncCfg.path.split('/').map(encodeURIComponent).join('/');
+  return `https://api.github.com/repos/${encodeURIComponent(syncCfg.owner)}/${encodeURIComponent(syncCfg.repo)}/contents/${path}`;
+}
+function syncHeaders(){
+  return {'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+}
+// -> null if the file does not exist yet, else {sha, json, data}
+async function fetchRemote(){
+  const r=await fetch(syncUrl()+'?t='+Date.now(),{headers:syncHeaders(),cache:'no-store'});
+  if(r.status===404) return null;
+  if(!r.ok) throw {status:r.status};
+  const f=await r.json();
+  let json='',data=null;
+  try{json=unb64utf8(f.content||'');data=JSON.parse(json);}catch(e){}
+  return {sha:f.sha,json,data};
+}
+async function putRemote(json,sha){
+  const body={message:`Трекер: обновление ${todayKey()}`,content:b64utf8(json)};
+  if(sha) body.sha=sha;
+  return fetch(syncUrl(),{method:'PUT',headers:{...syncHeaders(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+}
+function localIsEmpty(){
+  return !S.updatedAt&&!S.weights.length&&!S.sessions.length&&!Object.keys(S.nutrition||{}).length;
+}
+function adoptRemote(remote){
+  S=remote.data; normalizeState();
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  _savedJson=stateJson();
+  syncCfg.sha=remote.sha; syncCfg.lastJson=JSON.stringify(S,null,2);
+  renderAll();
+  if($('tab-progress').classList.contains('active')) renderProgress();
+}
+function syncFail(e,manual){
+  const st=e&&e.status;
+  syncCfg.lastError=st===401?'Токен не подходит или истёк':
+    st===403||st===404?'Нет доступа к репозиторию (проверь владельца, имя и права токена)':
+    st?'Ошибка GitHub '+st:'Нет связи с GitHub';
+  if(st===401||st===403||st===404) delete syncCfg.sha;
+  storeSyncCfg();
+  if(manual) toast(syncCfg.lastError,'err');
+  else if(!st||st>=500) scheduleSync(SYNC_RETRY);
+}
+
+// Push local changes. On a sha conflict, fall back to pullSync (newer copy wins).
+async function syncNow(manual){
+  if(!syncReady()){ if(manual) toast('Сначала заполни настройки синхронизации','err'); return; }
+  clearTimeout(syncTimer);
+  if(syncBusy){syncAgain=true;return;}
+  const json=JSON.stringify(S,null,2);
+  if(!manual&&json===syncCfg.lastJson) return;
+  if(!navigator.onLine){
+    syncCfg.lastError='Нет сети, отправлю когда появится';storeSyncCfg();renderSyncStatus();
+    if(manual) toast('Нет сети','err');
+    return;
+  }
+  if(syncCfg.sha===undefined){ return pullSync(manual); }
+  syncBusy=true; renderSyncStatus('Отправляю…');
+  let conflict=false;
+  try{
+    const r=await putRemote(json,syncCfg.sha);
+    if(r.status===409||r.status===422) conflict=true;
+    else{
+      if(!r.ok) throw {status:r.status};
+      const data=await r.json();
+      syncCfg.sha=data.content&&data.content.sha;
+      syncCfg.lastJson=json; syncCfg.lastSync=Date.now(); syncCfg.lastError='';
+      storeSyncCfg();
+      if(manual) toast('Синхронизировано ✓','ok');
+    }
+  }catch(e){ syncFail(e,manual); }
+  finally{ syncBusy=false; renderSyncStatus(); }
+  if(conflict){ delete syncCfg.sha; return pullSync(manual); }
+  if(syncAgain){syncAgain=false;scheduleSync(500);}
+}
+
+// Compare with the copy on GitHub: take it if it is newer, otherwise push ours.
+// askUser: first setup on this device, let the person choose when both have data.
+async function pullSync(manual,askUser){
+  if(!syncReady()||syncBusy) return;
+  if(!navigator.onLine){ if(manual) toast('Нет сети','err'); return; }
+  syncBusy=true; renderSyncStatus('Проверяю GitHub…');
+  let push=false;
+  try{
+    const remote=await fetchRemote();
+    const localJson=JSON.stringify(S,null,2);
+    if(!remote||!remote.data){
+      syncCfg.sha=remote?remote.sha:null; push=true;
+    } else if(remote.json===localJson){
+      syncCfg.sha=remote.sha; syncCfg.lastJson=localJson; syncCfg.lastSync=Date.now(); syncCfg.lastError='';
+      if(manual) toast('Уже синхронизировано ✓','ok');
+    } else {
+      syncCfg.sha=remote.sha;
+      let takeRemote;
+      if(localIsEmpty()) takeRemote=true;
+      else if(askUser){
+        const when=remote.data.updatedAt?new Date(remote.data.updatedAt).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'неизвестно когда';
+        syncBusy=false;
+        takeRemote=await showConfirm(`На GitHub уже есть данные (изменены ${when}), и они отличаются от данных на этом устройстве. Загрузить данные с GitHub сюда? Данные на этом устройстве будут заменены. «Отмена» — наоборот, отправить данные с этого устройства на GitHub.`,'Загрузить с GitHub');
+        syncBusy=true;
+      }
+      else takeRemote=(remote.data.updatedAt||0)>(S.updatedAt||0);
+      if(takeRemote){
+        adoptRemote(remote);
+        syncCfg.lastSync=Date.now(); syncCfg.lastError='';
+        toast('Данные загружены с GitHub ✓','ok');
+      } else push=true;
+    }
+    storeSyncCfg();
+  }catch(e){ syncFail(e,manual); }
+  finally{ syncBusy=false; renderSyncStatus(); }
+  if(push) syncNow(manual);
+}
+
+function renderSyncStatus(text){
+  const el=$('syncStatus'); if(!el) return;
+  if(text){el.textContent=text;return;}
+  if(!syncReady()){el.textContent='Не настроено';return;}
+  let t=syncCfg.lastSync?'Последняя синхронизация: '+new Date(syncCfg.lastSync).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Ещё не синхронизировалось';
+  if(syncCfg.lastError) t+=' · ⚠ '+syncCfg.lastError;
+  el.textContent=t;
+}
+function renderSyncSettings(){
+  $('syncToken').value=syncCfg?syncCfg.token||'':'';
+  $('syncOwner').value=syncCfg?syncCfg.owner||'':'';
+  $('syncRepo').value=syncCfg?syncCfg.repo||'':'';
+  $('syncPath').value=syncCfg?syncCfg.path||'':'';
+  renderSyncStatus();
+}
+function saveSyncSettings(){
+  const token=$('syncToken').value.trim(), owner=$('syncOwner').value.trim(),
+        repo=$('syncRepo').value.trim(), path=($('syncPath').value.trim()||'gymtracker.json').replace(/^\/+/,'');
+  if(!token||!owner||!repo){toast('Заполни токен, владельца и репозиторий','err');return;}
+  const same=syncCfg&&syncCfg.owner===owner&&syncCfg.repo===repo&&syncCfg.path===path;
+  syncCfg={...(same?syncCfg:{}),token,owner,repo,path,lastError:''};
+  if(!same){delete syncCfg.sha;delete syncCfg.lastJson;delete syncCfg.lastSync;}
+  storeSyncCfg(); renderSyncSettings();
+  clearTimeout(syncTimer);
+  pullSync(true,!same);
+}
+async function disableSync(){
+  if(!syncCfg) return;
+  const ok=await showConfirm('Отключить синхронизацию и удалить токен с этого устройства?','Отключить');
+  if(!ok) return;
+  syncCfg=null; storeSyncCfg(); clearTimeout(syncTimer); renderSyncSettings();
+  toast('Синхронизация отключена');
+}
+window.addEventListener('online',()=>scheduleSync(1000));
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){ if(syncTimer) syncNow(false); }
+  else if(syncReady()&&!syncTimer) pullSync(false);
+});
+
+/* ============================================================
    NOTIFICATIONS
    ============================================================ */
 async function requestNotifications(){
@@ -1821,6 +2041,7 @@ function renderAll(){
    INIT
    ============================================================ */
 function init(){
+  loadSyncCfg();
   load();
 
   // Restore WIP day
@@ -1841,6 +2062,8 @@ function init(){
   // Ask the browser not to evict our data under storage pressure
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   renderAll();
+  renderSyncSettings();
+  pullSync(false); // take a newer copy from GitHub, or send ours
   checkWorkoutNotification();
 
   // Register service worker
