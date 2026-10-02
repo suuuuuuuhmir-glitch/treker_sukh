@@ -1838,6 +1838,8 @@ function init(){
   $('segB').classList.toggle('on',curDay==='B');
 
   repairHistoryData();
+  // Ask the browser not to evict our data under storage pressure
+  try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   renderAll();
   checkWorkoutNotification();
 
