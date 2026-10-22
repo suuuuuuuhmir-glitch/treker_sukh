@@ -412,9 +412,6 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .tonnage-box{background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:16px;padding:14px 16px;text-align:center;margin-top:12px}
 .tonnage-box .tv{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--accent-light)}
 .tonnage-box .tl{font-size:12px;color:var(--muted);margin-top:2px}
-.notif-bar{background:var(--surface2);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.notif-bar span{flex:1;font-size:13.5px}
-.notif-bar button{background:var(--accent);color:#1A0B00;border:none;border-radius:10px;padding:7px 12px;font-weight:700;font-size:13px;font-family:inherit;cursor:pointer;flex-shrink:0}
 .date-nav{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:8px 6px;margin-bottom:12px}
 .date-nav-btn{background:none;border:none;color:var(--accent-light);font-size:24px;cursor:pointer;padding:0 12px;line-height:1;display:flex;align-items:center}
 .date-nav-btn:disabled{color:var(--muted2);opacity:.5;cursor:default}
@@ -477,8 +474,6 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <div class="pbar-labels"><span id="heroStart">старт 54 кг</span><span id="heroLeft">+9.5 кг до цели</span></div>
     </div>
   </div>
-
-  <div id="notifBar"></div>
 
   <div class="today-grid">
   <div class="card">
@@ -1353,13 +1348,6 @@ function renderToday(){
   const todayW=S.weights.find(w=>w.date===todayKey());
   $('todayWeightDate').textContent=todayW?`сегодня: ${todayW.kg} кг`:'';
 
-  // Notification bar
-  const nb=$('notifBar');
-  if(!S.settings.notifications && 'Notification' in window && Notification.permission !== 'granted'){
-    nb.innerHTML=`<div class="notif-bar"><span>📲 Включить напоминания на Вт / Пт / Вс?</span><button onclick="requestNotifications()">Включить</button></div>`;
-  } else {
-    nb.innerHTML='';
-  }
 }
 function setChip(id,on){
   const e=$(id); if(!e)return;
@@ -2760,7 +2748,7 @@ function renderNotifSetting(){
   const granted=Notification.permission==='granted'&&S.settings.notifications;
   el.innerHTML=`<label class="lbl">Уведомления</label>
     <button class="btn ghost sm" style="width:100%" onclick="requestNotifications()">
-      ${granted?'✓ Уведомления включены':'Включить напоминания Вт / Пт / Вс'}
+      ${granted?'✓ Уведомления включены':'Включить напоминания о тренировках'}
     </button>`;
 }
 async function resetData(){
