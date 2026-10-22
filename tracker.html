@@ -219,6 +219,31 @@ textarea.food-in:focus{outline:2px solid var(--accent);outline-offset:0;border-c
 .food-entry .ds{color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
 .food-entry .kc{font-family:'Oswald',sans-serif;color:var(--accent-light);font-weight:600;font-size:13.5px;white-space:nowrap;text-align:right}
 .food-entry .kc small{display:block;color:var(--muted);font-weight:400;font-size:11.5px}
+.food-search{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:4px 4px 4px 12px}
+.food-search:focus-within{outline:2px solid var(--accent);border-color:transparent}
+.food-search .fs-ico{font-size:14px;opacity:.7}
+.food-search input[type=text]{flex:1;min-width:0;background:none;border:none;padding:10px 4px;font-size:16px;outline:none}
+.fs-clear{background:none;border:none;color:var(--muted);font-size:22px;line-height:1;padding:4px 6px;cursor:pointer}
+.fs-scan{background:var(--surface3);border:1px solid var(--line2);color:var(--text);border-radius:10px;width:42px;height:38px;font-size:20px;cursor:pointer;flex-shrink:0}
+.food-res{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:none;border:none;border-bottom:1px solid var(--line);padding:11px 2px;color:var(--text);font-family:inherit;text-align:left;cursor:pointer}
+.food-res:active{background:var(--surface2)}
+.food-res .nm{font-size:14.5px;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.food-res .br{color:var(--muted);font-weight:400;font-size:12.5px}
+.food-res .kp{font-family:'Oswald',sans-serif;font-size:13.5px;white-space:nowrap;text-align:right;color:var(--accent-light)}
+.food-res .kp small{display:block;color:var(--muted);font-size:11px;font-family:inherit}
+.food-text-toggle{background:none;border:none;color:var(--muted);font-family:inherit;font-size:13px;padding:12px 0 4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.food-entry{cursor:pointer}
+.fm-name{font-size:20px;font-weight:700;overflow-wrap:anywhere}
+.fm-grams{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0 10px}
+.fm-step{width:48px;height:48px;border-radius:14px;background:var(--surface2);border:1px solid var(--line2);color:var(--text);font-size:24px;cursor:pointer;flex-shrink:0}
+.fm-g{display:flex;align-items:baseline;gap:6px}
+.fm-g input[type=number]{width:120px;text-align:center;font-size:30px;padding:8px}
+.fm-g span{color:var(--muted);font-size:16px}
+.fm-res{text-align:center;font-size:16px;margin:6px 0 16px;color:var(--muted)}
+.fm-res b{font-family:'Oswald',sans-serif;font-size:24px;color:var(--text)}
+.scan-box{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.scan-box video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-line{position:absolute;left:12%;right:12%;top:50%;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent)}
 .food-del{background:none;border:none;color:var(--muted);font-size:18px;line-height:1;padding:0 2px;cursor:pointer}
 .macro-row{margin-bottom:14px}
 .macro-row .row{justify-content:space-between;font-size:13.5px;margin-bottom:7px}
@@ -583,14 +608,23 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <h3 class="card-title"><span class="ico o">✍️</span>Что съел</h3>
       <span class="muted" id="mealCountLabel" style="font-size:13px">0 записей</span>
     </div>
-    <textarea class="food-in" id="foodInput" rows="2" placeholder="гречка 200, курица 150, 3 яйца"></textarea>
-    <div class="food-quick" id="foodQuick"></div>
-    <div class="row" style="gap:8px">
-      <button class="btn sm" style="flex:1" onclick="foodPreview()">Посчитать</button>
-      <button class="btn ghost sm" id="foodAiBtn" style="flex:1;display:none" onclick="foodAiText()">🤖 ИИ</button>
-      <button class="btn ghost sm" id="foodPhotoBtn" style="flex:1;display:none" onclick="foodPhotoPick()">📷 Фото</button>
+    <div class="food-search">
+      <span class="fs-ico">🔍</span>
+      <input type="text" id="foodSearch" placeholder="Найти продукт" autocomplete="off" enterkeyhint="search" oninput="renderFoodSearch()" onkeydown="if(event.key==='Enter'){this.blur();}">
+      <button class="fs-clear" id="foodSearchClear" style="display:none" onclick="foodSearchClear()" aria-label="Очистить">×</button>
+      <button class="fs-scan" onclick="foodScanOpen()" aria-label="Сканировать штрихкод">▥</button>
     </div>
-    <div id="foodPreviewBox"></div>
+    <div id="foodResults"></div>
+    <button class="food-text-toggle" id="foodTextToggle" onclick="foodTextToggle()">✍️ Написать списком: «гречка 200, 3 яйца»</button>
+    <div id="foodTextBox" style="display:none">
+      <textarea class="food-in" id="foodInput" rows="2" placeholder="гречка 200, курица 150, 3 яйца"></textarea>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sm" style="flex:1" onclick="foodPreview()">Посчитать</button>
+        <button class="btn ghost sm" id="foodAiBtn" style="flex:1;display:none" onclick="foodAiText()">🤖 ИИ</button>
+        <button class="btn ghost sm" id="foodPhotoBtn" style="flex:1;display:none" onclick="foodPhotoPick()">📷 Фото</button>
+      </div>
+      <div id="foodPreviewBox"></div>
+    </div>
     <div id="foodLog" style="margin-top:6px"></div>
   </div>
 
@@ -813,6 +847,31 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
         <div><label class="lbl">Макс. повт</label><input type="number" id="progRepsMax" value="10" min="1" max="30"></div>
       </div>
       <button class="btn" onclick="addExercise()">+ Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FOOD PORTION MODAL ==================== -->
+<div class="modal-bg" id="foodModal" onclick="if(event.target===this)foodModalClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="fmBody"></div>
+  </div>
+</div>
+
+<!-- ==================== BARCODE SCANNER ==================== -->
+<div class="modal-bg" id="scanModal" onclick="if(event.target===this)foodScanClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="row between" style="margin-bottom:12px">
+      <h3 class="modal-title" style="margin-bottom:0">Штрихкод</h3>
+      <button class="btn ghost sm" onclick="foodScanClose()">Закрыть</button>
+    </div>
+    <div class="scan-box"><video id="scanVideo" playsinline muted></video><div class="scan-line"></div></div>
+    <div class="muted" id="scanStatus" style="font-size:13px;margin:10px 0 12px;text-align:center"></div>
+    <div class="row" style="gap:8px">
+      <input type="number" inputmode="numeric" id="scanCode" placeholder="или введи цифры" style="flex:1">
+      <button class="btn sm" onclick="foodScanManual()">Найти</button>
     </div>
   </div>
 </div>
@@ -1105,6 +1164,7 @@ function normalizeState(){
   }
   DAYS.forEach(d=>{S.plan[d]=S.plan[d]||[];});
   S.nutrition=S.nutrition||{};
+  S.myFoods=S.myFoods||[];
   S.settings=S.settings||{restTimer:90,notifications:false};
 }
 function migrateV1(){
@@ -1611,66 +1671,214 @@ function renderNutrition(){
    with a Claude API key the text or a photo can be sent to the model.
    ============================================================ */
 // k, p — ккал и белок на 100 г; d — обычная порция, г; pc — вес 1 шт, г; sp — вес 1 ложки, г
+// s — основы слов для разбора текста («гречка 200, 3 яйца»); поиск ищет и по названию
 const FOOD_DB = [
+  // Крупы и гарниры (готовые)
   {n:'Гречка',            s:['греч'],                       k:110,p:4.2, d:200},
   {n:'Рис',               s:['рис'],                        k:130,p:2.7, d:200},
-  {n:'Макароны',          s:['макарон','паста','спагет'],   k:140,p:5,   d:200},
+  {n:'Рис бурый',         s:['бурый рис','бурого рис'],     k:112,p:2.6, d:200},
+  {n:'Булгур',            s:['булгур'],                     k:83, p:3.1, d:200},
+  {n:'Киноа',             s:['киноа'],                      k:120,p:4.4, d:200},
+  {n:'Перловка',          s:['перлов'],                     k:109,p:3.1, d:200},
+  {n:'Пшённая каша',      s:['пшен'],                       k:90, p:3,   d:250},
+  {n:'Манная каша на молоке', s:['манн','манк'],            k:98, p:3,   d:250},
+  {n:'Макароны',          s:['макарон','паста','спагет','лапш'], k:140,p:5,d:200},
+  {n:'Макароны по-флотски', s:['флотск'],                   k:190,p:9,   d:300},
   {n:'Овсянка',           s:['овсян','геркулес'],           k:100,p:3.5, d:250},
+  {n:'Овсянка на молоке', s:['овсянка на молок','овсянку на молок'], k:115,p:4.5,d:250},
   {n:'Каша',              s:['каша','кашу','каши'],         k:110,p:3.5, d:250},
   {n:'Картофель',         s:['картоф','картош'],            k:90, p:2,   d:200},
+  {n:'Картофель жареный', s:['жареная картош','жареный картоф','жареной картош'], k:192,p:2.8,d:200},
   {n:'Пюре',              s:['пюре'],                       k:105,p:2.2, d:200},
   {n:'Картофель фри',     s:['фри'],                        k:300,p:3.5, d:120},
+  {n:'Фасоль',            s:['фасол'],                      k:123,p:7.8, d:150},
+  {n:'Чечевица',          s:['чечевиц'],                    k:116,p:9,   d:150},
+  {n:'Нут',               s:[' нут'],                       k:164,p:8.9, d:150},
+  {n:'Горошек зелёный',   s:['горошек','горошк'],           k:73, p:5,   d:80},
+  {n:'Кукуруза',          s:['кукуруз'],                    k:100,p:3,   d:80},
+  // Сухие крупы (если взвешиваешь до варки)
+  {n:'Гречка сухая',      s:['сухой греч','сухая греч','сухую греч'], k:313,p:12.6,d:80},
+  {n:'Рис сухой',         s:['сухой рис','сухого рис'],     k:344,p:6.7, d:80},
+  {n:'Макароны сухие',    s:['сухие макарон','сухих макарон'], k:350,p:11,d:80},
+  {n:'Овсяные хлопья сухие', s:['хлопья овс','овсяные хлоп','овсяных хлоп'], k:352,p:12.3,d:60},
+  {n:'Мюсли / гранола',   s:['мюсли','гранол'],             k:400,p:9,   d:60},
+  {n:'Кукурузные хлопья', s:['хлопь'],                      k:360,p:7,   d:40},
+  {n:'Лапша быстрого приготовления', s:['доширак','роллтон','бичпакет','быстрого приг'], k:440,p:9,d:90,pc:90},
+  // Хлеб и выпечка
   {n:'Хлеб',              s:['хлеб','батон','тост'],        k:250,p:8,   d:60, pc:30},
+  {n:'Хлеб ржаной',       s:['ржан','бородин','черный хлеб','черного хлеб'], k:210,p:6.8,d:60,pc:30},
+  {n:'Хлебцы',            s:['хлебц'],                      k:360,p:11,  d:20, pc:10},
   {n:'Лаваш',             s:['лаваш'],                      k:275,p:9,   d:80},
+  {n:'Тортилья',          s:['тортил'],                     k:300,p:8,   d:60, pc:60},
+  {n:'Булочка',           s:['булк','булоч'],               k:300,p:7.5, d:60, pc:60},
+  {n:'Круассан',          s:['круасс'],                     k:400,p:8,   d:60, pc:60},
+  {n:'Пирожок',           s:['пирож','пирог'],              k:250,p:6,   d:70, pc:70},
+  {n:'Беляш / чебурек',   s:['беляш','чебурек'],            k:280,p:9,   d:120,pc:120},
+  {n:'Сушки / сухари',    s:['сушк','сухар'],               k:340,p:10,  d:30},
+  {n:'Блины',             s:['блин','олад'],                k:230,p:6,   d:150,pc:50},
+  {n:'Блинчик с мясом',   s:['блинчик с мяс','блинчики с мяс'], k:200,p:9,d:160,pc:80},
+  // Мясо и птица (готовое)
   {n:'Курица',            s:['куриц','курин','кура','грудк','филе'], k:165,p:31,d:150},
+  {n:'Куриная грудка сырая', s:['сырая грудк','сырой грудк','сырое филе'], k:113,p:23.6,d:200},
   {n:'Куриные бёдра',     s:['бедр','бедер','окороч','голен'], k:210,p:25,d:200},
+  {n:'Курица гриль',      s:['гриль'],                      k:210,p:26,  d:200},
+  {n:'Куриные крылья',    s:['крыл'],                       k:230,p:19,  d:150,pc:40},
+  {n:'Наггетсы',          s:['наггет'],                     k:280,p:15,  d:100,pc:17},
+  {n:'Куриные сердечки / желудки', s:['сердеч','желуд','пупк'], k:150,p:18,d:150},
+  {n:'Печень',            s:['печенк','печени'],            k:135,p:20,  d:150},
   {n:'Говядина',          s:['говяд','стейк'],              k:220,p:26,  d:150},
+  {n:'Тушёнка',           s:['тушенк'],                     k:220,p:15,  d:120},
+  {n:'Гуляш',             s:['гуляш'],                      k:150,p:14,  d:250},
+  {n:'Бефстроганов',      s:['строганов'],                  k:200,p:16,  d:200},
   {n:'Свинина',           s:['свин'],                       k:260,p:25,  d:150},
+  {n:'Шашлык',            s:['шашлык'],                     k:250,p:22,  d:200},
+  {n:'Баранина',          s:['баран'],                      k:250,p:22,  d:150},
+  {n:'Утка',              s:['утка','утки','утку','утятин'], k:300,p:19, d:150},
   {n:'Индейка',           s:['индей','индюш'],              k:150,p:29,  d:150},
-  {n:'Котлета',           s:['котлет','тефтел','фрикадел'], k:230,p:17,  d:160, pc:80},
+  {n:'Котлета',           s:['котлет','тефтел','фрикадел'], k:230,p:17,  d:160,pc:80},
+  {n:'Котлета куриная',   s:['куриная котлет','куриные котлет','куриную котлет'], k:190,p:18,d:160,pc:80},
   {n:'Фарш',              s:['фарш'],                       k:250,p:17,  d:150},
+  {n:'Голубцы',           s:['голубц'],                     k:100,p:6,   d:250,pc:120},
+  {n:'Ветчина',           s:['ветчин'],                     k:270,p:14,  d:50, pc:20},
+  {n:'Бекон',             s:['бекон'],                      k:500,p:23,  d:30, pc:10},
+  {n:'Сосиски',           s:['сосис','сардел'],             k:260,p:11,  d:100,pc:50},
+  {n:'Колбаса',           s:['колбас'],                     k:300,p:13,  d:50, pc:15},
+  {n:'Колбаса варёная',   s:['докторск','вареная колбас','вареной колбас'], k:257,p:13,d:50,pc:15},
+  {n:'Колбаса копчёная',  s:['копченая колбас','копченой колбас','сервелат','салями'], k:450,p:18,d:40,pc:10},
+  {n:'Пельмени',          s:['пельмен'],                    k:250,p:11,  d:250,pc:12},
+  {n:'Вареники с картошкой', s:['вареник'],                 k:150,p:4,   d:250,pc:15},
+  {n:'Манты / хинкали',   s:['манты','мантов','хинкал'],    k:220,p:10,  d:250,pc:50},
+  // Рыба и морепродукты
   {n:'Рыба',              s:['рыб','минта','треск','хек'],  k:120,p:22,  d:150},
   {n:'Лосось',            s:['лосос','семг','форел'],       k:200,p:20,  d:150},
+  {n:'Горбуша',           s:['горбуш'],                     k:140,p:21,  d:150},
+  {n:'Скумбрия',          s:['скумбр'],                     k:190,p:18,  d:150},
+  {n:'Сельдь',            s:['сельд','селед'],              k:160,p:17,  d:80},
   {n:'Тунец',             s:['тунец','тунц'],               k:110,p:24,  d:120},
-  {n:'Яйца',              s:['яйц','яиц','яичниц','омлет'], k:155,p:13,  d:110, pc:55},
-  {n:'Сосиски',           s:['сосис','сардел'],             k:260,p:11,  d:100, pc:50},
-  {n:'Колбаса',           s:['колбас'],                     k:300,p:13,  d:50,  pc:15},
-  {n:'Пельмени',          s:['пельмен','вареник'],          k:250,p:11,  d:250, pc:12},
+  {n:'Шпроты',            s:['шпрот'],                      k:360,p:17,  d:80},
+  {n:'Креветки',          s:['кревет'],                     k:95, p:20,  d:150},
+  {n:'Кальмар',           s:['кальмар'],                    k:110,p:18,  d:150},
+  {n:'Крабовые палочки',  s:['крабов'],                     k:90, p:6,   d:100,pc:17},
+  {n:'Икра',              s:[' икра',' икры',' икру'],      k:250,p:25,  d:20, sp:15},
+  {n:'Роллы / суши',      s:['ролл','суши'],                k:150,p:6,   d:250,pc:30},
+  // Яйца и молочное
+  {n:'Яйца',              s:['яйц','яиц','яичниц','омлет'], k:155,p:13,  d:110,pc:55},
+  {n:'Яичный белок',      s:['яичный белок','яичные белки'], k:48,p:11,  d:100,pc:33},
   {n:'Творог',            s:['творог','творож'],            k:120,p:17,  d:200},
-  {n:'Сырники',           s:['сырник'],                     k:220,p:14,  d:180, pc:60},
-  {n:'Сыр',               s:['сыр'],                        k:350,p:25,  d:30,  pc:20},
+  {n:'Творог 0%',         s:['обезжиренный твор','обезжиренного твор'], k:70,p:17,d:200},
+  {n:'Творог 9%',         s:[],                             k:160,p:16,  d:200},
+  {n:'Творожный сырок',   s:['сырок','сырки','сырков'],     k:340,p:8,   d:45, pc:45},
+  {n:'Творожок десертный',s:['творожок','даниссимо','растишк'], k:130,p:8,d:100,pc:100},
+  {n:'Сырники',           s:['сырник'],                     k:220,p:14,  d:180,pc:60},
+  {n:'Запеканка творожная', s:['запеканк'],                 k:170,p:14,  d:150},
+  {n:'Сыр',               s:['сыр'],                        k:350,p:25,  d:30, pc:20},
+  {n:'Моцарелла',         s:['моцарел'],                    k:250,p:18,  d:50},
+  {n:'Брынза / фета',     s:['брынз','фета','фетакс'],      k:260,p:17,  d:50},
+  {n:'Сыр плавленый',     s:['плавлен'],                    k:250,p:10,  d:30, pc:20},
+  {n:'Сыр адыгейский',    s:['адыгей'],                     k:240,p:19,  d:50},
   {n:'Молоко',            s:['молок'],                      k:52, p:2.9, d:250},
-  {n:'Кефир',             s:['кефир','ряженк','айран'],     k:50, p:3,   d:250},
-  {n:'Йогурт',            s:['йогурт'],                     k:80, p:4,   d:150, pc:150},
-  {n:'Сметана',           s:['сметан'],                     k:200,p:2.5, d:30,  sp:20},
-  {n:'Масло сливочное',   s:['масл','сливоч'],              k:740,p:0.5, d:10,  sp:10},
-  {n:'Масло растительное',s:['оливк','подсолн','растит'],   k:900,p:0,   d:10,  sp:10},
-  {n:'Арахисовая паста',  s:['арахисов','паста арах'],      k:600,p:25,  d:30,  sp:20},
+  {n:'Молоко 3,2%',       s:[],                             k:60, p:2.9, d:250},
+  {n:'Кефир',             s:['кефир','айран'],              k:50, p:3,   d:250},
+  {n:'Ряженка',           s:['ряженк'],                     k:67, p:2.9, d:250},
+  {n:'Йогурт',            s:['йогурт'],                     k:80, p:4,   d:150,pc:150},
+  {n:'Греческий йогурт',  s:['греческ'],                    k:100,p:8,   d:150,pc:140},
+  {n:'Скир',              s:['скир'],                       k:60, p:11,  d:150,pc:140},
+  {n:'Сметана',           s:['сметан'],                     k:200,p:2.5, d:30, sp:20},
+  {n:'Сливки 10%',        s:['сливк'],                      k:120,p:3,   d:30, sp:15},
+  {n:'Сгущёнка',          s:['сгущ'],                       k:320,p:7,   d:30, sp:25},
+  {n:'Мороженое',         s:['морожен','пломбир'],          k:230,p:3.5, d:80, pc:80},
+  {n:'Молочный коктейль', s:['молочный коктейл','милкшейк'],k:90, p:3,   d:300},
+  // Жиры, соусы, орехи
+  {n:'Масло сливочное',   s:['масл','сливоч'],              k:740,p:0.5, d:10, sp:10},
+  {n:'Масло растительное',s:['оливк','подсолн','растит'],   k:900,p:0,   d:10, sp:10},
+  {n:'Майонез',           s:['майон'],                      k:620,p:1,   d:15, sp:15},
+  {n:'Кетчуп',            s:['кетчуп'],                     k:100,p:1.5, d:20, sp:15},
+  {n:'Хумус',             s:['хумус'],                      k:170,p:8,   d:50, sp:20},
+  {n:'Арахисовая паста',  s:['арахисов','паста арах'],      k:600,p:25,  d:30, sp:20},
+  {n:'Нутелла',           s:['нутелл'],                     k:540,p:6,   d:20, sp:20},
   {n:'Орехи',             s:['орех','арахис','миндал','кешью','фундук'], k:620,p:20,d:30},
-  {n:'Банан',             s:['банан'],                      k:90, p:1.1, d:120, pc:120},
-  {n:'Яблоко',            s:['яблок'],                      k:50, p:0.4, d:150, pc:150},
-  {n:'Фрукты',            s:['груш','апельс','мандар','фрукт','виноград'], k:50,p:0.7,d:150,pc:130},
-  {n:'Сухофрукты',        s:['сухофр','изюм','кураг','финик','чернослив'], k:280,p:3,d:50},
-  {n:'Мёд',               s:['мед','варен','джем'],         k:320,p:0.5, d:20,  sp:10},
-  {n:'Сахар',             s:['сахар'],                      k:400,p:0,   d:10,  sp:7},
-  {n:'Шоколад',           s:['шоколад'],                    k:540,p:6,   d:25},
-  {n:'Печенье',           s:['печень','вафл','пряник'],     k:450,p:7,   d:50,  pc:12},
-  {n:'Блины',             s:['блин','олад'],                k:230,p:6,   d:150, pc:50},
-  {n:'Шаурма',            s:['шаурм','шаверм'],             k:220,p:10,  d:350, pc:350},
-  {n:'Пицца',             s:['пицц'],                       k:260,p:11,  d:200, pc:100},
-  {n:'Бургер',            s:['бургер','чизбург','гамбург'], k:250,p:13,  d:220, pc:220},
-  {n:'Плов',              s:['плов'],                       k:180,p:7,   d:300},
-  {n:'Суп',               s:['суп','борщ','щи ','солянк','бульон','рассольн'], k:50,p:2.5,d:300},
+  {n:'Семечки',           s:['семечк','семена'],            k:580,p:20,  d:30},
+  // Овощи
+  {n:'Овощи',             s:['овощ'],                       k:30, p:1.5, d:150},
+  {n:'Огурец',            s:['огур'],                       k:15, p:0.8, d:120,pc:120},
+  {n:'Помидор',           s:['помид','томат','черри'],      k:20, p:1,   d:120,pc:120},
+  {n:'Капуста',           s:['капуст'],                     k:27, p:1.8, d:100},
+  {n:'Морковь',           s:['морков'],                     k:35, p:1.3, d:80, pc:80},
+  {n:'Брокколи',          s:['брокол'],                     k:34, p:2.8, d:150},
+  {n:'Перец болгарский',  s:['перец','перц'],               k:26, p:1.3, d:100,pc:150},
+  {n:'Кабачок',           s:['кабач','цукин'],              k:24, p:0.6, d:150},
+  {n:'Баклажан',          s:['баклаж'],                     k:24, p:1.2, d:150},
+  {n:'Лук',               s:[' лук'],                       k:40, p:1.4, d:50},
+  {n:'Свёкла',            s:['свекл'],                      k:49, p:1.8, d:100},
+  {n:'Грибы',             s:['гриб','шампин'],              k:30, p:4,   d:150},
+  {n:'Авокадо',           s:['авокад'],                     k:160,p:2,   d:100,pc:150},
+  // Салаты и блюда
   {n:'Салат',             s:['салат'],                      k:80, p:2,   d:150},
-  {n:'Овощи',             s:['овощ','огур','помид','томат','капуст','морков','брокол'], k:30,p:1.5,d:150},
-  {n:'Гейнер',            s:['гейнер','serious','сириус'],  k:374,p:15,  d:167, sp:167},
-  {n:'Протеин',           s:['протеин','сывороточ'],        k:380,p:75,  d:30,  sp:30},
+  {n:'Оливье',            s:['оливье'],                     k:190,p:5,   d:200},
+  {n:'Винегрет',          s:['винегрет'],                   k:80, p:1.5, d:200},
+  {n:'Цезарь',            s:['цезар'],                      k:200,p:9,   d:200},
+  {n:'Селёдка под шубой', s:['шуб'],                        k:190,p:7,   d:200},
+  {n:'Плов',              s:['плов'],                       k:180,p:7,   d:300},
+  {n:'Лазанья',           s:['лазань'],                     k:160,p:9,   d:300},
+  {n:'Паста карбонара',   s:['карбонар'],                   k:200,p:8,   d:300},
+  {n:'Жаркое',            s:['жаркое'],                     k:120,p:8,   d:300},
+  {n:'Суп',               s:['суп','бульон','рассольн'],    k:50, p:2.5, d:300},
+  {n:'Борщ',              s:['борщ'],                       k:55, p:2.5, d:300},
+  {n:'Щи',                s:[' щи '],                       k:40, p:2,   d:300},
+  {n:'Солянка',           s:['солянк'],                     k:70, p:4,   d:300},
+  {n:'Куриный суп с лапшой', s:['суп лапш','лапшич'],       k:50, p:3.5, d:300},
+  {n:'Гороховый суп',     s:['горохов'],                    k:65, p:4,   d:300},
+  {n:'Харчо',             s:['харчо'],                      k:70, p:4,   d:300},
+  {n:'Уха',               s:[' уха',' уху',' ухи'],         k:45, p:5,   d:300},
+  {n:'Окрошка',           s:['окрошк'],                     k:60, p:2.5, d:300},
+  // Фастфуд
+  {n:'Шаурма',            s:['шаурм','шаверм'],             k:220,p:10,  d:350,pc:350},
+  {n:'Пицца',             s:['пицц'],                       k:260,p:11,  d:200,pc:100},
+  {n:'Бургер',            s:['бургер','чизбург','гамбург'], k:250,p:13,  d:220,pc:220},
+  {n:'Хот-дог',           s:['хот-дог','хотдог','хот дог'], k:260,p:10,  d:150,pc:150},
+  {n:'Чипсы',             s:['чипс'],                       k:530,p:6,   d:50},
+  {n:'Сухарики',          s:['сухарик','кириешк'],          k:400,p:10,  d:40},
+  {n:'Попкорн',           s:['попкорн'],                    k:400,p:9,   d:50},
+  // Фрукты и ягоды
+  {n:'Банан',             s:['банан'],                      k:90, p:1.1, d:120,pc:120},
+  {n:'Яблоко',            s:['яблок'],                      k:50, p:0.4, d:150,pc:150},
+  {n:'Фрукты',            s:['фрукт'],                      k:50, p:0.7, d:150,pc:130},
+  {n:'Груша',             s:['груш'],                       k:47, p:0.4, d:150,pc:150},
+  {n:'Апельсин',          s:['апельс'],                     k:43, p:0.9, d:180,pc:180},
+  {n:'Мандарин',          s:['мандар'],                     k:38, p:0.8, d:70, pc:70},
+  {n:'Виноград',          s:['виноград'],                   k:70, p:0.6, d:150},
+  {n:'Киви',              s:['киви'],                       k:50, p:1,   d:75, pc:75},
+  {n:'Персик / нектарин', s:['персик','нектар'],            k:45, p:0.9, d:130,pc:130},
+  {n:'Арбуз',             s:['арбуз'],                      k:30, p:0.6, d:300},
+  {n:'Дыня',              s:['дын'],                        k:35, p:0.6, d:250},
+  {n:'Хурма',             s:['хурм'],                       k:67, p:0.5, d:200,pc:200},
+  {n:'Ананас',            s:['ананас'],                     k:52, p:0.4, d:150},
+  {n:'Ягоды',             s:['ягод','клубник','малин','черник','голубик','вишн','черешн'], k:45,p:1,d:150},
+  {n:'Сухофрукты',        s:['сухофр','изюм','кураг','финик','чернослив'], k:280,p:3,d:50},
+  // Сладкое
+  {n:'Мёд',               s:['мед','варен','джем'],         k:320,p:0.5, d:20, sp:10},
+  {n:'Сахар',             s:['сахар'],                      k:400,p:0,   d:10, sp:7},
+  {n:'Шоколад',           s:['шоколад'],                    k:540,p:6,   d:25},
+  {n:'Шоколадный батончик', s:['батончик','сникерс','марс','твикс','баунти'], k:480,p:7,d:50,pc:50},
+  {n:'Протеиновый батончик', s:['протеиновый батон','протеиновые батон'], k:350,p:30,d:50,pc:50},
+  {n:'Конфеты',           s:['конфет'],                     k:450,p:4,   d:30, pc:12},
+  {n:'Печенье',           s:['печень','вафл','пряник'],     k:450,p:7,   d:50, pc:12},
+  {n:'Торт',              s:['торт'],                       k:380,p:5,   d:100},
+  {n:'Кекс / маффин',     s:['кекс','маффин'],              k:390,p:6,   d:80, pc:80},
+  {n:'Пончик',            s:['пончик'],                     k:300,p:6,   d:60, pc:60},
+  {n:'Зефир / мармелад',  s:['зефир','пастил','мармелад'],  k:320,p:0.8, d:30, pc:30},
+  {n:'Халва',             s:['халв'],                       k:520,p:12,  d:30},
+  // Спортпит
+  {n:'Гейнер',            s:['гейнер','serious','сириус'],  k:374,p:15,  d:167,sp:167},
+  {n:'Протеин',           s:['протеин','сывороточ'],        k:380,p:75,  d:30, sp:30},
+  // Напитки
   {n:'Сок',               s:['сок','морс','компот'],        k:45, p:0.5, d:250},
   {n:'Газировка',         s:['кола','газир','лимонад','пепси','фанта','энергет'], k:42,p:0,d:330},
-  {n:'Капучино',          s:['капучин','латте','какао'],    k:45, p:2.2, d:300},
+  {n:'Квас',              s:['квас'],                       k:27, p:0.2, d:500},
+  {n:'Капучино',          s:['капучин','латте','какао','раф'], k:45,p:2.2,d:300},
+  {n:'Пиво',              s:['пиво','пива'],                k:43, p:0.5, d:500},
   {n:'Чай / кофе / вода', s:['чай','кофе','вода','воды','воду'], k:0,p:0,d:250},
 ];
-const FOOD_QUICK = ['гречка 200','рис 200','курица 150','бёдра 200','3 яйца','творог 200','молоко 250','банан','хлеб 2 шт','орехи 30','гейнер'];
 const GAINER_TICK = {k:600,p:25};   // отметка «Гейнер» в добавках = полпорции на молоке
 
 let foodDraft=null;   // {text, items, src}
@@ -1730,15 +1938,10 @@ function parseFoodPiece(raw){
     else g=v;                                          // "гречка 200"
   } else if(half) g=best.d/2;
   g=Math.round(g);
-  return {n:best.n,g,k:Math.round(best.k*g/100),p:round1(best.p*g/100)};
+  return {n:best.n,g,k:Math.round(best.k*g/100),p:round1(best.p*g/100),k100:best.k,p100:best.p};
 }
 function cap(x){x=String(x).trim();return x.charAt(0).toUpperCase()+x.slice(1);}
 
-function foodQuickAdd(txt){
-  const el=$('foodInput');
-  el.value=el.value.trim()?el.value.trim().replace(/,$/,'')+', '+txt:txt;
-  el.focus();
-}
 function foodPreview(){
   const text=$('foodInput').value.trim();
   if(!text){toast('Напиши, что съел','err');return;}
@@ -1798,21 +2001,335 @@ function renderFoodLog(){
   $('nLeft').textContent=(lk<=0&&lp<=0)?'Цель на день выполнена 💪':
     'Осталось: '+(lk>0?lk+' ккал':'калории ✓')+' · '+(lp>0?lp+' г белка':'белок ✓');
   $('mealCountLabel').textContent=log.length+' '+plural(log.length,'запись','записи','записей');
-  $('foodQuick').innerHTML=FOOD_QUICK.map(q=>`<button class="chip" onclick="foodQuickAdd('${q}')">${q}</button>`).join('');
+  renderFoodSearch();
   const ai=!!aiKey();
   $('foodAiBtn').style.display=ai?'':'none';
   $('foodPhotoBtn').style.display=ai?'':'none';
-  const rows=log.map(e=>`<div class="food-entry">
+  const rows=log.map(e=>`<div class="food-entry" onclick="foodEdit('${e.id}')">
       <div class="tm">${esc(e.t||'')}</div>
       <div class="bd"><div class="tx">${esc(e.text)}${e.src==='ai'?' <span class="muted" style="font-weight:400;font-size:11px">ИИ</span>':''}</div>
-        <div class="ds">${esc((e.items||[]).map(x=>x.n+(x.g?' '+x.g+' г':'')).join(', '))}</div></div>
+        <div class="ds">${esc((e.items||[]).length===1&&e.items[0].n===e.text?(e.items[0].g?e.items[0].g+' г':''):(e.items||[]).map(x=>x.n+(x.g?' '+x.g+' г':'')).join(', '))}</div></div>
       <div class="kc">${e.k} ккал<small>${Math.round(e.p)} г белка</small></div>
-      <button class="food-del" onclick="foodDelete('${e.id}')" aria-label="Удалить">×</button>
+      <button class="food-del" onclick="event.stopPropagation();foodDelete('${e.id}')" aria-label="Удалить">×</button>
     </div>`);
   if(n.gainer) rows.push(`<div class="food-entry"><div class="tm"></div><div class="bd"><div class="tx">Гейнер</div><div class="ds">отмечен в добавках</div></div><div class="kc">${GAINER_TICK.k} ккал<small>${GAINER_TICK.p} г белка</small></div><span style="width:22px"></span></div>`);
   $('foodLog').innerHTML=rows.length?rows.join(''):'<div class="muted" style="font-size:13px;padding:8px 0">Пока ничего не записано.</div>';
 }
 function plural(n,a,b,c){const m10=n%10,m100=n%100;return m10===1&&m100!==11?a:(m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c);}
+
+/* ---------- Search: built-in DB + my products + Open Food Facts ----------
+   S.myFoods = [{id,n,b?,k,p,d,pc?,code?,src}] — own products and the ones found online,
+   so they show up in search and scan without internet next time.
+   Log items added from search keep k100/p100, so the portion can be edited later. */
+const OFF_FIELDS='code,product_name,product_name_ru,brands,nutriments,serving_quantity';
+let foodSel=null;      // {food, g, editId}
+let foodOnline=null;   // {q, state:'load'|'ok'|'err', items}
+let foodTextOpen=false;
+
+function myFoods(){return S.myFoods||(S.myFoods=[]);}
+function foodSearchList(q){
+  const words=foodNorm(q).trim().split(/\s+/).filter(Boolean);
+  if(!words.length)return [];
+  const out=[];
+  const score=(f,mine)=>{
+    const nm=foodNorm(f.n+(f.b?' '+f.b:'')), nameWords=nm.trim().split(/[\s\/(),.-]+/);
+    let sc=0;
+    for(const w of words){
+      let ws=0;
+      if(nameWords.some(x=>x.startsWith(w))) ws=3;
+      else if(nm.includes(w)) ws=2;
+      else if((f.s||[]).some(st=>{st=st.trim();return st.length>=3&&(w.startsWith(st)||st.startsWith(w));})) ws=1;
+      if(!ws)return 0;
+      sc+=ws;
+    }
+    if(nm.trim().startsWith(words[0])) sc+=2;
+    return sc+(mine?1:0);
+  };
+  myFoods().forEach(f=>{const sc=score(f,true);if(sc)out.push({f,sc});});
+  FOOD_DB.forEach(f=>{const sc=score(f,false);if(sc)out.push({f,sc});});
+  out.sort((a,b)=>b.sc-a.sc||a.f.n.length-b.f.n.length);
+  return out.slice(0,25).map(x=>x.f);
+}
+// What you eat most often in the last 30 days, with the last portion
+function foodFrequent(){
+  const fd=new Date(Date.now()-30*864e5), from=fd.getFullYear()+'-'+String(fd.getMonth()+1).padStart(2,'0')+'-'+String(fd.getDate()).padStart(2,'0');
+  const map={};
+  Object.keys(S.nutrition).sort().forEach(d=>{
+    if(d<from)return;
+    (S.nutrition[d].log||[]).forEach(e=>(e.items||[]).forEach(it=>{
+      const per=itemPer100(it); if(!per)return;
+      const key=it.n.toLowerCase();
+      const m=map[key]||(map[key]={n:it.n,b:it.b,cnt:0});
+      m.cnt++; m.k=per.k; m.p=per.p; m.d=it.g; m.last=d+(e.t||'');
+    }));
+  });
+  return Object.values(map).sort((a,b)=>b.cnt-a.cnt||(b.last>a.last?1:-1)).slice(0,8);
+}
+function itemPer100(it){
+  if(it.k100!=null)return {k:it.k100,p:it.p100||0};
+  if(it.g>0&&!it.unk)return {k:Math.round(it.k/it.g*100),p:round1(it.p/it.g*100)};
+  return null;
+}
+function foodBrand(f){return f.b&&!f.n.toLowerCase().includes(f.b.toLowerCase())?f.b:'';}
+function foodRow(f,i,list){
+  const b=foodBrand(f);
+  return `<button class="food-res" onclick="foodPickFrom('${list}',${i})">
+    <div class="nm">${esc(f.n)}${b?` <span class="br">${esc(b)}</span>`:''}</div>
+    <div class="kp">${f.k} ккал · ${round1(f.p)} б<small>на 100 г</small></div></button>`;
+}
+let foodLists={};   // index → food for onclick handlers
+function renderFoodSearch(){
+  const q=$('foodSearch').value.trim();
+  const box=$('foodResults');
+  $('foodSearchClear').style.display=q?'':'none';
+  if(!q){
+    const fr=foodFrequent();
+    foodLists.fr=fr;
+    box.innerHTML=fr.length
+      ?`<div class="section-lbl" style="margin:12px 0 4px">Часто ешь</div>`+fr.map((f,i)=>`<button class="food-res" onclick="foodPickFrom('fr',${i})">
+          <div class="nm">${esc(f.n)}</div><div class="kp">${f.d} г<small>${Math.round(f.k*f.d/100)} ккал</small></div></button>`).join('')
+      :`<div class="muted" style="font-size:12.5px;margin-top:10px">Начни вводить название — например «греч», «творог», «шаурма». Магазинные продукты ищутся по названию или штрихкоду 📷.</div>`;
+    return;
+  }
+  const loc=foodSearchList(q);
+  foodLists.loc=loc;
+  let h=loc.map((f,i)=>foodRow(f,i,'loc')).join('');
+  if(!loc.length) h=`<div class="muted" style="font-size:13px;padding:10px 0 2px">В своей базе не нашёл «${esc(q)}».</div>`;
+  const on=foodOnline&&foodOnline.q===q?foodOnline:null;
+  if(on&&on.state==='ok'){
+    foodLists.off=on.items;
+    h+=`<div class="section-lbl" style="margin:14px 0 4px">Магазинные продукты</div>`+
+      (on.items.length?on.items.map((f,i)=>foodRow(f,i,'off')).join(''):'<div class="muted" style="font-size:13px;padding:6px 0">Ничего не нашлось. Попробуй короче или по-другому, или отсканируй штрихкод.</div>')+
+      `<div class="muted" style="font-size:11px;margin-top:6px">Данные: Open Food Facts</div>`;
+  } else if(on&&on.state==='load'){
+    h+=`<div class="muted" style="font-size:13px;padding:12px 0">🌐 Ищу в магазинных продуктах…</div>`;
+  } else {
+    if(on&&on.state==='err') h+=`<div class="muted" style="font-size:12.5px;padding:8px 0 0;color:var(--danger)">Не получилось — нет интернета или база занята, попробуй ещё раз.</div>`;
+    h+=`<button class="btn ghost sm" style="width:100%;margin-top:10px" onclick="foodSearchOnline()">🌐 Искать «${esc(q)}» в магазинных продуктах</button>`;
+  }
+  h+=`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="foodCustomOpen()">＋ Свой продукт с упаковки</button>`;
+  box.innerHTML=h;
+}
+function foodSearchClear(){$('foodSearch').value='';foodOnline=null;renderFoodSearch();}
+function offFood(pr){
+  const nu=pr.nutriments||{};
+  let k=nu['energy-kcal_100g'];
+  if(k==null&&nu.energy_100g!=null) k=nu.energy_100g/4.184;
+  const n=(pr.product_name_ru||pr.product_name||'').trim();
+  if(k==null||!n)return null;
+  const sq=parseFloat(pr.serving_quantity);
+  return {id:'off'+(pr.code||n),n:cap(n),b:(pr.brands||'').split(',')[0].trim(),k:Math.round(k),p:round1(parseFloat(nu.proteins_100g)||0),d:sq>0&&sq<=500?Math.round(sq):100,code:pr.code||'',src:'off'};
+}
+async function foodSearchOnline(){
+  const q=$('foodSearch').value.trim(); if(!q)return;
+  foodOnline={q,state:'load',items:[]}; renderFoodSearch();
+  try{
+    const url='https://world.openfoodfacts.org/cgi/search.pl?search_simple=1&action=process&json=1&page_size=30&lc=ru&fields='+OFF_FIELDS+'&search_terms='+encodeURIComponent(q);
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    const seen={};
+    const items=(data.products||[]).map(offFood).filter(f=>{
+      if(!f)return false;
+      const key=(f.n+'|'+f.b).toLowerCase();
+      if(seen[key])return false; seen[key]=1; return true;
+    }).slice(0,20);
+    if(foodOnline&&foodOnline.q===q) foodOnline={q,state:'ok',items};
+  }catch(e){
+    if(foodOnline&&foodOnline.q===q) foodOnline={q,state:'err',items:[]};
+  }
+  if($('foodSearch').value.trim()===q) renderFoodSearch();
+}
+function foodPickFrom(list,i){
+  const f=(foodLists[list]||[])[i]; if(!f)return;
+  foodPortionOpen(f,f.d||100);
+}
+
+/* ---------- Portion sheet ---------- */
+function foodPortionOpen(food,g,editId){
+  foodSel={food,g:Math.round(g)||100,editId:editId||null};
+  renderFoodPortion();
+  $('foodModal').classList.add('active');
+}
+function foodModalClose(){$('foodModal').classList.remove('active');foodSel=null;}
+function renderFoodPortion(){
+  const {food:f,g,editId}=foodSel;
+  const opts=[];
+  if(f.pc){[1,2,3].forEach(c=>opts.push({l:c+' шт',g:f.pc*c}));}
+  else if(f.sp){[1,2].forEach(c=>opts.push({l:c+' ложк'+(c===1?'а':'и'),g:f.sp*c}));}
+  if(f.d&&!opts.some(o=>o.g===f.d)) opts.push({l:'порция',g:f.d});
+  if(!opts.some(o=>o.g===100)) opts.push({l:'',g:100});
+  if(f.d&&f.d>=100&&!f.pc&&!opts.some(o=>o.g===Math.round(f.d/2))) opts.push({l:'½ порции',g:Math.round(f.d/2)});
+  $('fmBody').innerHTML=`
+    <div class="fm-name">${esc(f.n)}</div>
+    <div class="muted" style="font-size:13px;margin-top:3px">${foodBrand(f)?esc(foodBrand(f))+' · ':''}${f.k} ккал · ${round1(f.p)} г белка на 100 г</div>
+    <div class="fm-grams">
+      <button class="fm-step" onclick="foodStep(-1)" aria-label="Меньше">−</button>
+      <div class="fm-g"><input type="number" inputmode="decimal" id="fmGrams" value="${g}" oninput="foodGramsInput()" onfocus="this.select()"><span>г</span></div>
+      <button class="fm-step" onclick="foodStep(1)" aria-label="Больше">+</button>
+    </div>
+    <div class="food-quick" style="justify-content:center">${opts.map(o=>`<button class="chip" onclick="foodSetG(${o.g})">${o.l?o.l+' · ':''}${o.g} г</button>`).join('')}</div>
+    <div class="fm-res" id="fmRes"></div>
+    <button class="btn" onclick="foodPortionSave()">${editId?'Сохранить':'Добавить'}</button>
+    <div class="row" style="gap:8px;margin-top:8px">
+      ${editId?`<button class="btn ghost sm" style="flex:1;color:var(--danger)" onclick="foodDelete('${editId}');foodModalClose()">Удалить</button>`:''}
+      <button class="btn ghost sm" style="flex:1" onclick="foodModalClose()">Отмена</button>
+    </div>`;
+  renderFoodPortionRes();
+}
+function renderFoodPortionRes(){
+  const {food:f,g}=foodSel;
+  $('fmRes').innerHTML=`<b>${Math.round(f.k*g/100)}</b> ккал · <b>${round1(f.p*g/100)}</b> г белка`;
+}
+function foodGramsInput(){
+  const v=parseFloat(String($('fmGrams').value).replace(',','.'));
+  foodSel.g=v>0?v:0; renderFoodPortionRes();
+}
+function foodSetG(g){foodSel.g=g;$('fmGrams').value=g;renderFoodPortionRes();}
+function foodStep(dir){
+  const g=foodSel.g, st=g<50?5:g<300?10:25;
+  foodSetG(Math.max(0,Math.round((g+dir*st)/st)*st));
+}
+function foodRemember(f){
+  if(f.src!=='off'&&f.src!=='custom')return;
+  const list=myFoods();
+  const i=list.findIndex(x=>x.id===f.id||(f.code&&x.code===f.code));
+  const rec={id:f.id,n:f.n,b:f.b||'',k:f.k,p:f.p,d:f.d,pc:f.pc,code:f.code||'',src:f.src};
+  if(i>=0) list.splice(i,1);
+  list.unshift(rec);
+  if(list.length>300) list.length=300;
+}
+function foodPortionSave(){
+  const {food:f,editId}=foodSel;
+  const g=Math.round(foodSel.g);
+  if(!(g>0)){toast('Укажи вес в граммах','err');return;}
+  const item={n:f.n,g,k:Math.round(f.k*g/100),p:round1(f.p*g/100),k100:f.k,p100:f.p};
+  if(f.b) item.b=f.b;
+  S.nutrition[nutritionDate]=S.nutrition[nutritionDate]||{};
+  const n=S.nutrition[nutritionDate];
+  n.log=n.log||[];
+  if(editId){
+    const e=n.log.find(x=>x.id===editId);
+    if(e){e.items=[item];e.k=item.k;e.p=item.p;e.text=f.n;}
+  } else {
+    const now=new Date();
+    const t=nutritionDate===todayKey()?String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'):'';
+    n.log.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),t,text:f.n,items:[item],k:item.k,p:item.p,src:f.src||'db'});
+    foodRemember(f);
+  }
+  foodModalClose();
+  $('foodSearch').value=''; foodOnline=null;
+  save(); renderNutrition();
+  if(nutritionDate===todayKey()) renderToday();
+  toast((editId?'Сохранено: ':'Записано: ')+item.k+' ккал','ok');
+}
+// Tap on a diary entry: one product → change the portion
+function foodEdit(id){
+  const n=S.nutrition[nutritionDate]; if(!n||!n.log)return;
+  const e=n.log.find(x=>x.id===id); if(!e)return;
+  const it=(e.items||[])[0], per=it&&itemPer100(it);
+  if(e.items.length!==1||!per){toast('Эту запись можно только удалить ×');return;}
+  foodPortionOpen({n:it.n,b:it.b,k:per.k,p:per.p,d:it.g},it.g,id);
+}
+
+/* ---------- Own product (from the label) ---------- */
+function foodCustomOpen(code){
+  const q=code?'':$('foodSearch').value.trim();
+  $('fmBody').innerHTML=`
+    <div class="fm-name">Свой продукт</div>
+    <div class="muted" style="font-size:13px;margin:3px 0 14px">${code?'Этого штрихкода нет в базе. Перепиши с упаковки — в следующий раз найдётся сразу.':'Перепиши с упаковки, продукт сохранится и будет находиться в поиске.'}</div>
+    <div class="field"><label class="lbl">Название</label><input type="text" id="fcName" value="${esc(cap(q||''))}" placeholder="Творог Простоквашино 5%"></div>
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl">Ккал на 100 г</label><input type="number" inputmode="decimal" id="fcK" placeholder="121"></div>
+      <div><label class="lbl">Белок на 100 г</label><input type="number" inputmode="decimal" id="fcP" placeholder="17"></div>
+    </div>
+    <div class="field"><label class="lbl">Вес упаковки или порции, г (необязательно)</label><input type="number" inputmode="decimal" id="fcD" placeholder="200"></div>
+    <input type="hidden" id="fcCode" value="${esc(code||'')}">
+    <button class="btn" onclick="foodCustomSave()">Дальше</button>
+    <button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="foodModalClose()">Отмена</button>`;
+  $('foodModal').classList.add('active');
+}
+function foodCustomSave(){
+  const num=id=>parseFloat(String($(id).value).replace(',','.'));
+  const n=$('fcName').value.trim(), k=num('fcK'), p=num('fcP')||0, d=num('fcD');
+  if(!n){toast('Напиши название','err');return;}
+  if(!(k>=0)||isNaN(k)){toast('Напиши калории на 100 г','err');return;}
+  const code=$('fcCode').value;
+  const f={id:'my'+Date.now().toString(36),n:cap(n),k:Math.round(k),p:round1(p),d:d>0?Math.round(d):100,code,src:'custom'};
+  foodPortionOpen(f,f.d);
+}
+
+/* ---------- Barcode scanner ---------- */
+let scanStream=null, scanTimer=null, scanDetector=null;
+async function getBarcodeDetector(){
+  if(scanDetector)return scanDetector;
+  let BD=window.BarcodeDetector;
+  if(!BD){
+    // Safari has no BarcodeDetector — load a ZXing-based one on demand
+    const m=await import('https://cdn.jsdelivr.net/npm/barcode-detector@3.2.2/dist/es/ponyfill.js');
+    BD=m.BarcodeDetector;
+  }
+  scanDetector=new BD({formats:['ean_13','ean_8','upc_a','upc_e']});
+  return scanDetector;
+}
+async function foodScanOpen(){
+  $('scanModal').classList.add('active');
+  $('scanCode').value='';
+  const st=$('scanStatus');
+  st.textContent='Включаю камеру…';
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    const v=$('scanVideo'); v.srcObject=scanStream; await v.play();
+    st.textContent='Загружаю сканер…';
+    const det=await getBarcodeDetector();
+    st.textContent='Наведи камеру на штрихкод';
+    const tick=async()=>{
+      if(!scanStream)return;
+      try{
+        const r=await det.detect(v);
+        if(r&&r.length){foodScanFound(r[0].rawValue);return;}
+      }catch(e){}
+      scanTimer=setTimeout(tick,250);
+    };
+    tick();
+  }catch(e){
+    st.textContent='Камера недоступна — введи цифры штрихкода вручную.';
+  }
+}
+function foodScanStop(){
+  clearTimeout(scanTimer); scanTimer=null;
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+  const v=$('scanVideo'); if(v) v.srcObject=null;
+}
+function foodScanClose(){foodScanStop();$('scanModal').classList.remove('active');}
+function foodScanManual(){
+  const c=$('scanCode').value.replace(/\D/g,'');
+  if(c.length<8){toast('Штрихкод — это 8 или 13 цифр','err');return;}
+  foodScanFound(c);
+}
+async function foodScanFound(code){
+  foodScanStop();
+  if(navigator.vibrate) navigator.vibrate(60);
+  $('scanStatus').textContent='Штрихкод '+code+' — ищу продукт…';
+  const mine=myFoods().find(f=>f.code===code);
+  if(mine){foodScanClose();foodPortionOpen(mine,mine.d||100);return;}
+  try{
+    const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+code+'.json?fields='+OFF_FIELDS);
+    const data=await r.json().catch(()=>({}));
+    const f=data.status===1&&data.product?offFood(data.product):null;
+    foodScanClose();
+    if(f){f.code=code;foodPortionOpen(f,f.d);}
+    else foodCustomOpen(code);
+  }catch(e){
+    $('scanStatus').textContent='Нет связи с базой. Проверь интернет и попробуй ещё раз.';
+  }
+}
+function foodTextToggle(){
+  foodTextOpen=!foodTextOpen;
+  $('foodTextBox').style.display=foodTextOpen?'':'none';
+  $('foodTextToggle').textContent=foodTextOpen?'Скрыть ввод списком':'✍️ Написать списком: «гречка 200, 3 яйца»';
+  if(foodTextOpen) $('foodInput').focus();
+}
 
 /* ---------- Optional: Claude API (user's own key, kept on device) ---------- */
 const KEY_AI='gymtracker_ai_v1';
