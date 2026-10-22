@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Набор массы</title>
-<meta name="description" content="Персональный трекер набора мышечной массы">
+<title>Трекер формы</title>
+<meta name="description" content="Трекер тренировок, питания и веса: набор массы, похудение, рельеф">
 <meta name="theme-color" content="#0E0C0B">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -339,6 +339,30 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 
+/* ===================== ONBOARDING ===================== */
+.ob-bg{position:fixed;inset:0;z-index:95;background:var(--bg);background-image:radial-gradient(120% 60% at 100% 0%,rgba(255,106,43,.1),transparent 55%);overflow-y:auto;display:none}
+.ob-bg.active{display:block;animation:fadeUp .25s ease}
+.ob-wrap{max-width:520px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));min-height:100%;display:flex;flex-direction:column}
+.ob-top{display:flex;align-items:center;gap:12px;margin-bottom:22px;min-height:38px}
+.ob-dots{display:flex;gap:6px;flex:1}
+.ob-dots i{flex:1;height:4px;border-radius:99px;background:var(--surface3)}
+.ob-dots i.on{background:var(--accent)}
+.ob-step{font-size:12.5px;color:var(--muted);font-weight:500;margin-bottom:6px}
+.ob-h{font-size:28px;line-height:1.1;letter-spacing:-.5px;margin-bottom:8px}
+.ob-sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+.ob-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.ob-opt{display:flex;align-items:center;gap:14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 16px;color:var(--text);font-family:inherit;transition:border-color .15s,background .15s}
+.ob-opt .em{font-size:26px;width:34px;text-align:center;flex-shrink:0}
+.ob-opt b{display:block;font-size:16px;margin-bottom:2px}
+.ob-opt span{display:block;color:var(--muted);font-size:13px;line-height:1.35}
+.ob-opt.on{border-color:var(--accent);background:var(--accent-dim)}
+.ob-opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ob-foot{margin-top:auto;padding-top:14px;display:flex;gap:8px}
+.ob-foot .btn{flex:1}
+.ob-res{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.ob-res .stat{text-align:left}
+.ob-note{color:var(--muted);font-size:13px;margin-bottom:14px}
+
 /* ===================== CONFIRM ===================== */
 .confirm-bg{position:fixed;inset:0;background:rgba(10,8,7,.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
 .confirm-bg.active{opacity:1;pointer-events:auto}
@@ -469,7 +493,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
           <circle class="ring-trk" cx="52" cy="52" r="44"/>
           <circle class="ring-prog" id="heroRing" cx="52" cy="52" r="44" stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
         </svg>
-        <div class="ring-c"><b id="heroPct">0%</b><span>к цели</span></div>
+        <div class="ring-c"><b id="heroPct">0%</b><span id="heroPctLbl">к цели</span></div>
       </div>
     </div>
     <div class="pbar-wrap">
@@ -527,7 +551,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <span class="nm">Креатин 5 г</span>
       <button class="chip" id="qCrea" onclick="toggleSupp('creatine')">отметить</button>
     </div>
-    <div class="supp-row">
+    <div class="supp-row" id="qGainRow">
       <span class="nm">Гейнер (порция)</span>
       <button class="chip" id="qGain" onclick="toggleSupp('gainer')">отметить</button>
     </div>
@@ -580,7 +604,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 <div class="wrap">
   <div class="topbar">
     <div class="topbar-l">
-      <div class="eyebrow">Профицит калорий для набора</div>
+      <div class="eyebrow" id="nutrEyebrow">Профицит калорий для набора</div>
       <h2>Питание</h2>
     </div>
   </div>
@@ -639,9 +663,9 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       </div>
       <button class="chip" id="nCrea" onclick="toggleSupp('creatine', nutritionDate)">отметить</button>
     </div>
-    <div class="supp-row">
+    <div class="supp-row" id="nGainRow">
       <div>
-        <div class="nm">Гейнер Serious Mass</div>
+        <div class="nm">Гейнер</div>
         <div class="ds">половина порции ~600 ккал на молоке</div>
       </div>
       <button class="chip" id="nGain" onclick="toggleSupp('gainer', nutritionDate)">отметить</button>
@@ -652,8 +676,8 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     <summary><span class="ico">💡</span>Подсказки</summary>
     <div class="fold-body">
       <p class="sub" style="margin-bottom:10px"><b style="color:var(--text)">Как писать еду.</b> Через запятую. Без граммов берётся обычная порция, «3 яйца» считается штуками. Если продукта нет в базе, допиши калории сам: «громовка 450ккал 20б».</p>
-      <p class="sub" style="margin-bottom:10px"><b style="color:var(--text)">Почему так.</b> ИМТ 18.7, жир 10.7% — задача не худеть, а набирать. Жидкие калории (гейнер, молоко) и калорийные добавки (масло, орехи, паста) — главный инструмент эктоморфа с небольшим аппетитом.</p>
-      <p class="sub" style="margin-bottom:10px"><b style="color:var(--text)">Гейнер.</b> Полная порция ~1250 ккал — тяжело выпить. Бери половину (1 ложка) на молоке, ~600 ккал. Это добавка к еде, а не вместо неё.</p>
+      <p class="sub" style="margin-bottom:10px" id="nutrWhy"></p>
+      <p class="sub" style="margin-bottom:10px" id="nutrGainerTip"><b style="color:var(--text)">Гейнер.</b> Полная порция ~1250 ккал — тяжело выпить. Бери половину (1 ложка) на молоке, ~600 ккал. Это добавка к еде, а не вместо неё.</p>
       <p class="sub" style="margin-bottom:0"><b style="color:var(--text)">Креатин.</b> 5 г каждый день. Загрузка не нужна — эффект копится за 2–4 недели. Растворяй в воде или гейнере.</p>
     </div>
   </details>
@@ -665,13 +689,13 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 <div class="wrap">
   <div class="topbar">
     <div class="topbar-l">
-      <div class="eyebrow">Считаем только вверх</div>
+      <div class="eyebrow" id="progEyebrow">Считаем только вверх</div>
       <h2>Прогресс</h2>
     </div>
   </div>
 
   <div class="stats3" id="progressStats">
-    <div class="stat"><div class="v acc" id="stGain">+0.0</div><div class="l">набрано, кг</div></div>
+    <div class="stat"><div class="v acc" id="stGain">+0.0</div><div class="l" id="stGainLbl">набрано, кг</div></div>
     <div class="stat"><div class="v" id="stWorkouts">0</div><div class="l">тренировок</div></div>
     <div class="stat"><div class="v good" id="stStreak">0</div><div class="l">стрик 🔥</div></div>
   </div>
@@ -716,6 +740,10 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
   <div class="fold-group">Цели</div>
   <div class="card">
+    <div class="row between" style="margin-bottom:12px;gap:10px">
+      <div><div class="muted" style="font-size:12.5px">Моя цель</div><b id="setGoalName" style="font-size:16px">Набрать массу</b></div>
+      <button class="btn ghost sm" onclick="obOpen(true)" style="white-space:nowrap">Изменить</button>
+    </div>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Стартовый вес, кг</label><input type="number" id="setStart" step="0.1"></div>
       <div><label class="lbl">Цель, кг</label><input type="number" id="setGoal" step="0.1"></div>
@@ -899,6 +927,11 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   </div>
 </div>
 
+<!-- ==================== ONBOARDING ==================== -->
+<div class="ob-bg" id="obBg" role="dialog" aria-modal="true" aria-label="Настройка трекера">
+  <div class="ob-wrap" id="obWrap"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -973,6 +1006,50 @@ const DEFAULT_PLAN = {
      cues:["Плечи опущены", "Колени к груди без раскачки", "Опускай медленно"],yt:"подъем ног в упоре на брусьях техника"},
   ],
 };
+
+/* ============================================================
+   GOALS
+   kcal — множитель к расходу энергии, prot — белок на кг веса
+   ============================================================ */
+const GOALS = {
+  gain:    {name:'Набрать массу', em:'💪', desc:'Больше мышц и веса. Небольшой профицит калорий.',
+            kcal:1.12, prot:1.8, dir:1,
+            nutr:'Профицит калорий для набора', prog:'Считаем только вверх', delta:'набрано, кг',
+            why:'Задача — есть чуть больше, чем тратишь, и много белка. Набирай 0.25–0.5 кг в неделю: быстрее уйдёт в жир. Если аппетит маленький, выручают жидкие калории (молоко, гейнер) и калорийные добавки (масло, орехи, паста).',
+            ai:'для набора мышечной массы', aiNote:'что можно добавить, чтобы было сытнее и больше белка'},
+  cut:     {name:'Похудеть', em:'🔥', desc:'Сбросить жир. Дефицит калорий, мышцы сохраняем.',
+            kcal:0.8, prot:2.0, dir:-1,
+            nutr:'Дефицит калорий для похудения', prog:'Каждый минус в копилку', delta:'сброшено, кг',
+            why:'Задача — есть меньше, чем тратишь, но держать белок высоким и продолжать тренироваться, чтобы уходил жир, а не мышцы. Хороший темп — 0.5–1% веса в неделю. Овощи, мясо, рыба, творог дают сытость при малых калориях.',
+            ai:'для похудения с сохранением мышц', aiNote:'как сделать приём пищи сытнее при тех же калориях'},
+  recomp:  {name:'Рельеф', em:'⚡', desc:'Меньше жира, больше мышц. Вес почти не меняется.',
+            kcal:0.92, prot:2.0, dir:0,
+            nutr:'Чуть меньше нормы, много белка', prog:'Меньше жира, больше силы', delta:'изменение, кг',
+            why:'Задача — есть чуть меньше нормы, много белка и прибавлять рабочие веса. Вес может стоять на месте, а тело меняться: смотри на силу в зале и фото прогресса.',
+            ai:'для рельефа: чуть меньше нормы калорий и много белка', aiNote:'как добрать белок, не превышая калории'},
+  maintain:{name:'Держать форму', em:'🎯', desc:'Сохранить вес и тренироваться регулярно.',
+            kcal:1.0, prot:1.6, dir:0,
+            nutr:'Калории на поддержание', prog:'Держим форму', delta:'изменение, кг',
+            why:'Задача — есть примерно столько, сколько тратишь, и регулярно тренироваться. Колебания веса ±1 кг — это нормально.',
+            ai:'для поддержания формы', aiNote:'чем можно сделать приём пищи полезнее'},
+};
+const ACTIVITY = {
+  low: {name:'Почти весь день сижу', desc:'учёба, офис, мало хожу', k:1.35},
+  mid: {name:'Часто на ногах', desc:'много хожу пешком', k:1.5},
+  high:{name:'Тяжёлая физическая работа', desc:'стройка, склад, спорт каждый день', k:1.7},
+};
+function goal(){return GOALS[(S&&S.profile&&S.profile.goal)]||GOALS.gain;}
+function goalKey(){return GOALS[S.profile.goal]?S.profile.goal:'gain';}
+function round50(x){return Math.round(x/50)*50;}
+function round5(x){return Math.round(x/5)*5;}
+// Mifflin–St Jeor × activity (incl. ~3 workouts a week) × goal
+function calcTargets(p){
+  const g=GOALS[p.goal]||GOALS.gain;
+  const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='f'?-161:5);
+  const kcal=Math.max(p.sex==='f'?1200:1500,round50(bmr*(ACTIVITY[p.activity]||ACTIVITY.mid).k*g.kcal));
+  const base=p.goal==='cut'&&p.target>0?Math.min(p.weight,p.target):p.weight;
+  return {kcal,prot:round5(base*g.prot)};
+}
 
 /* ============================================================
    STATE
@@ -1080,6 +1157,11 @@ function calcWeekTonnage(){
     .filter(s=>new Date(s.date+'T12:00:00')>=ws)
     .reduce((sum,s)=>sum+(s.volume||calcTonnage(s)),0);
 }
+function weekWorkouts(){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
+  return S.sessions.filter(s=>new Date(s.date+'T12:00:00')>=ws).length;
+}
 
 /* ============================================================
    PROGRESSION
@@ -1129,7 +1211,7 @@ function load(){
       normalizeState();
     } else {
       S={
-        profile:{startDate:tomorrowKey(),startWeight:54,targetWeight:63.5,schedule:SPLIT_SCHEDULE.slice()},
+        profile:{startDate:tomorrowKey(),startWeight:70,targetWeight:75,schedule:SPLIT_SCHEDULE.slice(),goal:'gain',onboarded:false},
         weights:[],sessions:[],
         plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),planVersion:PLAN_VERSION,planSince:todayKey(),
         nutrition:{},
@@ -1139,7 +1221,7 @@ function load(){
     }
     _savedJson=stateJson();
   }catch(e){
-    S={profile:{startDate:tomorrowKey(),startWeight:54,targetWeight:63.5,schedule:SPLIT_SCHEDULE.slice()},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),planVersion:PLAN_VERSION,planSince:todayKey(),nutrition:{},settings:{restTimer:90,notifications:false}};
+    S={profile:{startDate:tomorrowKey(),startWeight:70,targetWeight:75,schedule:SPLIT_SCHEDULE.slice(),goal:'gain',onboarded:false},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),planVersion:PLAN_VERSION,planSince:todayKey(),nutrition:{},settings:{restTimer:90,notifications:false}};
   }
 }
 function normalizeState(){
@@ -1150,6 +1232,9 @@ function normalizeState(){
   S.profile.schedule=S.profile.schedule||[1,3,5];
   S.profile.kcalTarget=S.profile.kcalTarget||2600;
   S.profile.proteinTarget=S.profile.proteinTarget||110;
+  // Data from before goals existed is a weight-gain profile that is already set up
+  if(!GOALS[S.profile.goal]) S.profile.goal='gain';
+  if(S.profile.onboarded===undefined) S.profile.onboarded=true;
   S.weights=S.weights||[];
   S.sessions=S.sessions||[];
   S.plan=S.plan||JSON.parse(JSON.stringify(DEFAULT_PLAN));
@@ -1301,11 +1386,23 @@ function renderToday(){
   $('heroW').textContent=cur.toFixed(cur%1?1:0);
   $('heroGoal').textContent=goal;
   $('heroStart').textContent='старт '+start+' кг';
-  const left=Math.max(0,goal-cur);
-  $('heroLeft').textContent=left>0?('+'+left.toFixed(1)+' кг до цели'):'🎯 Цель достигнута!';
-  const pct=Math.min(100,Math.max(0,((cur-start)/(goal-start))*100));
+  const g=GOALS[goalKey()];
+  let pct;
+  if(g.dir){
+    // gain: up to the goal, cut: down to it
+    const left=Math.max(0,(goal-cur)*g.dir);
+    $('heroLeft').textContent=left>0?((g.dir>0?'+':'−')+left.toFixed(1)+' кг до цели'):'🎯 Цель достигнута!';
+    pct=goal===start?100:Math.min(100,Math.max(0,((cur-start)/(goal-start))*100));
+    $('heroPctLbl').textContent='к цели';
+  } else {
+    // recomp / maintain: weight should stay near the goal, the ring shows this week's workouts
+    const diff=cur-goal;
+    $('heroLeft').textContent=Math.abs(diff)<=1?'✓ вес в норме':((diff>0?'+':'−')+Math.abs(diff).toFixed(1)+' кг от цели');
+    pct=Math.min(100,weekWorkouts()/3*100);
+    $('heroPctLbl').textContent='трен. в нед.';
+  }
   $('heroBar').style.width=pct+'%';
-  $('heroPct').textContent=Math.round(pct)+'%';
+  $('heroPct').textContent=g.dir?Math.round(pct)+'%':weekWorkouts()+'/3';
   $('heroRing').style.strokeDashoffset=(276.46*(1-pct/100)).toFixed(1);
   $('todayDateLbl').textContent=new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
 
@@ -1332,6 +1429,7 @@ function renderToday(){
   const n=S.nutrition[todayKey()]||{};
   setChip('qCrea',n.creatine);
   setChip('qGain',n.gainer);
+  $('qGainRow').style.display=goalKey()==='gain'?'':'none';
 
   // Food totals
   const tot=foodTotals(todayKey());
@@ -1662,6 +1760,12 @@ function renderNutrition(){
   const n=S.nutrition[nutritionDate]||{};
   setChip('nCrea',n.creatine);
   setChip('nGain',n.gainer);
+  const g=GOALS[goalKey()];
+  $('nutrEyebrow').textContent=g.nutr;
+  $('nutrWhy').innerHTML='<b style="color:var(--text)">Почему так.</b> '+esc(g.why);
+  const gain=goalKey()==='gain';
+  $('nGainRow').style.display=gain||n.gainer?'':'none';
+  $('nutrGainerTip').style.display=gain?'':'none';
   renderFoodLog();
 }
 /* ============================================================
@@ -1998,7 +2102,10 @@ function renderFoodLog(){
   $('nKcalBar').style.width=Math.min(100,tot.k/kt*100)+'%';
   $('nProtBar').style.width=Math.min(100,tot.p/pt*100)+'%';
   const lk=kt-tot.k, lp=pt-tot.p;
-  $('nLeft').textContent=(lk<=0&&lp<=0)?'Цель на день выполнена 💪':
+  // On a cut or recomp going well over the calories is not a win
+  const over=goalKey()!=='gain'&&lk<-100;
+  $('nLeft').textContent=over?('Перебор: '+(-lk)+' ккал'+(lp>0?' · осталось '+lp+' г белка':' · белок ✓')):
+    (lk<=0&&lp<=0)?'Цель на день выполнена 💪':
     'Осталось: '+(lk>0?lk+' ккал':'калории ✓')+' · '+(lp>0?lp+' г белка':'белок ✓');
   $('mealCountLabel').textContent=log.length+' '+plural(log.length,'запись','записи','записей');
   renderFoodSearch();
@@ -2366,7 +2473,7 @@ async function aiEstimate(text,imageB64){
     body:JSON.stringify({
       model:AI_MODEL,max_tokens:4000,
       output_config:{effort:'low',format:{type:'json_schema',schema:FOOD_SCHEMA}},
-      system:'Ты помогаешь вести дневник питания для набора массы. Раздели еду на отдельные продукты, оцени вес каждого в граммах (в готовом виде), калории и белок в граммах. Названия пиши по-русски коротко. В note одной фразой: что можно добавить, чтобы было сытнее и больше белка, или пустая строка.',
+      system:'Ты помогаешь вести дневник питания '+goal().ai+'. Раздели еду на отдельные продукты, оцени вес каждого в граммах (в готовом виде), калории и белок в граммах. Названия пиши по-русски коротко. В note одной фразой: '+goal().aiNote+', или пустая строка.',
       messages:[{role:'user',content}],
     }),
   });
@@ -2546,7 +2653,11 @@ async function deleteCurrentPhoto(){
 
 function renderProgress(){
   const cur=latestWeight(),start=S.profile.startWeight,goal=S.profile.targetWeight;
-  $('stGain').textContent=(cur-start>=0?'+':'')+(cur-start).toFixed(1);
+  const g=GOALS[goalKey()];
+  const delta=g.dir<0?start-cur:cur-start;   // on a cut count what is gone
+  $('stGain').textContent=(delta>0?'+':delta<0?'−':'')+Math.abs(delta).toFixed(1);
+  $('stGainLbl').textContent=g.delta;
+  $('progEyebrow').textContent=g.prog;
   $('stWorkouts').textContent=S.sessions.length;
   $('stStreak').textContent=calcStreak();
   $('stDay').textContent=dayNumber();
@@ -2559,6 +2670,7 @@ function renderProgress(){
   renderPhotoGallery();
 }
 function renderSettings(){
+  $('setGoalName').textContent=GOALS[goalKey()].em+' '+GOALS[goalKey()].name;
   $('setStart').value=S.profile.startWeight;
   $('setKcal').value=kcalTarget();
   $('setProt').value=protTarget();
@@ -2794,7 +2906,7 @@ function importData(){
       const data=JSON.parse(text);
       const ok=await showConfirm('Импортировать? Текущие данные будут перезаписаны.','Импортировать');
       if(!ok)return;
-      S=data;save();wip={};renderAll();
+      S=data;normalizeState();save();wip={};renderAll();obClose();
       toast('Данные импортированы ✓','ok');
     }catch(e){toast('Ошибка импорта файла','err');}
   };
@@ -2872,6 +2984,7 @@ function adoptRemote(remote){
   _savedJson=stateJson();
   syncCfg.sha=remote.sha; syncCfg.lastJson=JSON.stringify(S,null,2);
   renderAll();
+  if(S.profile.onboarded) obClose();
   if($('tab-progress').classList.contains('active')) renderProgress();
 }
 function syncFail(e,manual){
@@ -3042,6 +3155,137 @@ function checkWorkoutNotification(){
 }
 
 /* ============================================================
+   ONBOARDING
+   First launch: goal, body, activity → calories and protein.
+   Re-opened from «Ещё» to change the goal; history is kept.
+   ============================================================ */
+let ob=null;   // {step, edit, goal, sex, age, height, weight, target, activity, kcal, prot}
+const OB_STEPS=5;
+function obOpen(edit){
+  const p=S.profile;
+  ob={step:0,edit,goal:edit?goalKey():null,sex:p.sex||null,age:p.age||'',height:p.height||'',
+      weight:edit?latestWeight():'',target:edit?p.targetWeight:'',activity:p.activity||null};
+  $('obBg').classList.add('active');
+  document.body.style.overflow='hidden';
+  obRender();
+}
+function obClose(){
+  ob=null;
+  $('obBg').classList.remove('active');
+  document.body.style.overflow='';
+}
+function obSet(k,v){ob[k]=v;obRender();}
+function obNum(k,el){ob[k]=el.value;obValid();}
+function obBack(){if(ob.step>0){ob.step--;obRender();}else if(ob.edit)obClose();}
+function obOk(){
+  const n=k=>parseFloat(String(ob[k]).replace(',','.'));
+  switch(ob.step){
+    case 0:return !!ob.goal;
+    case 1:return !!ob.sex&&n('age')>=12&&n('age')<=90&&n('height')>=120&&n('height')<=230;
+    case 2:return n('weight')>=30&&n('weight')<=250&&(ob.goal==='recomp'||ob.goal==='maintain'||(n('target')>=30&&n('target')<=250));
+    case 3:return !!ob.activity;
+    default:return true;
+  }
+}
+function obValid(){const b=$('obNext');if(b)b.disabled=!obOk();}
+function obNext(){
+  if(!obOk())return;
+  const n=k=>parseFloat(String(ob[k]).replace(',','.'));
+  if(ob.step===2){
+    ob.weight=n('weight');
+    if(ob.goal==='recomp'||ob.goal==='maintain') ob.target=ob.weight;
+    else ob.target=n('target');
+  }
+  if(ob.step===3){
+    const t=calcTargets({goal:ob.goal,sex:ob.sex,age:n('age'),height:n('height'),weight:ob.weight,target:ob.target,activity:ob.activity});
+    ob.kcal=t.kcal;ob.prot=t.prot;
+  }
+  if(ob.step<OB_STEPS-1){ob.step++;obRender();return;}
+  obFinish();
+}
+function obFinish(){
+  const kt=parseInt(ob.kcal,10),pt=parseInt(ob.prot,10);
+  const p=S.profile, wasGoal=p.goal, edit=ob.edit;
+  p.goal=ob.goal; p.sex=ob.sex;
+  p.age=parseInt(ob.age,10); p.height=parseFloat(String(ob.height).replace(',','.'));
+  p.activity=ob.activity;
+  if(kt>=1000&&kt<=6000) p.kcalTarget=kt;
+  if(pt>=30&&pt<=400) p.proteinTarget=pt;
+  p.targetWeight=ob.target;
+  if(!edit||wasGoal!==ob.goal){
+    // New goal: progress is counted from today's weight
+    p.startWeight=ob.weight;
+    if(!edit) p.startDate=todayKey();
+  }
+  if(!S.weights.length||latestWeight()!==ob.weight){
+    const i=S.weights.findIndex(w=>w.date===todayKey());
+    if(i>=0) S.weights[i].kg=ob.weight; else S.weights.push({date:todayKey(),kg:ob.weight});
+  }
+  p.onboarded=true;
+  save(); obClose(); renderAll();
+  if($('tab-more').classList.contains('active')) renderSettings();
+  toast(edit?'Цель обновлена ✓':'Готово, можно начинать 💪','ok');
+}
+function obOpt(k,v,em,title,desc){
+  return `<button class="ob-opt${ob[k]===v?' on':''}" onclick="obSet('${k}','${v}')">${em?`<span class="em">${em}</span>`:''}<div><b>${esc(title)}</b>${desc?`<span>${esc(desc)}</span>`:''}</div></button>`;
+}
+function obRender(){
+  if(!ob)return;
+  const dots=Array.from({length:OB_STEPS},(_,i)=>`<i class="${i<=ob.step?'on':''}"></i>`).join('');
+  const backBtn=(ob.step>0||ob.edit)?`<button class="icon-btn" onclick="obBack()" aria-label="Назад" style="font-size:20px;color:var(--text)">‹</button>`:'';
+  let body='';
+  const g=GOALS[ob.goal]||GOALS.gain;
+  if(ob.step===0){
+    body=`<div class="ob-step">${ob.edit?'Изменить цель':'Добро пожаловать'}</div>
+      <h1 class="ob-h">Какая у тебя цель?</h1>
+      <p class="ob-sub">Под неё посчитаем калории, белок и подскажем, на что смотреть.</p>
+      <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.em,x.name,x.desc)).join('')}</div>`;
+  } else if(ob.step===1){
+    body=`<div class="ob-step">О себе</div>
+      <h1 class="ob-h">Немного о тебе</h1>
+      <p class="ob-sub">Нужно, чтобы посчитать, сколько энергии ты тратишь за день.</p>
+      <div class="seg" style="margin-bottom:14px">
+        <button class="${ob.sex==='m'?'on':''}" onclick="obSet('sex','m')">Мужской</button>
+        <button class="${ob.sex==='f'?'on':''}" onclick="obSet('sex','f')">Женский</button>
+      </div>
+      <div class="g2">
+        <div><label class="lbl" for="obAge">Возраст, лет</label><input type="number" id="obAge" inputmode="numeric" placeholder="25" value="${esc(ob.age)}" oninput="obNum('age',this)"></div>
+        <div><label class="lbl" for="obHeight">Рост, см</label><input type="number" id="obHeight" inputmode="numeric" placeholder="175" value="${esc(ob.height)}" oninput="obNum('height',this)"></div>
+      </div>`;
+  } else if(ob.step===2){
+    const needTarget=ob.goal==='gain'||ob.goal==='cut';
+    const hint=ob.goal==='gain'?'Реальный темп — 1–2 кг в месяц.':'Безопасный темп — 2–4 кг в месяц.';
+    body=`<div class="ob-step">Вес</div>
+      <h1 class="ob-h">${needTarget?'Сколько весишь и к чему идёшь?':'Сколько ты весишь?'}</h1>
+      <p class="ob-sub">${needTarget?hint:'Будем следить, чтобы вес держался рядом с этой цифрой.'}</p>
+      <div class="${needTarget?'g2':''}">
+        <div class="field"><label class="lbl" for="obW">Вес сейчас, кг</label><input type="number" id="obW" inputmode="decimal" step="0.1" placeholder="70" value="${esc(ob.weight)}" oninput="obNum('weight',this)"></div>
+        ${needTarget?`<div class="field"><label class="lbl" for="obT">Цель, кг</label><input type="number" id="obT" inputmode="decimal" step="0.1" placeholder="${ob.goal==='gain'?'75':'65'}" value="${esc(ob.target)}" oninput="obNum('target',this)"></div>`:''}
+      </div>`;
+  } else if(ob.step===3){
+    body=`<div class="ob-step">Активность</div>
+      <h1 class="ob-h">Как проходит твой день?</h1>
+      <p class="ob-sub">Не считая тренировок: их мы уже учли.</p>
+      <div class="ob-opts">${Object.entries(ACTIVITY).map(([k,x])=>obOpt('activity',k,'',x.name,x.desc)).join('')}</div>`;
+  } else {
+    body=`<div class="ob-step">Готово</div>
+      <h1 class="ob-h">${g.em} ${esc(g.name)}</h1>
+      <p class="ob-sub">Твоя норма на день. Её можно поменять сейчас или потом в настройках.</p>
+      <div class="ob-res">
+        <div class="stat"><label class="lbl" for="obK">Калории</label><input type="number" id="obK" inputmode="numeric" step="50" value="${esc(ob.kcal)}" oninput="obNum('kcal',this)"></div>
+        <div class="stat"><label class="lbl" for="obP">Белок, г</label><input type="number" id="obP" inputmode="numeric" step="5" value="${esc(ob.prot)}" oninput="obNum('prot',this)"></div>
+      </div>
+      <p class="ob-note">${esc(g.why)}</p>
+      ${ob.edit?'<p class="ob-note">Вся история тренировок, веса и еды сохранится.</p>':''}`;
+  }
+  const last=ob.step===OB_STEPS-1;
+  $('obWrap').innerHTML=`<div class="ob-top">${backBtn}<div class="ob-dots">${dots}</div></div>
+    <div>${body}</div>
+    <div class="ob-foot"><button class="btn" id="obNext" onclick="obNext()">${last?(ob.edit?'Сохранить':'Начать'):'Дальше'}</button></div>`;
+  obValid();
+}
+
+/* ============================================================
    RENDER ALL
    ============================================================ */
 function renderAll(){
@@ -3080,6 +3324,7 @@ function init(){
   initSyncCard();
   renderAiSetting();
   pullSync(false); // take a newer copy from GitHub, or send ours
+  if(!S.profile.onboarded) obOpen(false);
   checkWorkoutNotification();
 
   // Register service worker
