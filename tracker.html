@@ -156,6 +156,7 @@ label.lbl{font-size:12.5px;color:var(--muted);display:block;margin-bottom:6px;fo
 /* ===================== SEGMENTED ===================== */
 .seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px;gap:4px;margin-bottom:14px}
 .seg button{flex:1;background:transparent;border:none;color:var(--muted);font-weight:600;padding:10px;border-radius:12px;font-size:14.5px;font-family:'Inter',sans-serif;transition:.15s}
+.seg button{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seg button.on{background:var(--surface3);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 0 0 1px var(--accent-mid)}
 
 /* ===================== EXERCISE CARDS ===================== */
@@ -362,6 +363,9 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
 .ob-res{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .ob-res .stat{text-align:left}
 .ob-note{color:var(--muted);font-size:13px;margin-bottom:14px}
+.pq-day{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px}
+.pq-day b{display:block;font-size:14.5px;margin-bottom:3px}
+.pq-day span{display:block;color:var(--muted);font-size:12.5px;line-height:1.4}
 
 /* ===================== CONFIRM ===================== */
 .confirm-bg{position:fixed;inset:0;background:rgba(10,8,7,.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -565,7 +569,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 <div class="wrap">
   <div class="topbar">
     <div class="topbar-l">
-      <div class="eyebrow">Сплит на 3 дня · через день отдых</div>
+      <div class="eyebrow" id="wkEyebrow">Сплит на 3 дня · через день отдых</div>
       <h2>Тренировка</h2>
     </div>
     <div class="topbar-r">
@@ -573,11 +577,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     </div>
   </div>
 
-  <div class="seg">
-    <button id="segA" class="on" onclick="setDay('A')">Грудь</button>
-    <button id="segB" onclick="setDay('B')">Спина</button>
-    <button id="segC" onclick="setDay('C')">Ноги</button>
-  </div>
+  <div class="seg" id="daySeg"></div>
 
   <p class="sub" id="dayHint"></p>
 
@@ -744,6 +744,11 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <div><div class="muted" style="font-size:12.5px">Моя цель</div><b id="setGoalName" style="font-size:16px">Набрать массу</b></div>
       <button class="btn ghost sm" onclick="obOpen(true)" style="white-space:nowrap">Изменить</button>
     </div>
+    <div class="row between" style="margin-bottom:12px;gap:10px">
+      <div style="min-width:0"><div class="muted" style="font-size:12.5px">Программа тренировок</div><b id="setProgName" style="font-size:16px">Своя</b></div>
+      <button class="btn ghost sm" onclick="pqOpen(true)" style="white-space:nowrap">Подобрать</button>
+    </div>
+    <button class="btn ghost sm" id="setProgUndo" style="width:100%;margin-bottom:12px;display:none" onclick="programUndo()">↩ Вернуть прошлую программу</button>
     <div class="g2" style="margin-bottom:10px">
       <div><label class="lbl">Стартовый вес, кг</label><input type="number" id="setStart" step="0.1"></div>
       <div><label class="lbl">Цель, кг</label><input type="number" id="setGoal" step="0.1"></div>
@@ -859,11 +864,8 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <h3 class="modal-title" style="margin-bottom:0">Программа</h3>
       <button class="btn ghost sm" onclick="closeProgEditor()">Закрыть</button>
     </div>
-    <div class="seg" id="progDaySeg">
-      <button class="on" data-day="A" onclick="selectProgDay('A')">Грудь</button>
-      <button data-day="B" onclick="selectProgDay('B')">Спина</button>
-      <button data-day="C" onclick="selectProgDay('C')">Ноги</button>
-    </div>
+    <div class="seg" id="progDaySeg"></div>
+    <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="closeProgEditor();pqOpen(true)">✨ Подобрать новую программу</button>
     <div id="progExList"></div>
     <div class="prog-add-form">
       <div class="section-lbl" style="margin-bottom:10px">Добавить упражнение</div>
@@ -1085,19 +1087,25 @@ function dayNumber(){
   const t=new Date(); t.setHours(0,0,0,0);
   return Math.max(1,Math.round((t-s)/86400000)+1);
 }
+// Days of the current program: a generated one stores its own, otherwise the built-in split
+function days(){return (S&&S.planDays)||DAYS;}
+function dayMeta(d){return (S&&S.planMeta&&S.planMeta[d])||(!(S&&S.planDays)&&DAY_META[d])||{label:'День '+d,short:'День '+d,desc:'',hint:''};}
 function suggestedDay(){
-  const since=S.planSince||'';
-  const last=S.sessions.filter(s=>s.date>=since&&DAYS.includes(s.day)).slice(-1)[0];
-  return last?DAYS[(DAYS.indexOf(last.day)+1)%DAYS.length]:'A';
+  const since=S.planSince||'', ds=days();
+  const last=S.sessions.filter(s=>s.date>=since&&ds.includes(s.day)).slice(-1)[0];
+  return last?ds[(ds.indexOf(last.day)+1)%ds.length]:ds[0];
 }
 function allPlanEx(){
-  return [...DAYS.flatMap(d=>S.plan[d]||[]),...Object.values(S.planOld||{}).flat()];
+  return [...days().flatMap(d=>S.plan[d]||[]),...Object.values(S.planOld||{}).flat()];
 }
 function dayTitle(sess){
-  const split=sess.date>=(S.planSince||'')&&DAY_META[sess.day];
-  return split?DAY_META[sess.day].label:'День '+sess.day;
+  const split=sess.date>=(S.planSince||'')&&days().includes(sess.day);
+  return split?dayMeta(sess.day).label:'День '+sess.day;
 }
-function setSegs(d){DAYS.forEach(x=>{const b=$('seg'+x);if(b)b.classList.toggle('on',x===d);});}
+function daySegHtml(cur,fn){
+  return days().map(d=>`<button class="${d===cur?'on':''}" onclick="${fn}('${d}')">${esc(dayMeta(d).short||dayMeta(d).label)}</button>`).join('');
+}
+function setSegs(d){$('daySeg').innerHTML=daySegHtml(d,'setDay');}
 function latestWeight(){
   if(!S.weights.length) return S.profile.startWeight;
   return S.weights[S.weights.length-1].kg;
@@ -1234,7 +1242,7 @@ function normalizeState(){
   S.profile.proteinTarget=S.profile.proteinTarget||110;
   // Data from before goals existed is a weight-gain profile that is already set up
   if(!GOALS[S.profile.goal]) S.profile.goal='gain';
-  if(S.profile.onboarded===undefined) S.profile.onboarded=true;
+  if(S.profile.onboarded===undefined){S.profile.onboarded=true;S.profile.programSet=true;}
   S.weights=S.weights||[];
   S.sessions=S.sessions||[];
   S.plan=S.plan||JSON.parse(JSON.stringify(DEFAULT_PLAN));
@@ -1247,7 +1255,7 @@ function normalizeState(){
     S.profile.schedule=SPLIT_SCHEDULE.slice();
     planMigrated=true;
   }
-  DAYS.forEach(d=>{S.plan[d]=S.plan[d]||[];});
+  days().forEach(d=>{S.plan[d]=S.plan[d]||[];});
   S.nutrition=S.nutrition||{};
   S.myFoods=S.myFoods||[];
   S.settings=S.settings||{restTimer:90,notifications:false};
@@ -1366,6 +1374,7 @@ function showConfirm(msg,yesLabel='Удалить'){
    ============================================================ */
 let prevTab='today';
 function switchTab(name){
+  if(name==='workout'&&S.profile.onboarded&&!S.profile.programSet){pqOpen(false);return;}
   const cur=document.querySelector('.tab.active');
   if(cur&&cur.id!=='tab-more'&&name==='more') prevTab=cur.id.slice(4);
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
@@ -1410,8 +1419,11 @@ function renderToday(){
   $('streakBadge').textContent=streak>0?`🔥 ${streak} подряд`:'начни стрик!';
 
   const sd=suggestedDay();
-  $('todayDayChip').textContent=DAY_META[sd].label;
-  $('todayDayDesc').textContent=DAY_META[sd].desc;
+  const progReady=!!S.profile.programSet;
+  $('todayDayChip').style.display=progReady?'':'none';
+  $('todayDayChip').textContent=dayMeta(sd).label;
+  $('todayDayDesc').textContent=progReady?dayMeta(sd).desc:'Ответь на 5 коротких вопросов, и трекер соберёт программу под тебя.';
+  $('todayWkBtn').textContent=progReady?'Открыть тренировку →':'Подобрать программу →';
 
   // Did user work out today?
   const todaySess=S.sessions.filter(s=>s.date===todayKey());
@@ -1475,6 +1487,7 @@ function addWeight(){
   toast('Вес записан: '+v+' кг','ok');
 }
 function goWorkout(){
+  if(!S.profile.programSet){pqOpen(false);return;}
   const sd=suggestedDay();
   curDay=sd;
   switchTab('workout');
@@ -1497,7 +1510,7 @@ async function setDay(d){
   // Warn if there's unsaved WIP for the current day
   const hasWip=Object.values(wip).some(sets=>sets.some(s=>s.w||s.r||s.done));
   if(hasWip){
-    const ok=await showConfirm(`Есть незаписанные данные (${(DAY_META[curDay]||{label:curDay}).label}). Переключить день и потерять их?`,'Переключить');
+    const ok=await showConfirm(`Есть незаписанные данные (${dayMeta(curDay).label}). Переключить день и потерять их?`,'Переключить');
     if(!ok) return;
   }
   curDay=d;
@@ -1519,7 +1532,8 @@ function loadWipData(){
 function renderWorkout(){
   const plan=S.plan[curDay]||[];
   const list=$('exList'); list.innerHTML='';
-  $('dayHint').textContent=(DAY_META[curDay]||{}).hint||'';
+  $('dayHint').textContent=(dayMeta(curDay).hint||'')+(goalKey()==='cut'?' Для похудения добавь 8–10 тысяч шагов в день: это главный расход, а не изнуряющее кардио.':'');
+  $('wkEyebrow').textContent=programTitle();
 
   plan.forEach((ex,i)=>{
     const sug=getSuggestion(ex.id,curDay);
@@ -1677,7 +1691,7 @@ function finishWorkout(){
 
   renderWorkout();
   renderToday();
-  toast(`${(DAY_META[curDay]||{label:'День '+curDay}).label}: готово · тоннаж ${vol} кг 💪`,'ok');
+  toast(`${dayMeta(curDay).label}: готово · тоннаж ${vol} кг 💪`,'ok');
   stopRestTimer();
   setTimeout(()=>{ $('photoInput').click(); },900);
 }
@@ -2671,6 +2685,8 @@ function renderProgress(){
 }
 function renderSettings(){
   $('setGoalName').textContent=GOALS[goalKey()].em+' '+GOALS[goalKey()].name;
+  $('setProgName').textContent=programTitle();
+  $('setProgUndo').style.display=S.planPrev?'':'none';
   $('setStart').value=S.profile.startWeight;
   $('setKcal').value=kcalTarget();
   $('setProt').value=protTarget();
@@ -2774,7 +2790,7 @@ function drawWeightChart(){
 function renderStrengthTabs(){
   // Collect all base exercises from both days
   const baseExs=[];
-  DAYS.forEach(d=>{
+  days().forEach(d=>{
     (S.plan[d]||[]).filter(e=>e.isBase).forEach(e=>{
       if(!baseExs.find(b=>b.id===e.id)) baseExs.push(e);
     });
@@ -2815,10 +2831,10 @@ function closeProgEditor(){
 }
 function selectProgDay(d){
   progEditorDay=d;
-  $('progDaySeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.day===d));
   renderProgEditor();
 }
 function renderProgEditor(){
+  $('progDaySeg').innerHTML=daySegHtml(progEditorDay,'selectProgDay');
   const plan=S.plan[progEditorDay]||[];
   $('progExList').innerHTML=plan.length?plan.map(ex=>`
     <div class="prog-ex-row">
@@ -3150,7 +3166,7 @@ function checkWorkoutNotification(){
   if(hasToday) return;
   const h=new Date().getHours();
   if(h>=19){
-    try{new Notification('💪 Время тренировки!',{body:`${DAY_META[suggestedDay()].label} — сегодня в зал`,icon:'icon.svg'});}catch(e){}
+    try{new Notification('💪 Время тренировки!',{body:`${dayMeta(suggestedDay()).label} — сегодня в зал`,icon:'icon.svg'});}catch(e){}
   }
 }
 
@@ -3286,6 +3302,258 @@ function obRender(){
 }
 
 /* ============================================================
+   PROGRAM GENERATOR
+   A program is built from a split template (by days and experience),
+   a movement pattern per slot, and an exercise for that pattern at the
+   chosen place. Gym exercises reuse the built-in plan so ids, cues and
+   history stay the same. Sets and reps follow the goal.
+   ============================================================ */
+const PLACES = {
+  gym: {name:'Зал', em:'🏋️', desc:'тренажёры, штанги, гантели'},
+  dumb:{name:'Дома с гантелями', em:'🏠', desc:'гантели, лучше со скамьёй'},
+  home:{name:'Дома без инвентаря', em:'🤸', desc:'свой вес, стул, рюкзак'},
+};
+const EXPERIENCE = {
+  new: {name:'Новичок', desc:'тренируюсь меньше полугода или впервые'},
+  back:{name:'Был перерыв', desc:'тренировался раньше, сейчас возвращаюсь'},
+  reg: {name:'Тренируюсь регулярно', desc:'больше года без долгих перерывов'},
+};
+const FOCUS = {
+  even:{name:'Всё равномерно', em:'⚖️'},
+  legs:{name:'Ноги и ягодицы', em:'🍑'},
+  arms:{name:'Руки и грудь', em:'💪'},
+  back:{name:'Спина и плечи', em:'🔺', desc:'широкие плечи, V-силуэт'},
+};
+const PQ_TIME = {45:{name:'Около 45 минут',max:5},60:{name:'Около часа',max:6},90:{name:'Полтора часа',max:8}};
+// gym: id from DEFAULT_PLAN; dumb/home: own exercise (bw — свой вес, прогресс по повторам; lite — не для тяжёлых весов)
+const EX_LIB = {
+  squat:   {gym:'sc1', dumb:{n:'Гоблет-присед с гантелью',m:'Ноги · ягодицы',c:['Гантель у груди вертикально','Садись между коленей до параллели','Пятки на полу, спина ровная']},
+            home:{n:'Приседания',m:'Ноги · ягодицы',bw:1,c:['Стопы на ширине плеч, носки чуть наружу','Садись до параллели, колени по носкам','Легко → медленно вниз за 3 секунды']}},
+  hinge:   {gym:'sc3', dumb:{n:'Румынская тяга с гантелями',m:'Задняя поверхность бедра · ягодицы',c:['Колени чуть согнуты','Таз назад, гантели вдоль ног','Спина ровная']},
+            home:{n:'Ягодичный мост на одной ноге',m:'Ягодицы · задняя поверхность бедра',bw:1,c:['Лопатки на полу или на диване','Толкайся пяткой, таз до прямой линии','Вверху пауза 1 секунда']}},
+  legpress:{gym:'sc2', dumb:{n:'Выпады назад с гантелями',m:'Квадрицепс · ягодицы',c:['Шаг назад, колено почти касается пола','Корпус ровно','Толкайся передней ногой']},
+            home:{n:'Болгарские сплит-приседания',m:'Квадрицепс · ягодицы',bw:1,c:['Задняя нога на стуле или диване','Опускайся вертикально вниз','Колено передней ноги по носку']}},
+  legcurl: {gym:'sc5'},
+  glute:   {gym:'sc4', dumb:{n:'Ягодичный мост с гантелью',m:'Ягодицы',c:['Лопатки на краю дивана или скамьи','Гантель на тазу','Таз до прямой линии, сожми ягодицы']},
+            home:{n:'Отведение ноги назад на четвереньках',m:'Ягодицы',bw:1,c:['Спина ровная, не прогибайся','Нога согнута, пятка в потолок','Медленно, без рывков']}},
+  calves:  {gym:'sc8', dumb:{n:'Подъёмы на носки с гантелями',m:'Икры',c:['Носки на ступеньке или книге','Вниз до растяжения','Вверху пауза 1 секунда']},
+            home:{n:'Подъёмы на носки на одной ноге',m:'Икры',bw:1,c:['Носок на ступеньке, держись за стену','Вниз до растяжения','Вверху пауза 1 секунда']}},
+  hpush:   {gym:'sa1', dumb:{n:'Жим гантелей лёжа',m:'Грудь · трицепс',c:['На скамье или на полу','Локти ~45° к корпусу','Гантели опускай до уровня груди']},
+            home:{n:'Отжимания',m:'Грудь · трицепс',bw:1,c:['Тело прямое от головы до пяток','Грудью почти до пола','Тяжело → с колен, легко → медленно вниз']}},
+  ipush:   {gym:'sa2', dumb:{n:'Жим гантелей на наклонной',m:'Верх груди · плечи',c:['Скамья под 30°','Нет скамьи → подложи подушки под спину','Вверх по дуге']},
+            home:{n:'Отжимания с ногами на возвышении',m:'Верх груди · плечи',bw:1,c:['Ноги на стуле или диване','Тело прямое','Опускайся медленно']}},
+  chestiso:{gym:'sa4', dumb:{n:'Разводка гантелей лёжа',m:'Грудь',c:['Локти чуть согнуты и не меняют угол','Опускай до растяжения груди','Вес лёгкий']}},
+  vpush:   {gym:'sc6', dumb:{n:'Жим гантелей сидя',m:'Плечи',c:['Спина прямая','Старт у ушей, выжимай вверх','Не защёлкивай локти']},
+            home:{n:'Пайк-отжимания',m:'Плечи · трицепс',bw:1,c:['Таз высоко, тело буквой Л','Опускай голову к полу между рук','Тяжело → уменьши угол']}},
+  lateral: {gym:'sc7', dumb:{n:'Махи гантелями в стороны',m:'Средние дельты',c:['Лёгкий вес, локти чуть согнуты','До уровня плеч','Плечи к ушам не поднимай']}},
+  vpull:   {gym:'sb1', dumb:{n:'Пуловер с гантелью',m:'Широчайшие · грудь',lite:1,c:['Лёжа поперёк скамьи или на полу','Гантель за голову по дуге','Руки чуть согнуты']},
+            home:{n:'Подтягивания',m:'Широчайшие · бицепс',bw:1,c:['Хват чуть шире плеч','Тянись грудью к перекладине','Нет турника → тяга рюкзака в наклоне']}},
+  hpull:   {gym:'sb2', dumb:{n:'Тяга гантели одной рукой',m:'Середина спины · широчайшие',c:['Рука и колено на скамье или стуле','Тяни к поясу, локоть вдоль корпуса','Спина ровная']},
+            home:{n:'Тяга рюкзака в наклоне',m:'Середина спины · широчайшие',bw:1,c:['Рюкзак с книгами или бутылками воды','Наклон ~45°, спина ровная','Тяни к животу, своди лопатки']}},
+  hpull2:  {gym:'sb4', dumb:{n:'Тяга двух гантелей в наклоне',m:'Середина спины',c:['Наклон ~45°, спина ровная','Локти вдоль корпуса','Вверху своди лопатки']},
+            home:{n:'Австралийские подтягивания под столом',m:'Середина спины · бицепс',bw:1,c:['Ляг под крепкий стол, держись за край','Тело прямое, тянись грудью к столу','Тяжело → согни ноги']}},
+  reardelt:{gym:'sb5', dumb:{n:'Разведения гантелей в наклоне',m:'Задние дельты',c:['Наклон почти параллельно полу','Разводи руки в стороны','Вес лёгкий']},
+            home:{n:'Y-подъёмы лёжа на животе',m:'Задние дельты · спина',bw:1,c:['Руки буквой Y','Поднимай руки, своди лопатки','Вверху пауза 2 секунды']}},
+  biceps:  {gym:'sb6', dumb:{n:'Подъём гантелей на бицепс',m:'Бицепс',c:['Локти прижаты','Без раскачки','Опускай 2–3 секунды']},
+            home:{n:'Сгибания рук с рюкзаком',m:'Бицепс',bw:1,c:['Держи рюкзак за ручку или лямки','Локти прижаты','Опускай медленно']}},
+  hammer:  {gym:'sb7', dumb:{n:'Молотки с гантелями',m:'Бицепс · предплечья',c:['Ладони смотрят друг на друга','Локти у корпуса','Без раскачки']}},
+  triceps: {gym:'sa6', dumb:{n:'Французский жим с гантелью из-за головы',m:'Трицепс',c:['Гантель двумя руками за головой','Локти смотрят вперёд и не разводятся','Разгибай до конца']},
+            home:{n:'Обратные отжимания от стула',m:'Трицепс',bw:1,c:['Руки на краю стула за спиной','Опускайся до угла 90° в локтях','Легко → ноги дальше вперёд']}},
+  triceps2:{gym:'sa5'},
+  abs:     {gym:'sa7', dumb:{n:'Скручивания лёжа',m:'Пресс',c:['Поясница прижата к полу','Скручивайся, грудь к тазу','Не тяни голову руками']},
+            home:{n:'Подъём ног лёжа',m:'Пресс',bw:1,c:['Поясница прижата к полу','Ноги поднимай до вертикали','Опускай медленно, не касаясь пола']}},
+};
+const SPLITS = {
+  fb:  {name:'Всё тело', days:[
+        {label:'Всё тело А',short:'Тело А',desc:'Ноги · грудь · спина · плечи',slots:[['squat','B'],['hpush','B'],['hpull','B'],['vpush','A'],['legcurl','I'],['biceps','I'],['abs','I']]},
+        {label:'Всё тело Б',short:'Тело Б',desc:'Ноги · грудь · спина · плечи',slots:[['hinge','B'],['ipush','B'],['vpull','B'],['legpress','A'],['lateral','I'],['triceps','I'],['calves','I']]},
+        {label:'Всё тело В',short:'Тело В',desc:'Ноги · ягодицы · грудь · спина',slots:[['legpress','B'],['hpush','A'],['hpull2','A'],['glute','A'],['reardelt','I'],['hammer','I'],['abs','I']]}]},
+  cbl: {name:'Грудь / спина / ноги', days:[
+        {label:'Грудь',short:'Грудь',desc:'Грудь · трицепс · пресс',slots:[['hpush','B'],['ipush','B'],['chestiso','A'],['triceps2','A'],['triceps','I'],['abs','I']]},
+        {label:'Спина',short:'Спина',desc:'Спина · бицепс · задняя дельта',slots:[['vpull','B'],['hpull','B'],['hpull2','A'],['reardelt','I'],['biceps','I'],['hammer','I']]},
+        {label:'Ноги',short:'Ноги',desc:'Ноги · ягодицы · плечи',slots:[['squat','B'],['hinge','B'],['legpress','A'],['vpush','A'],['glute','A'],['legcurl','I'],['lateral','I'],['calves','I']]}]},
+  ul:  {name:'Верх / низ', days:[
+        {label:'Верх 1',short:'Верх 1',desc:'Грудь · спина · плечи · руки',slots:[['hpush','B'],['hpull','B'],['vpush','A'],['vpull','A'],['lateral','I'],['biceps','I'],['triceps','I']]},
+        {label:'Низ 1',short:'Низ 1',desc:'Ноги · ягодицы · пресс',slots:[['squat','B'],['hinge','A'],['legpress','A'],['legcurl','I'],['calves','I'],['abs','I']]},
+        {label:'Верх 2',short:'Верх 2',desc:'Грудь · спина · плечи · руки',slots:[['ipush','B'],['vpull','B'],['hpull2','A'],['chestiso','I'],['reardelt','I'],['hammer','I'],['triceps2','I']]},
+        {label:'Низ 2',short:'Низ 2',desc:'Ноги · ягодицы · пресс',slots:[['hinge','B'],['legpress','B'],['glute','A'],['legcurl','I'],['calves','I'],['abs','I']]}]},
+  ppl: {name:'Жимы / тяги / ноги + верх / низ', days:[
+        {label:'Жимы',short:'Жимы',desc:'Грудь · плечи · трицепс',slots:[['hpush','B'],['ipush','A'],['vpush','A'],['lateral','I'],['triceps','I'],['chestiso','I']]},
+        {label:'Тяги',short:'Тяги',desc:'Спина · бицепс · задняя дельта',slots:[['vpull','B'],['hpull','B'],['hpull2','A'],['reardelt','I'],['biceps','I'],['hammer','I']]},
+        {label:'Ноги',short:'Ноги',desc:'Ноги · ягодицы · пресс',slots:[['squat','B'],['hinge','A'],['legpress','A'],['legcurl','I'],['calves','I'],['abs','I']]},
+        {label:'Верх',short:'Верх',desc:'Грудь · спина · плечи · руки',slots:[['ipush','B'],['vpull','B'],['hpull2','A'],['lateral','I'],['biceps','I'],['triceps2','I']]},
+        {label:'Низ',short:'Низ',desc:'Ноги · ягодицы · пресс',slots:[['hinge','B'],['legpress','B'],['glute','A'],['legcurl','I'],['calves','I'],['abs','I']]}]},
+};
+const SCHEDULES = {2:[1,4],3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5]};
+const LOWER=['squat','hinge','legpress'], PUSH=['hpush','ipush','vpush'], PULL=['vpull','hpull','hpull2'];
+
+function pickSplit(o){
+  if(o.days<=2) return {key:'fb',days:SPLITS.fb.days.slice(0,2)};
+  if(o.days===3) return o.exp==='new'||goalKey()==='maintain'?{key:'fb',days:SPLITS.fb.days}:{key:'cbl',days:SPLITS.cbl.days};
+  if(o.days===4) return {key:'ul',days:SPLITS.ul.days};
+  return {key:'ppl',days:SPLITS.ppl.days};
+}
+function libEx(pat,place){
+  const e=(EX_LIB[pat]||{})[place];
+  if(!e) return null;
+  if(typeof e==='string'){
+    const src=Object.values(DEFAULT_PLAN).flat().find(x=>x.id===e);
+    return src?{...src}:null;
+  }
+  return {id:place[0]+'_'+pat,name:e.n,muscles:e.m,cues:e.c.slice(),yt:e.n+' техника',bw:!!e.bw,lite:!!e.lite};
+}
+// Extra slots for the chosen focus; they outrank ordinary isolation work when time is short
+function focusSlots(slots,focus){
+  const has=p=>slots.some(x=>x[0]===p), any=ps=>ps.some(has), add=[];
+  if(focus==='legs'){if(!has('glute'))add.push('glute');else if(any(LOWER)&&!has('legcurl'))add.push('legcurl');}
+  if(focus==='arms'){if(any(PUSH)&&!has('triceps'))add.push('triceps');if(any(PULL)&&!has('biceps'))add.push('biceps');}
+  if(focus==='back'){if(any(PULL)&&!has('vpull'))add.push('vpull');if(any(PUSH)&&!has('lateral'))add.push('lateral');}
+  return add.map(p=>[p,'F']);
+}
+function setScheme(role,bw,o){
+  const g=goalKey(), nov=o.exp==='new';
+  const reps=bw?{B:[8,15],A:[10,15],F:[12,20],I:[12,20]}[role]:
+    {B:nov?[8,10]:[6,8],A:[8,12],F:[10,15],I:[12,15]}[role];
+  let sets={B:nov?3:4,A:3,F:3,I:3}[role];
+  if(g==='cut') sets={B:3,A:3,F:3,I:2}[role];
+  if(g==='maintain') sets={B:3,A:2,F:2,I:2}[role];
+  return {sets,repsMin:reps[0],repsMax:reps[1]};
+}
+function buildProgram(o){
+  const sp=pickSplit(o), letters='ABCDE', plan={}, meta={}, planDays=[];
+  const max=(PQ_TIME[o.time]||PQ_TIME[60]).max, prio={B:0,F:1,A:2,I:3};
+  sp.days.forEach((d,i)=>{
+    const L=letters[i];
+    let slots=[...d.slots,...focusSlots(d.slots,o.focus)]
+      .map((x,k)=>({pat:x[0],role:x[1],k,ex:libEx(x[0],o.place)}))
+      .filter(x=>x.ex)
+      .map(x=>x.ex.lite&&x.role==='B'?{...x,role:'A'}:x);
+    const seen=new Set();
+    slots=slots.filter(x=>!seen.has(x.ex.id)&&seen.add(x.ex.id));
+    const keep=new Set(slots.slice().sort((a,b)=>prio[a.role]-prio[b.role]||a.k-b.k).slice(0,max).map(x=>x.k));
+    plan[L]=slots.filter(x=>keep.has(x.k)).map(x=>{
+      const {bw,lite,...ex}=x.ex;
+      return {...ex,...setScheme(x.role,bw,o),isBase:x.role==='B'&&!bw};
+    });
+    meta[L]={label:d.label,short:d.short,desc:d.desc,hint:'Жми на упражнение, чтобы увидеть технику и замену, если тренажёр занят.'};
+    planDays.push(L);
+  });
+  return {plan,meta,planDays,split:sp.key};
+}
+function programTitle(){
+  const pr=S.profile.program;
+  if(!pr||!S.planDays) return 'Сплит на 3 дня · через день отдых';
+  const n=S.planDays.length;
+  return SPLITS[pr.split].name+' · '+n+' '+plural(n,'день','дня','дней')+' в неделю';
+}
+function applyProgram(o){
+  const b=buildProgram(o);
+  S.planPrev={plan:S.plan,planDays:S.planDays||null,planMeta:S.planMeta||null,program:S.profile.program||null,schedule:S.profile.schedule,planSince:S.planSince};
+  // Keep old exercises so history and charts still find their names
+  const old=allPlanEx(), seen=new Set();
+  S.planOld={prev:old.filter(e=>!seen.has(e.id)&&seen.add(e.id))};
+  S.plan=b.plan; S.planDays=b.planDays; S.planMeta=b.meta; S.planSince=todayKey();
+  S.profile.program={...o,split:b.split};
+  S.profile.schedule=SCHEDULES[b.planDays.length]||[1,3,5];
+  S.profile.programSet=true;
+  wip={}; clearWip(); curDay=b.planDays[0];
+}
+async function programUndo(){
+  const p=S.planPrev; if(!p)return;
+  const ok=await showConfirm('Вернуть прошлую программу? Текущая будет заменена.','Вернуть');
+  if(!ok)return;
+  S.plan=p.plan; S.planDays=p.planDays||undefined; S.planMeta=p.planMeta||undefined;
+  if(!S.planDays){delete S.planDays;delete S.planMeta;}
+  S.profile.program=p.program||undefined; if(!p.program) delete S.profile.program;
+  S.profile.schedule=p.schedule; S.planSince=p.planSince;
+  delete S.planPrev;
+  wip={}; clearWip(); curDay=suggestedDay();
+  save(); setSegs(curDay); renderAll(); renderSettings();
+  toast('Прошлая программа возвращена','ok');
+}
+
+/* ---------- Program questionnaire (first visit to «Тренировка», or from «Ещё») ---------- */
+let pq=null;   // {step, edit, exp, days, place, time, focus, preview}
+const PQ_STEPS=6;
+function pqOpen(edit){
+  const pr=S.profile.program||{};
+  pq={step:0,edit,exp:pr.exp||null,days:pr.days||null,place:pr.place||null,time:pr.time||null,focus:pr.focus||'even'};
+  $('obBg').classList.add('active');
+  document.body.style.overflow='hidden';
+  pqRender();
+}
+function pqClose(){
+  pq=null;
+  $('obBg').classList.remove('active');
+  document.body.style.overflow='';
+}
+function pqSet(k,v){
+  pq[k]=v;
+  // One tap answers the question: move on
+  if(pq.step<PQ_STEPS-2){pq.step++;}
+  else if(pq.step===PQ_STEPS-2){pq.preview=buildProgram(pq);pq.step++;}
+  pqRender();
+}
+function pqBack(){if(pq.step>0){pq.step--;pqRender();}else pqClose();}
+async function pqFinish(){
+  if(pq.edit&&S.profile.programSet){
+    const ok=await showConfirm('Заменить текущую программу новой? История тренировок сохранится, прошлую программу можно вернуть в «Ещё».','Заменить');
+    if(!ok)return;
+  }
+  const o={exp:pq.exp,days:pq.days,place:pq.place,time:pq.time,focus:pq.focus};
+  applyProgram(o);
+  save(); pqClose();
+  setSegs(curDay); renderAll();
+  if($('tab-more').classList.contains('active')) renderSettings();
+  else switchTab('workout');
+  toast('Программа готова 💪','ok');
+}
+function pqOpt(k,v,em,title,desc){
+  return `<button class="ob-opt${pq[k]==v?' on':''}" onclick="pqSet('${k}',${typeof v==='number'?v:`'${v}'`})">${em?`<span class="em">${em}</span>`:''}<div><b>${esc(title)}</b>${desc?`<span>${esc(desc)}</span>`:''}</div></button>`;
+}
+function pqRender(){
+  if(!pq)return;
+  const dots=Array.from({length:PQ_STEPS},(_,i)=>`<i class="${i<=pq.step?'on':''}"></i>`).join('');
+  const backBtn=`<button class="icon-btn" onclick="pqBack()" aria-label="${pq.step?'Назад':'Закрыть'}" style="font-size:20px;color:var(--text)">${pq.step?'‹':'×'}</button>`;
+  let body='', foot='';
+  if(pq.step===0){
+    body=`<div class="ob-step">Программа тренировок</div>
+      <h1 class="ob-h">Какой у тебя опыт?</h1>
+      <p class="ob-sub">5 коротких вопросов, и соберём программу под тебя.</p>
+      <div class="ob-opts">${Object.entries(EXPERIENCE).map(([k,x])=>pqOpt('exp',k,'',x.name,x.desc)).join('')}</div>`;
+  } else if(pq.step===1){
+    body=`<div class="ob-step">Дни</div>
+      <h1 class="ob-h">Сколько раз в неделю готов тренироваться?</h1>
+      <p class="ob-sub">Выбирай честно: лучше 3 тренировки каждую неделю, чем 5 через раз.</p>
+      <div class="ob-opts">${[[2,'Минимум, чтобы был результат'],[3,'Лучший выбор для большинства'],[4,'Больше объёма, верх и низ отдельно'],[5,'Для тех, кто тренируется давно']].map(([n,d])=>pqOpt('days',n,'',n+' '+plural(n,'раз','раза','раз'),d)).join('')}</div>`;
+  } else if(pq.step===2){
+    body=`<div class="ob-step">Место</div>
+      <h1 class="ob-h">Где будешь тренироваться?</h1>
+      <p class="ob-sub">Подберём упражнения под то, что есть под рукой.</p>
+      <div class="ob-opts">${Object.entries(PLACES).map(([k,x])=>pqOpt('place',k,x.em,x.name,x.desc)).join('')}</div>`;
+  } else if(pq.step===3){
+    body=`<div class="ob-step">Время</div>
+      <h1 class="ob-h">Сколько времени на одну тренировку?</h1>
+      <p class="ob-sub">Если времени мало, оставим главное: базовые упражнения.</p>
+      <div class="ob-opts">${Object.entries(PQ_TIME).map(([k,x])=>pqOpt('time',+k,'',x.name,'до '+x.max+' упражнений')).join('')}</div>`;
+  } else if(pq.step===4){
+    body=`<div class="ob-step">Акцент</div>
+      <h1 class="ob-h">Что хочется подтянуть больше всего?</h1>
+      <p class="ob-sub">Добавим пару упражнений на эту зону. Остальное тоже будет.</p>
+      <div class="ob-opts">${Object.entries(FOCUS).map(([k,x])=>pqOpt('focus',k,x.em,x.name,x.desc||'')).join('')}</div>`;
+  } else {
+    const b=pq.preview||buildProgram(pq), g=GOALS[goalKey()];
+    body=`<div class="ob-step">Готово</div>
+      <h1 class="ob-h">${esc(SPLITS[b.split].name)}</h1>
+      <p class="ob-sub">${b.planDays.length} ${plural(b.planDays.length,'тренировка','тренировки','тренировок')} в неделю, по очереди, между ними день отдыха. Цель: ${esc(g.name.toLowerCase())}.</p>
+      ${b.planDays.map(L=>`<div class="pq-day"><b>${esc(b.meta[L].label)}</b><span>${b.plan[L].map(e=>esc(e.name)+' '+e.sets+'×'+e.repsMin+(e.repsMin!==e.repsMax?'–'+e.repsMax:'')).join(' · ')}</span></div>`).join('')}
+      <p class="ob-note" style="margin-top:12px">${goalKey()==='cut'?(pq.place==='home'?'При похудении упражнения держим тяжёлыми: медленно и почти до отказа,':'При похудении веса держим тяжёлыми,')+' чтобы уходил жир, а не мышцы. Подходов чуть меньше, плюс 8–10 тысяч шагов в день.':(pq.place==='home'?'Когда все подходы получаются на верх диапазона, усложняй: медленнее вниз или тяжелее вариант.':'Каждый раз, когда все подходы сделаны на верх диапазона повторов, трекер предложит добавить вес.')} Упражнения можно поменять в «Программа».</p>`;
+    foot=`<div class="ob-foot"><button class="btn" onclick="pqFinish()">${pq.edit&&S.profile.programSet?'Заменить программу':'Начать'}</button></div>`;
+  }
+  $('obWrap').innerHTML=`<div class="ob-top">${backBtn}<div class="ob-dots">${dots}</div></div><div>${body}</div>${foot}`;
+}
+
+/* ============================================================
    RENDER ALL
    ============================================================ */
 function renderAll(){
@@ -3313,7 +3581,7 @@ function init(){
   }
 
   // Set segmented control
-  if(!DAYS.includes(curDay)) curDay=suggestedDay();
+  if(!days().includes(curDay)) curDay=suggestedDay();
   setSegs(curDay);
 
   repairHistoryData();
