@@ -506,6 +506,7 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     </div>
   </div>
 
+  <div id="weekCard"></div>
   <div id="notifBar"></div>
 
   <div class="today-grid">
@@ -1258,6 +1259,7 @@ function normalizeState(){
   days().forEach(d=>{S.plan[d]=S.plan[d]||[];});
   S.nutrition=S.nutrition||{};
   S.myFoods=S.myFoods||[];
+  S.checkins=S.checkins||[];
   S.settings=S.settings||{restTimer:90,notifications:false};
 }
 function migrateV1(){
@@ -3554,10 +3556,99 @@ function pqRender(){
 }
 
 /* ============================================================
+   SMART CALORIES + WEEKLY CHECK-IN
+   Daily weight jumps ±1 kg from water and salt, so we follow a
+   smoothed trend. Once a week the trend rate is compared with the
+   goal's planned rate and a calorie change is suggested (max ±200).
+   With food logged most days the real expenditure is computed:
+   avg intake − trend change × 7700 kcal/kg.
+   ============================================================ */
+const KCAL_PER_KG=7700;
+// Planned weekly change as a share of body weight
+const GOAL_RATE={gain:0.0035,cut:-0.0075,recomp:0,maintain:0};
+function dayDiff(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);}
+function shiftKey(k,n){const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// Exponential moving average per day; days without a weigh-in keep the previous value
+function weightTrend(){
+  const ws=S.weights.slice().sort((a,b)=>a.date<b.date?-1:1);
+  if(!ws.length) return [];
+  const byDate={}; ws.forEach(w=>byDate[w.date]=w.kg);
+  const out=[]; let t=ws[0].kg;
+  for(let d=ws[0].date;d<=todayKey();d=shiftKey(d,1)){
+    if(byDate[d]!=null) t=t+0.15*(byDate[d]-t);
+    out.push({date:d,t});
+  }
+  return out;
+}
+function trendAt(tr,key){for(let i=tr.length-1;i>=0;i--) if(tr[i].date<=key) return tr[i].t; return null;}
+function weekReview(){
+  const tr=weightTrend(); if(!tr.length) return null;
+  const today=todayKey(), from=shiftKey(today,-14);
+  const recent=S.weights.filter(w=>w.date>from);
+  if(dayDiff(tr[0].date,today)<14||recent.length<4) return {notReady:true,need:Math.max(0,4-recent.length)};
+  const now=trendAt(tr,today), then=trendAt(tr,from);
+  const rate=(now-then)/2;                       // kg per week
+  const g=goalKey(), plan=GOAL_RATE[g]*now;      // kg per week
+  const kt=kcalTarget();
+  let logged=0,kSum=0,pSum=0;
+  for(let i=1;i<=14;i++){const t=foodTotals(shiftKey(today,-i));if(t.k>0){logged++;kSum+=t.k;pSum+=t.p;}}
+  let target;
+  if(logged>=10){
+    const tdee=kSum/logged-rate*KCAL_PER_KG/7;
+    target=tdee+plan*KCAL_PER_KG/7;
+  } else target=kt+(plan-rate)*KCAL_PER_KG/7;
+  let delta=round50(target-kt);
+  delta=Math.max(-200,Math.min(200,delta));
+  const minK=S.profile.sex==='f'?1200:1500;
+  if(kt+delta<minK) delta=Math.max(0,minK-kt);
+  // Recomp/maintain: a small drift is fine
+  if(Math.abs(delta)<100||(!GOAL_RATE[g]&&Math.abs(rate)<0.15)) delta=0;
+  const ws=shiftKey(today,-6);
+  const workouts=S.sessions.filter(s=>s.date>=ws).length;
+  const planned=(S.planDays||DAYS).length;
+  return {now,rate,plan,delta,kt,logged,avgK:logged?Math.round(kSum/logged):0,avgP:logged?Math.round(pSum/logged):0,workouts,planned};
+}
+function checkinDue(){
+  const last=S.checkins.slice(-1)[0];
+  return !last||dayDiff(last.date,todayKey())>=7;
+}
+function fmtKg(x){return (x>0?'+':x<0?'−':'')+Math.abs(x).toFixed(2).replace(/0$/,'')+' кг';}
+function renderWeekCard(){
+  const el=$('weekCard'); if(!el) return;
+  const r=S.profile.onboarded&&checkinDue()?weekReview():null;
+  if(!r||r.notReady){el.innerHTML='';return;}
+  const g=GOALS[goalKey()];
+  let advice;
+  if(r.delta&&Math.sign(r.delta)!==Math.sign(r.plan-r.rate)) advice=`В среднем ты ел <b>${r.avgK} ккал</b> при норме ${r.kt}. По весу и записям еды для твоего плана нужно около <b>${r.kt+r.delta} ккал</b>: поставим такую норму?`;
+  else if(r.delta>0) advice=`Вес ${goalKey()==='gain'?'растёт медленнее плана':'падает быстрее, чем нужно'}. Добавим <b>${r.delta} ккал</b> в день: будет ${r.kt+r.delta}.`;
+  else if(r.delta<0) advice=`Вес ${goalKey()==='cut'?'уходит медленнее плана':'растёт быстрее плана, лишнее уйдёт в жир'}. Уберём <b>${-r.delta} ккал</b> в день: будет ${r.kt+r.delta}.`;
+  else advice='Всё идёт по плану, ничего не меняем 👍';
+  el.innerHTML=`<div class="card">
+    <div class="card-head"><h3 class="card-title"><span class="ico o">📊</span>Итог недели</h3><span class="muted" style="font-size:12.5px">${esc(g.name)}</span></div>
+    <div class="macro-mini"><span>Вес по тренду</span><b>${r.now.toFixed(1)} кг</b></div>
+    <div class="macro-mini"><span>За неделю</span><b>${fmtKg(r.rate)}</b></div>
+    <div class="macro-mini"><span>План</span><b>${r.plan?fmtKg(r.plan):'держим вес'}</b></div>
+    <div class="macro-mini"><span>Тренировок за 7 дней</span><b>${r.workouts} из ${r.planned}</b></div>
+    ${r.logged?`<div class="macro-mini"><span>В среднем ел</span><b>${r.avgK} ккал · ${r.avgP} г белка</b></div>`:''}
+    <p class="sub" style="margin:10px 0 12px">${advice}${r.logged<10?' <span class="muted">Записывай еду почти каждый день, и подсказка станет точнее.</span>':''}</p>
+    <div class="row" style="gap:8px">${r.delta?`<button class="btn sm" style="flex:1" onclick="checkinDone(true)">Принять</button><button class="btn ghost sm" style="flex:1" onclick="checkinDone(false)">Оставить как есть</button>`:`<button class="btn ghost sm" style="flex:1" onclick="checkinDone(false)">Понятно</button>`}</div>
+  </div>`;
+}
+function checkinDone(accept){
+  const r=weekReview(); if(!r||r.notReady) return;
+  const from=kcalTarget();
+  if(accept&&r.delta) S.profile.kcalTarget=from+r.delta;
+  S.checkins.push({date:todayKey(),trend:+r.now.toFixed(2),rate:+r.rate.toFixed(3),kcalFrom:from,kcalTo:kcalTarget()});
+  save(); renderAll();
+  toast(accept&&r.delta?'Норма: '+kcalTarget()+' ккал ✓':'Увидимся через неделю 👋','ok');
+}
+
+/* ============================================================
    RENDER ALL
    ============================================================ */
 function renderAll(){
   renderToday();
+  renderWeekCard();
   renderWorkout();
   renderNutrition();
   // Progress only renders on tab open (to avoid heavy chart work on every save)
