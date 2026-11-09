@@ -590,6 +590,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
     </div>
   </div>
 
+  <div id="movedCard"></div>
   <div id="bearCard"></div>
   <div id="weekCard"></div>
   <div id="pzCard"></div>
@@ -894,6 +895,15 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
       <div class="row" style="gap:8px">
         <button class="btn ghost sm" style="flex:1" onclick="exportData()">↑ Экспорт JSON</button>
         <button class="btn ghost sm" style="flex:1" onclick="importData()">↓ Импорт JSON</button>
+      </div>
+      <p class="sub" style="margin:14px 0 8px">Переезд на новый адрес или телефон: скопируй код здесь и вставь его в новом трекере. Переносит всё, включая анкету и синхронизацию.</p>
+      <div class="row" style="gap:8px">
+        <button class="btn ghost sm" style="flex:1" onclick="moveCopy()">⧉ Скопировать код</button>
+        <button class="btn ghost sm" style="flex:1" onclick="movePaste()">⎘ Вставить код</button>
+      </div>
+      <div id="moveBox" style="display:none;margin-top:10px">
+        <textarea class="food-in" id="moveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
+        <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('moveIn').value)">Перенести данные</button>
       </div>
     </div>
   </details>
@@ -3060,6 +3070,75 @@ function importData(){
 }
 
 /* ============================================================
+   MOVE CODE
+   Moves everything (S, health answers, sync settings) between
+   origins or devices through the clipboard. Needed when the app
+   moves to a new domain: localStorage does not follow the address.
+   ============================================================ */
+const MOVE_PREFIX='TREKER1:';
+function moveCode(){
+  return MOVE_PREFIX+b64utf8(JSON.stringify({v:1,S,H,sync:syncCfg}));
+}
+async function moveCopy(){
+  const code=moveCode();
+  try{await navigator.clipboard.writeText(code);toast('Код скопирован. Вставь его в новом трекере','ok');return true;}
+  catch(e){
+    const box=$('moveBox'),inp=$('moveIn');
+    if(box&&inp){box.style.display='';inp.value=code;inp.select();}
+    toast('Выдели код в поле и скопируй вручную');return false;
+  }
+}
+async function movePaste(fromOb){
+  let txt='';
+  try{txt=await navigator.clipboard.readText();}catch(e){}
+  if(txt&&txt.trim().startsWith(MOVE_PREFIX)) return moveApply(txt);
+  const box=$(fromOb?'obMoveBox':'moveBox');
+  if(box){box.style.display='';const i=$(fromOb?'obMoveIn':'moveIn');if(i){i.value='';i.focus();}}
+}
+async function moveApply(txt){
+  txt=(txt||'').trim();
+  if(!txt.startsWith(MOVE_PREFIX)){toast('Это не код переноса','err');return;}
+  let d;
+  try{d=JSON.parse(unb64utf8(txt.slice(MOVE_PREFIX.length)));}catch(e){toast('Код повреждён, скопируй ещё раз','err');return;}
+  if(!d||!d.S){toast('Код повреждён, скопируй ещё раз','err');return;}
+  const ok=await showConfirm('Перенести данные? Текущие данные на этом устройстве будут заменены.','Перенести');
+  if(!ok)return;
+  S=d.S;normalizeState();save();
+  H=d.H||null;hStore();
+  if(d.sync){syncCfg=d.sync;storeSyncCfg();}
+  wip={};obClose();renderAll();
+  if(typeof renderSyncSettings==='function') try{renderSyncSettings();}catch(e){}
+  toast('Данные перенесены ✓','ok');
+}
+
+/* When GitHub Pages gets a custom domain, the old *.github.io address
+   redirects there. The installed app still runs from its cache, so it
+   can notice the redirect and show how to move. */
+let movedTo=null;
+async function checkMoved(){
+  if(!/\.github\.io$/.test(location.hostname)||!navigator.onLine) return;
+  try{
+    const r=await fetch('index.html?probe='+Date.now(),{cache:'no-store'});
+    const u=new URL(r.url);
+    if(r.redirected&&u.host!==location.host){movedTo=u.origin+'/tracker.html';renderMoved();}
+  }catch(e){}
+}
+function renderMoved(){
+  const el=$('movedCard');if(!el)return;
+  if(!movedTo){el.innerHTML='';return;}
+  const host=esc(new URL(movedTo).host);
+  el.innerHTML=`<div class="card" style="border-color:var(--accent)">
+    <div style="font-weight:700;font-size:17px;margin-bottom:6px">Трекер переехал на ${host}</div>
+    <p class="sub" style="margin:0 0 10px">Данные сами не переедут. 1) Нажми кнопку: код скопируется и откроется новый адрес. 2) Там «Поделиться» → «На экран Домой». 3) Открой новую иконку и нажми «Перенести данные». Эту старую иконку потом можно удалить.</p>
+    <button class="btn" style="width:100%" onclick="moveGo()">Скопировать код и открыть</button>
+  </div>`;
+}
+async function moveGo(){
+  await moveCopy();
+  window.open(movedTo,'_blank');
+}
+
+/* ============================================================
    GITHUB SYNC
    Keeps a copy of S (same JSON as exportData(), no photos) in a
    private repo via the contents API, both ways: local changes are
@@ -3864,7 +3943,10 @@ function obRender(){
     body=`<div class="ob-step">${ob.mode==='edit'?'Изменить цель':'Добро пожаловать'}</div>
       <h1 class="ob-h">Какая у тебя цель?</h1>
       <p class="ob-sub">Под неё посчитаем калории, белок и подскажем, на что смотреть.</p>
-      <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.em,x.name,x.desc)).join('')}</div>`;
+      <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.em,x.name,x.desc)).join('')}</div>
+      ${ob.mode==='new'?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="movePaste(true)">Уже пользовался трекером? Перенести данные</button>
+      <div id="obMoveBox" style="display:none;margin-top:10px"><textarea class="food-in" id="obMoveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
+      <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('obMoveIn').value)">Перенести данные</button></div>`:''}`;
   } else if(k==='about'){
     body=`<div class="ob-step">О себе</div>
       <h1 class="ob-h">Немного о тебе</h1>
@@ -5587,6 +5669,7 @@ function init(){
   pullSync(false); // take a newer copy from GitHub, or send ours
   if(!S.profile.onboarded) obOpen(false);
   checkWorkoutNotification();
+  checkMoved();
 
   // Register service worker
   if('serviceWorker' in navigator){
