@@ -73,6 +73,20 @@ button{font-family:inherit;cursor:pointer}
 .back-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--accent);font-size:15px;font-weight:600;padding:4px 0;margin-bottom:6px}
 
 /* ===================== CARD ===================== */
+.bear-card{display:flex;gap:14px;align-items:stretch;cursor:pointer;padding:14px 16px;background:radial-gradient(120% 90% at 20% 100%,rgba(255,106,43,.14),transparent 60%),var(--surface)}
+.bear-fig{position:relative;flex:0 0 auto;overflow:hidden;border-radius:16px;background:#0b0a09}
+.bear-fig img{position:absolute;top:0;left:0;max-width:none;user-select:none;-webkit-user-drag:none}
+.bear-info{display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:0;flex:1}
+.bear-eb{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.bear-ttl{font-size:21px;font-weight:800;line-height:1.15}
+.bear-dots{display:flex;gap:5px}.bear-dots i{flex:1;height:6px;border-radius:3px;background:var(--surface3)}.bear-dots i.on{background:var(--grad)}
+.bear-next{font-size:13px;color:var(--muted);line-height:1.4}
+.bear-all{position:relative;border-radius:14px;overflow:hidden}
+.bear-all img{width:100%;height:100%;display:block}
+.bear-more{font-size:12.5px;font-weight:700;color:var(--accent-light)}
+.bear-all .hl{position:absolute;top:0;bottom:0;border:2px solid var(--accent);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+@media (prefers-reduced-motion:no-preference){.bear-fig img{animation:bearBreath 4s ease-in-out infinite;transform-origin:50% 100%}}
+@keyframes bearBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
 .card-title{font-size:16.5px;display:flex;align-items:center;gap:10px}
@@ -568,6 +582,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
     </div>
   </div>
 
+  <div id="bearCard"></div>
   <div id="weekCard"></div>
   <div id="pzCard"></div>
 
@@ -5396,12 +5411,68 @@ function bcRender(){
   $('bcBody').innerHTML=h;
 }
 
+
+/* ============================================================
+   BEAR MASCOT: the bear's body follows the user's goal and progress
+   Sprites: mascot/<m|f>-<gain|cut>.jpg, 6 stages left to right
+   ============================================================ */
+const BEAR_STAGES=6;
+const BEAR_W=1600, BEAR_H=664;                 // sprite size: 6 panels of different widths, captions cut off
+const BEAR_COLS={                              // panel borders in px, left to right
+  'm-gain':[0,238,485,751,1022,1302,1600],
+  'm-cut': [0,254,498,756,1023,1302,1600],
+  'f-gain':[0,238,486,752,1023,1305,1600],
+  'f-cut': [0,243,492,760,1027,1309,1600],
+};
+const BEAR_TITLES=['Только начинаем','Первые шаги','Форма меняется','Уже заметно','Почти у цели','Цель взята'];
+let bearOpen=false, bearBroken={};
+function bearCol(key,i){const c=BEAR_COLS[key];return [c[i]+(i?4:0),c[i+1]-(i<BEAR_STAGES-1?4:0)];}
+function bearState(){
+  if(pzNoNum()) return null;                      // no body talk in the «без цифр» mode
+  const sex=S.profile.sex==='f'?'f':'m', g=goalKey(), fem=sex==='f';
+  const path=(g==='cut'||g==='recomp')?'cut':'gain', key=sex+'-'+path;
+  let stage, next='';
+  if(g==='gain'||g==='cut'){
+    const start=+S.profile.startWeight, goal=+S.profile.targetWeight, cur=latestWeight();
+    const frac=goal===start?1:Math.max(0,Math.min(1,(cur-start)/(goal-start)));
+    stage=frac>=1?BEAR_STAGES-1:Math.min(BEAR_STAGES-2,Math.floor(frac*(BEAR_STAGES-1)));
+    if(stage<BEAR_STAGES-1){
+      const thr=start+(stage+1)/(BEAR_STAGES-1)*(goal-start), left=Math.abs(thr-cur);
+      next=`До следующего этапа ${g==='gain'?'+':'−'}${left.toFixed(1)} кг`;
+    } else next=fem?'Ты дошла до цели. Можно ставить новую.':'Ты дошёл до цели. Можно ставить новую.';
+  } else {
+    const per=12, n=S.sessions.length, base=g==='recomp'?1:2;   // recomp/maintain: a stage every ~4 weeks of training
+    stage=Math.min(BEAR_STAGES-1,base+Math.floor(n/per));
+    next=stage<BEAR_STAGES-1?`До следующего этапа ${per-n%per} трен.`:'Мишка в лучшей форме. Держи её.';
+  }
+  return {key,src:`mascot/${key}.jpg`,stage,next,fem};
+}
+function renderBearCard(){
+  const el=$('bearCard'); if(!el) return;
+  const b=bearState();
+  if(!b||bearBroken[b.src]){el.innerHTML='';return;}
+  const H=224, k=H/BEAR_H, [x0,x1]=bearCol(b.key,b.stage), boxW=Math.round((x1-x0)*k);
+  const all=BEAR_COLS[b.key];
+  el.innerHTML=`<div class="card bear-card" onclick="bearOpen=!bearOpen;renderBearCard()" role="button" aria-expanded="${bearOpen}" aria-label="${b.fem?'Твоя мишка':'Твой мишка'}: этап ${b.stage+1} из ${BEAR_STAGES}">
+    <div class="bear-fig" style="flex-basis:${boxW}px;width:${boxW}px;height:${H}px"><img src="${b.src}" alt="" width="${Math.round(BEAR_W*k)}" height="${H}" style="width:${BEAR_W*k}px;height:${H}px;left:${-x0*k}px;transform-origin:${(x0+x1)/2*k}px ${H}px" onerror="bearBroken['${b.src}']=1;renderBearCard()"></div>
+    <div class="bear-info">
+      <div class="bear-eb">${b.fem?'Твоя мишка':'Твой мишка'} · этап ${b.stage+1} из ${BEAR_STAGES}</div>
+      <div class="bear-ttl">${BEAR_TITLES[b.stage]}</div>
+      <div class="bear-dots">${Array.from({length:BEAR_STAGES},(_,i)=>`<i class="${i<=b.stage?'on':''}"></i>`).join('')}</div>
+      <div class="bear-next">${esc(b.next)}</div>
+      <div class="bear-more">${bearOpen?'Скрыть этапы':'Все этапы →'}</div>
+    </div></div>${bearOpen?`<div class="card" style="padding:12px;margin-top:-4px"><div class="bear-all" style="aspect-ratio:${BEAR_W}/${BEAR_H}"><img src="${b.src}" alt="Все этапы: мишка меняется от старта к цели">
+      <div class="hl" style="left:${all[b.stage]/BEAR_W*100}%;width:${(all[b.stage+1]-all[b.stage])/BEAR_W*100}%"></div></div>
+      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Мишка меняется вместе с тобой: чем ближе цель, тем дальше этап.</p></div>`:''}`;
+}
+
 /* ============================================================
    RENDER ALL
    ============================================================ */
 function renderAll(){
   document.body.classList.toggle('nonum',pzNoNum());
   renderToday();
+  renderBearCard();
   renderWeekCard();
   renderPzCard();
   renderWorkout();
