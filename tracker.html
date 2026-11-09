@@ -453,6 +453,34 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .macro-mini span{color:var(--muted);font-size:13px}
 .app-ver{text-align:center;color:var(--muted2);font-size:12px;margin:18px 0 4px}
 
+/* ===================== BODY COMPOSITION ===================== */
+.bc-src{font-size:12.5px;color:var(--muted);text-align:center}
+.bc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.bc-row:last-child{border-bottom:none}
+.bc-row .v{font-family:'Oswald',sans-serif;font-weight:600;font-size:16px;color:var(--text);white-space:nowrap}
+.bc-row .c{font-size:11.5px;color:var(--muted);text-align:right;line-height:1.5}
+.bc-tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--surface3);color:var(--muted);margin-left:6px;vertical-align:2px}
+.bc-tag.sure{background:var(--accent-dim);color:var(--accent-light)}
+.bc-tag.likely{background:rgba(232,179,61,.12);color:var(--warn)}
+.bc-note{background:var(--surface2);border:1px solid var(--line);border-radius:14px;padding:11px 13px;font-size:13.5px;line-height:1.5;margin-top:10px}
+.bc-note.warn{border-color:rgba(232,179,61,.4)}
+.bc-note.care{border-color:var(--accent-mid);background:var(--accent-dim);margin:0 0 12px}
+.bc-prop{background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:16px;padding:13px 14px;margin-top:12px}
+.bc-prop b.t{display:block;font-size:14.5px;margin-bottom:6px}
+.bc-prop .ln{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:3px 0}
+.bc-prop .ln b{font-family:'Oswald',sans-serif;font-weight:600;white-space:nowrap}
+.bc-next{margin-top:12px;padding:12px 13px;border-radius:14px;border:1px dashed var(--line2);font-size:13.5px}
+.bc-next b{display:block;font-size:14.5px;margin-bottom:2px}
+.bc-next span{color:var(--muted)}
+.bc-prep{margin:8px 0 0;padding-left:18px;color:var(--muted);line-height:1.6}
+.bc-check{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px;line-height:1.4;cursor:pointer}
+.bc-check input{width:20px;height:20px;accent-color:var(--accent);flex-shrink:0;margin:0}
+.bc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.bc-seg-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px 8px;align-items:center;font-size:13.5px}
+.bc-err{color:var(--danger);font-size:12px;margin-top:4px}
+input.bad{border-color:var(--danger);background:var(--danger-dim)}
+.ob-opt:disabled{cursor:default}
+
 /* iPad / wide screens: two columns on the Today page */
 @media(min-width:760px){
   .wrap{max-width:760px;padding-left:24px;padding-right:24px}
@@ -706,6 +734,8 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
     <div id="weightChart"></div>
   </div>
 
+  <div id="bcCard"></div>
+
   <div class="card">
     <div class="card-head"><h3 class="card-title"><span class="ico o">💪</span>Рабочие веса</h3></div>
     <div class="chart-tabs" id="strengthTabs"></div>
@@ -900,6 +930,14 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
       <input type="number" inputmode="numeric" id="scanCode" placeholder="или введи цифры" style="flex:1">
       <button class="btn sm" onclick="foodScanManual()">Найти</button>
     </div>
+  </div>
+</div>
+
+<!-- ==================== BODY COMPOSITION ==================== -->
+<div class="modal-bg" id="bcModal" onclick="if(event.target===this)bcClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="bcBody"></div>
   </div>
 </div>
 
@@ -1223,10 +1261,12 @@ function load(){
         settings:{restTimer:90,notifications:false},
       };
       migrateV1();
+      normalizeState();   // fresh state gets every list too (checkins, bodycomp…)
     }
     _savedJson=stateJson();
   }catch(e){
     S={profile:{startDate:tomorrowKey(),startWeight:70,targetWeight:75,schedule:SPLIT_SCHEDULE.slice(),goal:'gain',onboarded:false},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),planVersion:PLAN_VERSION,planSince:todayKey(),nutrition:{},settings:{restTimer:90,notifications:false}};
+    normalizeState();
   }
 }
 function normalizeState(){
@@ -1256,6 +1296,7 @@ function normalizeState(){
   S.nutrition=S.nutrition||{};
   S.myFoods=S.myFoods||[];
   S.checkins=S.checkins||[];
+  S.bodycomp=S.bodycomp||[];
   S.settings=S.settings||{restTimer:90,notifications:false};
 }
 function migrateV1(){
@@ -2672,6 +2713,7 @@ function renderProgress(){
   drawWeightChart();
   renderStrengthTabs();
   renderHistory();
+  renderBodyComp();
   renderPhotoGallery();
 }
 function renderSettings(){
@@ -2868,10 +2910,18 @@ function saveSettings(){
   if(gl&&gl>0) S.profile.targetWeight=gl;
   if(dt) S.profile.startDate=dt;
   const kt=parseInt($('setKcal').value,10),pt=parseInt($('setProt').value,10);
-  if(kt>=1000&&kt<=6000) S.profile.kcalTarget=kt;
+  const floor=kcalFloor();
+  let floored=false;
+  if(kt>=1000&&kt<floor){
+    // S-06: not below the floor; repeated tries feed the S-10 check
+    const tries=(S.profile.floorTries||[]).filter(d=>d>=shiftKey(todayKey(),-30)&&d!==todayKey());
+    S.profile.floorTries=[...tries,todayKey()];   // one per day
+    S.profile.kcalTarget=floor; floored=true;
+  } else if(kt>=1000&&kt<=6000) S.profile.kcalTarget=kt;
   if(pt>=30&&pt<=400) S.profile.proteinTarget=pt;
   save(); renderToday(); renderProgress(); renderNutrition();
-  toast('Настройки сохранены','ok');
+  if(floored){$('setKcal').value=floor;toast('Ниже '+floor+' ккал не ставим','err');}
+  else toast('Настройки сохранены','ok');
 }
 function renderNotifSetting(){
   const el=$('notifSetting');
@@ -3222,6 +3272,7 @@ function obFinish(){
   if(!edit||wasGoal!==ob.goal){
     // New goal: progress is counted from today's weight
     p.startWeight=ob.weight;
+    p.goalSince=todayKey();
     if(!edit) p.startDate=todayKey();
   }
   if(!S.weights.length||latestWeight()!==ob.weight){
@@ -3447,6 +3498,7 @@ function applyProgram(o){
   S.profile.program={...o,split:b.split};
   S.profile.schedule=SCHEDULES[b.planDays.length]||[1,3,5];
   S.profile.programSet=true;
+  delete S.profile.bcEmphasis;
   wip={}; clearWip(); curDay=b.planDays[0];
 }
 async function programUndo(){
@@ -3458,6 +3510,7 @@ async function programUndo(){
   S.profile.program=p.program||undefined; if(!p.program) delete S.profile.program;
   S.profile.schedule=p.schedule; S.planSince=p.planSince;
   delete S.planPrev;
+  delete S.profile.bcEmphasis;
   wip={}; clearWip(); curDay=suggestedDay();
   save(); setSegs(curDay); renderAll(); renderSettings();
   toast('Прошлая программа возвращена','ok');
@@ -3577,7 +3630,7 @@ function weekReview(){
   if(dayDiff(tr[0].date,today)<14||recent.length<4) return {notReady:true,need:Math.max(0,4-recent.length)};
   const now=trendAt(tr,today), then=trendAt(tr,from);
   const rate=(now-then)/2;                       // kg per week
-  const g=goalKey(), plan=GOAL_RATE[g]*now;      // kg per week
+  const g=goalKey(), plan=goalRate()*now;        // kg per week
   const kt=kcalTarget();
   let logged=0,kSum=0,pSum=0;
   for(let i=1;i<=14;i++){const t=foodTotals(shiftKey(today,-i));if(t.k>0){logged++;kSum+=t.k;pSum+=t.p;}}
@@ -3588,8 +3641,10 @@ function weekReview(){
   } else target=kt+(plan-rate)*KCAL_PER_KG/7;
   let delta=round50(target-kt);
   delta=Math.max(-200,Math.min(200,delta));
-  const minK=S.profile.sex==='f'?1200:1500;
+  const minK=kcalFloor();
   if(kt+delta<minK) delta=Math.max(0,minK-kt);
+  // No deeper deficit when it isn't safe (S-03, S-05, S-08, S-10)
+  if(delta<0){const s=bcSafety(bcLast());if(s.noDeficit||s.ed) delta=0;}
   // Recomp/maintain: a small drift is fine
   if(Math.abs(delta)<100||(!GOAL_RATE[g]&&Math.abs(rate)<0.15)) delta=0;
   const ws=shiftKey(today,-6);
@@ -3598,6 +3653,8 @@ function weekReview(){
   return {now,rate,plan,delta,kt,logged,avgK:logged?Math.round(kSum/logged):0,avgP:logged?Math.round(pSum/logged):0,workouts,planned};
 }
 function checkinDue(){
+  // D-60: a plan change from a body-composition measurement gets a week to work
+  if(S.profile.bcFreezeUntil&&todayKey()<S.profile.bcFreezeUntil) return false;
   const last=S.checkins.slice(-1)[0];
   return !last||dayDiff(last.date,todayKey())>=7;
 }
@@ -3630,6 +3687,751 @@ function checkinDone(accept){
   S.checkins.push({date:todayKey(),trend:+r.now.toFixed(2),rate:+r.rate.toFixed(3),kcalFrom:from,kcalTo:kcalTarget()});
   save(); renderAll();
   toast(accept&&r.delta?'Норма: '+kcalTarget()+' ккал ✓':'Увидимся через неделю 👋','ok');
+}
+
+/* ============================================================
+   BODY COMPOSITION
+   Measurements from InBody (or a similar analyzer), a smart scale
+   or a tape. Calories and protein follow fat-free mass, and a change
+   counts only when it is bigger than the device error, so water and
+   noise don't move the plan. Rule ids (S-, Q-, O-, F-, N-, D-, T-,
+   R-, U-) refer to for-everyone/bodycomp_rules.json.
+   ============================================================ */
+const BC_SRC={
+  inbody:{name:'InBody или анализатор',em:'🧬',desc:'в зале или клинике, с распечаткой',w:0.7},
+  bia8:{name:'Умные весы с ручками',em:'⚖️',desc:'при замере держишься за ручки',w:0.5},
+  bia4:{name:'Умные весы',em:'⚖️',desc:'встаёшь босиком, ручек нет',w:0.3},
+  tape:{name:'Сантиметр',em:'📏',desc:'талия и шея, у девушек ещё бёдра',w:0.4},
+};
+const BC_ORDER=['inbody','bia8','tape','bia4'];   // F-01: most accurate first
+const BC_SEM={                                    // Q-07: device error, starting assumptions
+  inbody:{smm:.3,ffm:.4,bfm:.4,pbf:.6,weight:.3,segArm:.06,segLeg:.12},
+  bia8:{ffm:.6,bfm:.6,pbf:.8,weight:.3},
+  bia4:{ffm:.8,bfm:.8,pbf:1.0,weight:.3},
+  tape:{pbf:1.2,weight:.3},
+};
+const BC_QF={high:1,medium:1.4,low:1.75};         // Q-04…Q-06
+const BC_QNAME={high:'высокое',medium:'среднее',low:'низкое'};
+const BC_LBL={up95:'точно',down95:'точно',up80:'скорее всего',down80:'скорее всего',none:'в пределах погрешности',ign:'не считаем'}; // U-01
+const BC_F={                                      // O-10: possible values per field
+  weight:{l:'Вес',u:'кг',min:30,max:250},
+  pbf:{l:'Жир, % (PBF)',u:'%',min:2,max:70},
+  bfm:{l:'Жир, кг (BFM)',u:'кг',min:1,max:150},
+  smm:{l:'Мышцы, кг (SMM)',u:'кг',min:10,max:80},
+  ffm:{l:'Безжировая масса, кг (FFM)',u:'кг',min:20,max:150},
+  bmrDevice:{l:'BMR, ккал',u:'ккал',min:800,max:4000},
+  vfl:{l:'Висц. жир',u:'',min:1,max:30},
+  ecwTbw:{l:'ECW/TBW',u:'',min:0.3,max:0.45},
+  waist:{l:'Талия',u:'см',min:50,max:200},
+  neck:{l:'Шея',u:'см',min:20,max:70},
+  hip:{l:'Бёдра',u:'см',min:60,max:200},
+};
+const BC_SEG=[['ra','Правая рука',0.5,10],['la','Левая рука',0.5,10],['tr','Корпус',10,60],['rl','Правая нога',3,25],['ll','Левая нога',3,25]];
+const BC_FIELDS={inbody:['weight','pbf','bfm','smm','ffm'],bia8:['weight','pbf'],bia4:['weight','pbf'],tape:['weight','waist','neck','hip']};
+const BC_EXTRA=['bmrDevice','vfl','ecwTbw'];
+
+const r1=x=>Math.round(x*10)/10, r2=x=>Math.round(x*100)/100;
+function bcNum(v){if(v==null||v==='')return null;const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null;}
+function bcSex(){return S.profile.sex==='f'?'f':'m';}
+function bcAge(){return +S.profile.age||null;}
+function bcHeight(){return +S.profile.height||null;}
+function bcBmi(w){const h=bcHeight();return h&&w?w/Math.pow(h/100,2):null;}
+function bcHighPbf(p){return p!=null&&(bcSex()==='m'?p>20:p>30);}
+function bcLeanPbf(p){return p!=null&&(bcSex()==='m'?p<12:p<20);}
+function bcSorted(){return (S.bodycomp||[]).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.t||0)-(b.t||0));}
+function bcLast(){return bcSorted().slice(-1)[0]||null;}
+function bcBefore(x,m){return x.date<m.date||(x.date===m.date&&(x.t||0)<(m.t||0));}
+// Q-01: only the same source and device model are comparable
+function bcGroup(m){return m.source+'|'+String(m.model||'').toLowerCase().replace(/[^a-z0-9а-яё]/g,'');}
+function bcSrcName(m){
+  const nm=BC_SRC[m.source].name.replace(' или анализатор',''), md=m.model||'';
+  return !md?nm:md.toLowerCase().includes(nm.toLowerCase())?md:nm+' · '+md;
+}
+function bcFlags(){return S.profile.bcFlags||{};}
+function bcBlocked(){const a=bcAge();return a!=null&&a<16;}   // S-01
+
+// US Navy tape formula, centimetres
+function navyPbf(sex,h,waist,neck,hip){
+  if(!h||!waist||!neck) return null;
+  if(sex==='f'){
+    const s=waist+(hip||0)-neck; if(!hip||s<=0) return null;
+    return 495/(1.29579-0.35004*Math.log10(s)+0.22100*Math.log10(h))-450;
+  }
+  const s=waist-neck; if(s<=0) return null;
+  return 495/(1.0324-0.19077*Math.log10(s)+0.15456*Math.log10(h))-450;
+}
+// Weight = fat + fat-free mass; fill in what the device didn't print
+function bcDerive(m){
+  const w=m.weight;
+  if(m.source==='tape'&&m.tape){const p=navyPbf(bcSex(),bcHeight(),m.tape.waist,m.tape.neck,m.tape.hip);m.pbf=p==null?null:r1(p);}
+  if(m.pbf==null&&m.bfm!=null) m.pbf=r1(m.bfm/w*100);
+  if(m.bfm==null&&m.pbf!=null) m.bfm=r1(w*m.pbf/100);
+  if(m.ffm==null&&m.bfm!=null) m.ffm=r1(w-m.bfm);
+  if(m.bfm==null&&m.ffm!=null){m.bfm=r1(w-m.ffm);m.pbf=r1(m.bfm/w*100);}
+  return m;
+}
+
+/* ---------- Measurement quality (Q-02…Q-06) ---------- */
+function bcFails(m,p){
+  const c=m.cond||{}, out=[];
+  if(p&&p.cond&&c.hour!=null&&p.cond.hour!=null){
+    const dh=Math.abs(c.hour-p.cond.hour);
+    if(dh>4) out.push({h:1,t:'другое время дня, чем в прошлый раз'});
+    else if(dh>2) out.push({h:0,t:'время отличается на 3–4 часа от прошлого'});
+  }
+  if(c.fasted==='lt2') out.push({h:1,t:'ел меньше чем за 2 часа'});
+  else if(c.fasted==='2-3') out.push({h:0,t:'ел за 2–3 часа'});
+  if(c.train==='lt12') out.push({h:1,t:'тренировка меньше 12 часов назад'});
+  else if(c.train==='12-24') out.push({h:0,t:'тренировка 12–24 часа назад'});
+  if(c.water) out.push({h:1,t:'много воды прямо перед замером'});
+  if(c.alc) out.push({h:1,t:'алкоголь, баня или болезнь за 2 дня'});
+  if(m.ecwTbw!=null&&m.ecwTbw>0.390) out.push({h:1,t:'ECW/TBW выше 0.390'});
+  if(p&&m.ecwTbw!=null&&p.ecwTbw!=null){
+    const d=Math.abs(m.ecwTbw-p.ecwTbw);
+    if(d>=0.010) out.push({h:1,t:'вода в теле заметно другая, чем в прошлый раз'});
+    else if(d>=0.005) out.push({h:0,t:'вода в теле немного другая'});
+  }
+  return out;
+}
+function bcQuality(m,p){
+  const f=bcFails(m,p), hard=f.filter(x=>x.h).length, soft=f.length-hard;
+  return hard>=1||soft>=2?'low':soft===1?'medium':'high';
+}
+
+/* ---------- Safety (S-01…S-11) ---------- */
+function bcTrendPct(back){
+  const tr=weightTrend(); if(tr.length<back+1) return null;
+  const now=trendAt(tr,todayKey()), then=trendAt(tr,shiftKey(todayKey(),-back));
+  const recent=S.weights.filter(w=>w.date>shiftKey(todayKey(),-back)).length;
+  if(!now||!then||recent<4) return null;
+  return (now-then)/(back/7)/now*100;   // % of weight per week
+}
+// S-10: signs of restriction that numbers could make worse
+function bcEdSigns(bmi){
+  const g=goalKey(), t14=bcTrendPct(14);
+  if(t14!=null&&t14<=-1.5) return true;
+  if(g==='cut'||g==='recomp'){
+    const fl=kcalFloor(); let n=0;
+    for(let i=1;i<=7;i++){const d=shiftKey(todayKey(),-i),log=((S.nutrition[d]||{}).log)||[];if(log.length>=3&&foodTotals(d).k<fl)n++;}
+    if(n>=5) return true;
+  }
+  const since=shiftKey(todayKey(),-30);
+  if((S.profile.floorTries||[]).filter(d=>d>=since).length>=2) return true;
+  if(g==='cut'&&bmi!=null&&bmi<17.5) return true;
+  return false;
+}
+function bcSafety(m){
+  const a=bcAge(), sex=bcSex(), fl=bcFlags(), w=m?m.weight:latestWeight(), bmi=bcBmi(w), pbf=m?m.pbf:null;
+  const adult=a==null||a>=18, s={bmi,teen:a!=null&&a>=16&&a<18};
+  s.lowBmi=adult&&bmi!=null&&bmi<18.5;           // S-03
+  s.veryLowBmi=adult&&bmi!=null&&bmi<17;         // S-04
+  s.lowFat=pbf!=null&&(sex==='m'?pbf<8:pbf<15);  // S-05
+  s.teenCut=s.teen&&goalKey()==='cut';           // S-02
+  s.pregnant=!!fl.pregnant;                      // S-08
+  s.medical=!!fl.medical;                        // S-11
+  s.noDeficit=s.lowBmi||s.lowFat||s.pregnant||s.teenCut;
+  s.noDecisions=s.pregnant||s.medical;
+  s.ed=bcEdSigns(bmi);                           // S-10
+  return s;
+}
+
+/* ---------- Energy and protein (F-01, N-01…N-15) ---------- */
+function bcBestFfm(){
+  const lim=shiftKey(todayKey(),-60);
+  const ms=(S.bodycomp||[]).filter(m=>m.date>=lim&&m.ffm!=null);
+  if(!ms.length) return null;
+  ms.sort((a,b)=>BC_ORDER.indexOf(a.source)-BC_ORDER.indexOf(b.source)||(a.date<b.date?1:a.date>b.date?-1:(b.t||0)-(a.t||0)));
+  return ms[0];
+}
+function bcTrained(){const e=(S.profile.program||{}).exp;return e==='back'||e==='reg';}
+function bcBmrFfm(ffm){return bcTrained()?500+22*ffm:370+21.6*ffm;}   // N-02 : N-01
+function bcBmrBase(w){                                                // N-04, N-05
+  const a=bcAge(), h=bcHeight(), f=bcSex()==='f';
+  if(!a||!h||!w) return null;
+  if(a<18) return f?11.1*w+761:18.4*w+581;   // Henry 2005, 10–18 years
+  return 10*w+6.25*h-5*a+(f?-161:5);
+}
+function bcSrcW(m){return !m?0:m.source==='inbody'&&bcQuality(m,null)==='low'?0.5:BC_SRC[m.source].w;}  // N-06
+function bcEnergy(){
+  const w=latestWeight(), base=bcBmrBase(w), b=bcBestFfm();
+  if(base==null&&!b) return null;
+  const wt=b?(base==null?1:bcSrcW(b)):0, bf=b?bcBmrFfm(b.ffm):0;
+  const bmr=wt*bf+(1-wt)*(base||0);
+  return {bmr,tdee:bmr*(ACTIVITY[S.profile.activity]||ACTIVITY.mid).k,src:b,ffm:b?b.ffm:null};  // N-08
+}
+// S-06: never below BMR or 1500 / 1200
+function kcalFloor(e){
+  e=e===undefined?bcEnergy():e;
+  return Math.max(bcSex()==='f'?1200:1500,e?Math.ceil(e.bmr/50)*50:0);
+}
+// Planned weekly change as a share of weight; a body-comp rate replaces the default once accepted
+function goalRate(){const r=S.profile.rate;return r&&r.goal===goalKey()?r.pct/100:GOAL_RATE[goalKey()];}
+function bcN09(m){
+  const g=goalKey();
+  if(g==='gain'){
+    const e=(S.profile.program||{}).exp;
+    if(e==='reg') return 0.2;
+    const bmi=bcBmi(m?m.weight:latestWeight());
+    return bmi!=null&&bmi<18.5?0.5:0.35;
+  }
+  return {cut:-0.5,recomp:-0.1,maintain:0}[g];
+}
+function bcClampRate(r,m,s){
+  const g=goalKey(), sex=bcSex(), pbf=m?m.pbf:null;
+  if(g==='cut'){
+    const deep=pbf!=null&&(sex==='m'?pbf>=25:pbf>=35);
+    r=Math.max(r,deep?-1.0:-0.75);                                  // N-09
+    if(bcLeanPbf(pbf)) r=Math.max(r,-0.5);                          // D-24
+  }
+  if(g==='gain'&&m&&((m.vfl!=null&&m.vfl>=10)||(pbf!=null&&(sex==='m'?pbf>=20:pbf>=30)))) r=Math.min(r,0.25); // D-14
+  if(s.teen) r=Math.max(r,-0.5);                                    // S-02
+  if(s.noDeficit) r=Math.max(r,0);                                  // S-03, S-05, S-08
+  return Math.round(r*100)/100;
+}
+function bcProtK(m){                                                // N-13
+  const pk=S.profile.protK; if(pk&&pk.goal===goalKey()) return pk.k;
+  const g=goalKey(), pbf=m?m.pbf:null;
+  if(g==='gain') return 2.0; if(g==='maintain') return 1.8; if(g==='recomp') return 2.4;
+  return bcHighPbf(pbf)?2.2:bcLeanPbf(pbf)?2.8:2.5;
+}
+function bcProtein(ffm,w,k){return round5(Math.min(k*ffm,((bcAge()||18)<18?2.2:2.7)*w));}  // N-13, N-14
+
+/* ---------- Comparison (Q-07, Q-09, D-01…D-05) ---------- */
+// The previous measurement on the same device, at least 2 weeks earlier and of decent quality when possible
+function bcPrev(m){
+  const g=bcGroup(m), ms=bcSorted().filter(x=>bcGroup(x)===g&&bcBefore(x,m));
+  if(!ms.length) return null;
+  const ok=x=>bcQuality(x,null)!=='low', far=x=>dayDiff(x.date,m.date)>=14;
+  for(const test of [x=>ok(x)&&far(x),ok,()=>true])
+    for(let i=ms.length-1;i>=0;i--) if(test(ms[i])) return ms[i];
+  return null;
+}
+function bcSem(src,x,w){const t=BC_SEM[src]||{};if(t[x]!=null)return t[x];if(x==='ffm'||x==='bfm')return (t.pbf||1)*w/100;return 1;}
+function bcClass(d,m80,m95){return d>=m95?'up95':d>=m80?'up80':d<=-m95?'down95':d<=-m80?'down80':'none';}
+const bcUp=c=>c==='up80'||c==='up95', bcDown=c=>c==='down80'||c==='down95';
+function bcCompare(m){
+  const p=bcPrev(m); if(!p) return null;
+  const days=dayDiff(p.date,m.date);
+  const q1=bcQuality(m,p), q0=bcQuality(p,null);
+  const q=[q1,q0].includes('low')?'low':[q1,q0].includes('medium')?'medium':'high';
+  const f=BC_QF[q], mu=m.source==='inbody'&&m.smm!=null&&p.smm!=null?'smm':'ffm';
+  const d={},mdc80={},mdc95={},cls={},msgs=[];
+  ['weight','smm','ffm','bfm','pbf'].forEach(x=>{
+    if(m[x]==null||p[x]==null) return;
+    d[x]=r2(m[x]-p[x]);
+    const sem=bcSem(m.source,x,m.weight);
+    mdc80[x]=1.81*sem*f; mdc95[x]=2.77*sem*f;
+    cls[x]=bcClass(d[x],mdc80[x],mdc95[x]);
+  });
+  const ign=dir=>['ffm','smm'].forEach(x=>{if(cls[x]&&(dir>0?bcUp(cls[x]):bcDown(cls[x])))cls[x]='ign';});
+  // D-03: faster than muscle can grow → water, glycogen or creatine
+  const novice=(S.profile.program||{}).exp!=='reg';
+  const maxMonth=(novice?1.0:0.5)*(bcSex()==='f'?0.5:1);
+  if(d.ffm!=null&&d.ffm>2*maxMonth*days/30+(mdc95.ffm||0)){ign(1);msgs.push(['','Сухая масса выросла быстрее, чем могут расти мышцы. Скорее это вода или гликоген, в расчёт не берём.']);}
+  // D-04: early in a deficit water and glycogen go first
+  const g=goalKey(), since=S.profile.goalSince||S.profile.startDate;
+  if((g==='cut'||g==='recomp')&&dayDiff(since,m.date)<=21&&d.ffm<0&&(bcDown(cls.ffm)||bcDown(cls.smm))){ign(-1);msgs.push(['','В первые 3 недели дефицита уходят вода и гликоген, это не мышцы. Снижение пока не считаем.']);}
+  // D-05: creatine holds water in muscle for the first month
+  const cr=(m.cond||{}).creatine, crp=(p.cond||{}).creatine;
+  if((cr==='new'||(crp==='no'&&cr&&cr!=='no'))&&(d.ffm>0||d.smm>0)&&(bcUp(cls.ffm)||bcUp(cls.smm))){ign(1);msgs.push(['','Креатин в первый месяц задерживает воду в мышцах, поэтому рост мышц пока не считаем.']);}
+  return {p,days,q,mu,d,mdc80,mdc95,cls,msgs,display:q==='low'||days<14};   // D-01
+}
+// Consecutive comparisons where neither muscle nor fat moved (D-13, D-31)
+function bcStill(m){
+  let n=0,cur=m,first=m;
+  for(let i=0;i<10&&cur;i++){
+    const c=bcCompare(cur); if(!c||c.display) break;
+    if(c.cls[c.mu]==='none'&&c.cls.bfm==='none'){n++;first=c.p;cur=c.p;} else break;
+  }
+  return {n,days:n?dayDiff(first.date,m.date):0};
+}
+
+/* ---------- Decisions (D-10…D-60, S-06, S-07) ---------- */
+function bcPlan(m){
+  const s=bcSafety(m), e=bcEnergy(), c=bcCompare(m), g=goalKey(), sex=bcSex();
+  const out={s,e,c,msgs:[],goalHint:null,prop:null};
+  const others=(S.bodycomp||[]).some(x=>x!==m&&bcGroup(x)!==bcGroup(m)&&bcBefore(x,m));
+  if(!c&&others) out.msgs.push(['','Первый замер на этом приборе. Сравнивать будем со следующим замером на нём же: у разных приборов разные цифры.']); // D-02
+  if(c) out.msgs.push(...c.msgs);
+  if(s.noDecisions||s.ed||!e) return out;
+
+  const cur=r2(goalRate()*100), w=m.weight;
+  let rate=cur, protK=null, kStep=0, why=null, decide=false;
+  if(!c){
+    // First measurement on this device: targets from fat-free mass (N-rules)
+    const pr=S.profile.rate;
+    rate=pr&&pr.goal===g?cur:bcN09(m);
+    decide=true;
+    why='Пересчитали по сухой массе: расход около '+round50(e.tdee)+' ккал в день, белок '+bcProtK(m)+' г на кг сухой массы.';
+  } else if(c.display){
+    out.msgs.push(['',c.days<14?'С прошлого замера меньше 2 недель: такие изменения тонут в погрешности, план не меняем.':'Условия замера отличались от обычных, поэтому этот замер только для сравнения, план по нему не меняем.']);
+  } else {
+    const mu=c.cls[c.mu], fat=c.cls.bfm, pc=bcCompare(c.p);
+    const confirmed=mu==='down95'||(pc&&bcDown(pc.cls[pc.mu]))&&bcDown(mu);
+    const still=bcStill(m), early=dayDiff(S.profile.goalSince||S.profile.startDate,m.date)<=21;
+    const ok=t=>out.msgs.push(['',t]);
+    decide=true;
+    if(g==='gain'){
+      const expW=cur/100*w*c.days/7;
+      if(mu==='up95'&&fat==='none') ok('Мышцы растут, жир на месте. План работает, ничего не меняем 👍');          // D-10
+      else if(fat==='up95'&&mu==='none'){rate=cur-0.1;why='Прибавка идёт в основном в жир, а мышцы стоят. Немного замедлим набор.';
+        ok('Проверь, растут ли рабочие веса: без прогресса в зале профицит уходит в жир.');}                         // D-11
+      else if(bcUp(fat)&&bcUp(mu)&&Math.abs(c.d.weight)>=1.5&&c.days>=42&&c.d.bfm/c.d.weight>0.6){rate=cur-0.1;why='Больше половины прибавки — жир. Чуть замедлим набор.';} // D-12
+      else if(c.d.weight>=0.5*expW&&still.n>=2&&still.days>=56) ok('Вес растёт по плану, а мышцы и жир не меняются уже 8 недель. Калории не трогаем: стоит посмотреть на тренировки, растут ли веса и подходы.'); // D-13
+      if((sex==='m'&&m.pbf>=25)||(sex==='f'&&m.pbf>=35)) out.goalHint={k:'recomp',t:'Жира сейчас довольно много для набора. Может подойти цель «Рельеф»: мышцы растут, жир уходит. Решать тебе.'}; // D-15
+    } else if(g==='cut'){
+      if(mu==='down95'&&!early){rate=Math.min(cur+0.25,-0.25);protK=2.8;why='Вместе с жиром уходят мышцы. Сделаем дефицит мягче и добавим белка.';
+        ok('Не снижай рабочие веса и тренируйся минимум 2 раза в неделю: нагрузка — главный сигнал телу сохранить мышцы.');} // D-21, T-22
+      else if(c.d.weight<=-c.mdc80.weight&&fat==='none'&&mu==='down80'){
+        if(confirmed&&!early){rate=Math.min(cur+0.25,-0.25);protK=2.8;why='Мышцы снижаются второй замер подряд. Сделаем дефицит мягче и добавим белка.';}
+        else ok('Мышцы, скорее всего, немного снизились. Подождём следующий замер, чтобы убедиться.');}           // D-22
+      else if(bcDown(fat)&&!bcDown(mu)) ok('Жир уходит, мышцы на месте. Так и продолжаем 👍');                        // D-20
+      if(bcLeanPbf(m.pbf)){protK=2.8;out.goalHint={k:'maintain',t:'Жира уже мало, дальше растёт риск потерять мышцы. Возможно, пора перейти на «Держать форму».'};} // D-24
+    } else if(g==='recomp'){
+      if(bcUp(mu)&&bcDown(fat)) ok('Рекомпозиция идёт: мышцы растут, жир уходит 👍');                                // D-30
+      else if(bcDown(mu)){rate=cur+0.1;protK=2.6;why='Мышцы снижаются. Добавим немного калорий и белка.';}             // D-33
+      else if(bcUp(fat)){rate=cur-0.1;why='Жир растёт: калорий чуть больше, чем нужно. Немного уменьшим.';}            // D-32
+      else if(mu==='none'&&fat==='none'&&still.n>=2&&still.days>=56)
+        out.goalHint=bcHighPbf(m.pbf)?{k:'cut',t:'Мышцы и жир не меняются уже 8 недель. Можно сменить цель на «Похудеть» в спокойном темпе.'}
+                                      :{k:'gain',t:'Мышцы и жир не меняются уже 8 недель. Можно сменить цель на «Набрать массу» в спокойном темпе.'}; // D-31
+    } else {
+      if(fat==='up95'){kStep=-100;why='Жир понемногу растёт. Уберём 100 ккал.';}                                     // D-40
+      else if(fat==='down95'){kStep=100;why='Жир уходит, хотя цель — держать форму. Добавим 100 ккал.';}            // D-41
+      if(mu==='down95'){protK=2.0;why=why||'Мышцы снижаются. Добавим белка.';
+        ok('Проверь, что тренируешься хотя бы 2–3 раза в неделю.');}                                                // D-42
+      if(!why&&mu==='none'&&fat==='none') ok('Всё стабильно, как и нужно для этой цели 👍');
+    }
+    if(decide&&!why&&!out.msgs.length) ok('Изменения пока в пределах погрешности прибора. Это нормально: состав тела меняется медленно.');
+  }
+  if(!decide) return out;
+  // S-07: losing faster than 1 % a week costs muscle
+  const t21=bcTrendPct(21);
+  if(g==='cut'&&t21!=null&&t21<-1.0){rate=Math.max(rate,cur+0.25);why=why||'Вес уходит быстрее 1% в неделю, так теряются и мышцы. Сделаем дефицит мягче.';}
+  rate=bcClampRate(rate,m,s);
+
+  const kt=kcalTarget(), pt=protTarget();
+  const wr=!c&&weekReview(), tuned=!c&&(S.checkins.length>0||(wr&&!wr.notReady));
+  let kcal;
+  if(tuned) kcal=kt;   // two weeks of weigh-ins already tune calories on real data
+  else if(!c) kcal=round50(g==='gain'?e.tdee*(1+0.05+0.2*rate):e.tdee+rate/100*w*1100);   // N-10, N-11
+  else kcal=kt+(kStep||round50((rate-cur)/100*w*1100));
+  kcal=kt+Math.max(-250,Math.min(250,kcal-kt));                                           // D-60: one step
+  let raised=false;
+  if(s.noDeficit&&kcal<round50(e.tdee)){kcal=round50(e.tdee);raised=true;}                // S-03, S-05, S-08
+  if(s.teen) kcal=Math.max(kcal,round50(e.tdee*0.9));                                     // S-02
+  const floor=kcalFloor(e); let floored=false;
+  if(kcal<floor){kcal=floor;floored=true;}                                                // S-06
+  const ffm=(e.ffm!=null?e.ffm:m.ffm);
+  const k=protK||bcProtK(m), prot=ffm!=null?bcProtein(ffm,w,k):pt;                        // D-50
+  const lines=[];
+  if(Math.abs(kcal-kt)>=50) lines.push(['Калории',kt+' → '+kcal+' ккал']);
+  if(Math.abs(prot-pt)>=10) lines.push(['Белок',pt+' → '+prot+' г']);
+  if(Math.abs(rate-cur)>=0.05) lines.push(['Темп в неделю',bcRateTxt(cur,w)+' → '+bcRateTxt(rate,w)]);
+  if(!lines.length){
+    if(!c) out.msgs.push(['','Посчитали по сухой массе: твоя норма калорий и белка уже подходит 👍']);
+    return out;
+  }
+  if(tuned&&!floored&&!raised) why='Калории уже подстраиваются по твоему весу, их не трогаем. Белок считаем от сухой массы: '+k+' г на кг'+(Math.abs(rate-cur)>=0.05?', а темп — по составу тела.':'.');
+  if(floored) why=(why?why+' ':'')+'Ниже '+floor+' ккал не ставим: это минимум, чтобы тело нормально работало.';
+  if(s.noDeficit&&(raised||g==='cut'||g==='recomp')) why=(why?why+' ':'')+(s.lowFat?'Жира уже очень мало, снижать его дальше небезопасно, дефицит не ставим.':s.teenCut?'До 18 лет похудение не считаем: телу нужна энергия на рост.':s.lowBmi?'Вес сейчас ниже нормы для роста, поэтому дефицит не ставим.':'');
+  if(!why) why='Белок считаем от сухой массы: '+k+' г на кг.';
+  out.prop={kcal,prot,rate,protK,lines,why};
+  return out;
+}
+function bcRateTxt(p,w){return Math.abs(p)<0.005?'держим вес':fmtKg(p/100*w);}
+function bcAccept(yes){
+  const m=bcLast(); if(!m) return;
+  const r=bcPlan(m);
+  if(yes&&r.prop){
+    const g=goalKey(), p=r.prop;
+    S.profile.kcalTarget=p.kcal; S.profile.proteinTarget=p.prot;
+    S.profile.rate={goal:g,pct:p.rate};
+    if(p.protK) S.profile.protK={goal:g,k:p.protK};
+    S.profile.bcFreezeUntil=shiftKey(todayKey(),7);   // D-60: let the weekly controller wait a week
+  }
+  m.decided=yes?'accepted':'kept';
+  save(); renderAll(); renderProgress();
+  toast(yes?'План обновлён ✓':'Оставили как было','ok');
+}
+
+/* ---------- Training emphasis (T-03, T-10…T-14, T-21) ---------- */
+function bcSegInfo(m){
+  const sg=m&&m.seg; if(!sg) return null;
+  const v=(k,f)=>sg[k]&&sg[k][f]!=null?sg[k][f]:null;
+  const out={};
+  if(v('ra','pct')!=null&&v('la','pct')!=null) out.arms=(v('ra','pct')+v('la','pct'))/2;
+  if(v('rl','pct')!=null&&v('ll','pct')!=null) out.legs=(v('rl','pct')+v('ll','pct'))/2;
+  out.allLow=BC_SEG.every(([k])=>v(k,'pct')!=null&&v(k,'pct')<90);
+  const asym=(a,b)=>a!=null&&b!=null&&Math.max(a,b)>0?{pct:Math.abs(a-b)/Math.max(a,b)*100,kg:Math.abs(a-b),weak:a<b?'правая':'левая'}:null;
+  out.arm=asym(v('ra','kg'),v('la','kg')); out.leg=asym(v('rl','kg'),v('ll','kg'));
+  return out;
+}
+function bcPrim(e){return String(e.muscles||'').split('·')[0].trim().toLowerCase();}
+const BC_MUS={
+  biceps:p=>p==='бицепс', triceps:p=>p==='трицепс',
+  quads:p=>p==='квадрицепс'||p==='ноги', hams:p=>p==='задняя поверхность бедра'||p==='ягодицы',
+};
+// Leg isolation (sets move from here when arms get the emphasis); compounds like the Romanian deadlift stay
+const BC_LEG_ISO=new Set(['legcurl','calves','glute'].flatMap(p=>[EX_LIB[p].gym,'d_'+p,'h_'+p]));
+// T-10 / T-11: +1 set on lagging muscles, spread over different days, max 5 sets an exercise and 20 a week
+function bcEmphasisChanges(seg,cutLegs){
+  const all=days().flatMap(d=>(S.plan[d]||[]).map((e,i)=>({d,i,e,k:d+':'+i}))), add={};
+  const sets=x=>x.e.sets+(add[x.k]||0);
+  const bump=(test,n)=>{
+    const xs=all.filter(x=>test(bcPrim(x.e))), order=[], ds=new Set();
+    xs.forEach(x=>{if(!ds.has(x.d)){ds.add(x.d);order.push(x);}}); xs.forEach(x=>{if(!order.includes(x))order.push(x);});
+    let left=n;
+    for(let round=0;round<5&&left>0;round++){
+      let moved=false;
+      for(const x of order){
+        if(!left) break;
+        if(sets(x)>=5||xs.reduce((s,y)=>s+sets(y),0)>=20) continue;
+        add[x.k]=(add[x.k]||0)+1; left--; moved=true;
+      }
+      if(!moved) break;
+    }
+  };
+  if(seg==='arms'){
+    bump(BC_MUS.biceps,2); bump(BC_MUS.triceps,2);
+    if(cutLegs&&all.some(x=>add[x.k]>0)) all.filter(x=>BC_LEG_ISO.has(x.e.id)&&x.e.sets>=3).slice(0,2).forEach(x=>{add[x.k]=(add[x.k]||0)-1;});
+  } else {bump(BC_MUS.quads,3); bump(BC_MUS.hams,2);}
+  return all.filter(x=>add[x.k]).map(x=>({d:x.d,i:x.i,id:x.e.id,name:x.e.name,from:x.e.sets,to:sets(x)}));
+}
+// "Добавим подходы на бицепс. Упражнений на трицепс в программе нет: …"
+function bcEmphText(ch,groups){
+  const has=([,k])=>days().some(d=>(S.plan[d]||[]).some(e=>BC_MUS[k](bcPrim(e))));
+  const up=groups.filter(g=>has(g)&&ch.some(c=>c.to>c.from&&BC_MUS[g[1]](bcPrim(S.plan[c.d][c.i])))), miss=groups.filter(g=>!has(g));
+  let t=up.length?'Добавим подходы на '+up.map(g=>g[0]).join(' и ')+'.':'';
+  if(miss.length) t+=(t?' ':'')+'Упражнений на '+miss.map(g=>g[0]).join(' и ')+' в программе нет: их можно добавить в «Программа».';
+  return t;
+}
+function bcTrain(m){
+  const out=[]; if(!m) return out;
+  const q=bcQuality(m,bcPrev(m));
+  if(q==='low') return out;                                                     // T-03
+  const sg=m.source==='inbody'?bcSegInfo(m):null, h=bcHeight();
+  const ffmi=h&&m.ffm?m.ffm/Math.pow(h/100,2):null;
+  // T-21: a base first, accents later
+  if((sg&&sg.allLow)||(ffmi!=null&&ffmi<(bcSex()==='m'?17:15))){
+    const fb=(S.profile.program||{}).split==='fb';
+    out.push({k:'base',t:fb?'Мышечной массы пока немного по всему телу. Сейчас лучше всего работает база на всё тело, и твоя программа как раз такая 👍'
+                         :'Мышечной массы пока немного по всему телу. Сейчас лучше всего работает база на всё тело 3 раза в неделю, без лишней изоляции.',btn:!fb});
+    return out;
+  }
+  if(!sg) return out;
+  // persists(2): the previous InBody measurement on this device says the same
+  const g=bcGroup(m), prev=bcSorted().filter(x=>bcGroup(x)===g&&bcBefore(x,m)&&x.seg&&bcQuality(x,null)!=='low').slice(-1)[0];
+  const ps=prev?bcSegInfo(prev):null;
+  const armLag=x=>x&&x.arms!=null&&x.legs!=null&&(x.arms<90||x.legs-x.arms>=10);
+  const legLag=x=>x&&x.arms!=null&&x.legs!=null&&(x.legs<90||x.arms-x.legs>=10);
+  const emph=S.profile.bcEmphasis;
+  if(armLag(sg)&&armLag(ps)&&!(emph&&emph.seg==='arms')){                     // T-10
+    const ch=bcEmphasisChanges('arms',sg.legs>sg.arms);
+    out.push({k:'arms',t:'Руки отстают от ног второй замер подряд. '+bcEmphText(ch,[['бицепс','biceps'],['трицепс','triceps']])+(ch.some(c=>c.to<c.from)?' А в изоляции на ноги уберём по подходу, чтобы тренировка не стала длиннее.':''),ch});
+  } else if(legLag(sg)&&legLag(ps)&&!(emph&&emph.seg==='legs')){               // T-11
+    const ch=bcEmphasisChanges('legs');
+    out.push({k:'legs',t:'Ноги отстают второй замер подряд. '+bcEmphText(ch,[['переднюю поверхность бедра','quads'],['заднюю поверхность бедра и ягодицы','hams']]),ch});
+  }
+  // T-13 / T-14: left and right differ more than the device error
+  const f=BC_QF[q];
+  [['arm','рука','руку',6,10,BC_SEM.inbody.segArm],['leg','нога','ногу',5,8,BC_SEM.inbody.segLeg]].forEach(([k,nm,acc,lo,hi,sem])=>{
+    const a=sg[k], b=ps&&ps[k], mdc=2.77*sem*f;
+    if(!a||!b||a.kg<mdc||a.pct<lo||b.pct<lo) return;
+    let t=`Правая и левая ${nm} отличаются на ${Math.round(a.pct)}% второй замер подряд (слабее ${a.weak}). Добавь упражнения на одну ${acc}: начинай со слабой стороны и делай на сильной столько же повторов.`;
+    if(a.pct>hi) t+=' Разница большая: если была травма или что-то болит, сначала покажись врачу или физиотерапевту и не повышай нагрузку на эту сторону.';
+    out.push({k:'asym',t});
+  });
+  return out;
+}
+function bcApplyEmphasis(seg,yes){
+  const m=bcLast();
+  if(yes){
+    const sg=bcSegInfo(m)||{}, ch=bcEmphasisChanges(seg,seg==='arms'&&sg.legs>sg.arms);
+    if(ch.length){
+      S.planPrev={plan:JSON.parse(JSON.stringify(S.plan)),planDays:S.planDays||null,planMeta:S.planMeta||null,program:S.profile.program||null,schedule:S.profile.schedule,planSince:S.planSince};
+      ch.forEach(c=>{const e=S.plan[c.d]&&S.plan[c.d][c.i];if(e&&e.id===c.id)e.sets=c.to;});
+    }
+    S.profile.bcEmphasis={seg,date:todayKey()};
+  }
+  if(m) m.trainDecided=yes?'accepted':'kept';
+  save(); renderAll(); renderProgress();
+  toast(yes?'Программа обновлена ✓':'Оставили как было','ok');
+}
+
+/* ---------- Next measurement (R-01…R-03) ---------- */
+function bcNext(){
+  const last=bcLast(); if(!last) return null;
+  const g=goalKey(), n=g==='gain'||g==='cut'?28:42;   // whole weeks: same weekday
+  return {date:shiftKey(last.date,n),hour:(last.cond||{}).hour,src:last};
+}
+
+/* ---------- Card on «Прогресс» ---------- */
+function bcNote(t,cls){return `<div class="bc-note${cls?' '+cls:''}">${t}</div>`;}
+function bcDeltaRow(nm,x,c){
+  if(c.d[x]==null) return '';
+  const cl=c.cls[x], tag=cl==='up95'||cl==='down95'?'sure':cl==='up80'||cl==='down80'?'likely':'';
+  const u=x==='pbf'?'%':' кг', v=(c.d[x]>0?'+':c.d[x]<0?'−':'')+Math.abs(c.d[x]).toFixed(1)+u;
+  return `<div class="bc-row"><span>${nm}</span><span class="c"><b class="v">${v}</b><span class="bc-tag ${tag}">${BC_LBL[cl]}</span><br>±${c.mdc80[x].toFixed(1)}${u}</span></div>`;
+}
+function renderBodyComp(){
+  const el=$('bcCard'); if(!el) return;
+  S.bodycomp=S.bodycomp||[];
+  const head=`<div class="card-head"><h3 class="card-title"><span class="ico o">🧬</span>Состав тела</h3>${S.bodycomp.length?`<button class="btn ghost sm" onclick="bcOpen('hist')">История</button>`:''}</div>`;
+  if(bcBlocked()){el.innerHTML=`<div class="card">${head}<p class="sub" style="margin:0">Разбор состава тела доступен с 16 лет. До этого телу нужна энергия на рост, и взрослые формулы не подходят.</p></div>`;return;}
+  const m=bcLast();
+  if(!m){
+    el.innerHTML=`<div class="card">${head}<p class="sub">Добавь замер с InBody, умных весов или сантиметра. Трекер посчитает калории и белок от сухой массы и будет показывать, что на самом деле меняется: мышцы или жир.</p><button class="btn" onclick="bcOpen()">+ Добавить замер</button></div>`;
+    return;
+  }
+  const r=bcPlan(m), s=r.s, c=r.c, mu=m.smm!=null?'smm':'ffm';
+  let h=head;
+  if(s.ed) h+=bcNote('Похоже, последнее время ты ешь заметно меньше, чем нужно телу, или вес уходит очень быстро. Цифры дефицита мы пока скрыли. Если еда или вес стали поводом для тревоги, об этом стоит поговорить с врачом или психологом: это нормально и правда помогает.','care');
+  h+=`<div class="stats3" style="margin-bottom:6px">
+      <div class="stat"><div class="v">${m.pbf!=null?m.pbf.toFixed(1):'—'}</div><div class="l">жир, %</div></div>
+      <div class="stat"><div class="v">${m[mu]!=null?m[mu].toFixed(1):'—'}</div><div class="l">${mu==='smm'?'мышцы (SMM), кг':'сухая масса, кг'}</div></div>
+      <div class="stat"><div class="v">${m.bfm!=null?m.bfm.toFixed(1):'—'}</div><div class="l">жир, кг</div></div></div>
+    <div class="bc-src">${fmtDate(m.date,{day:'numeric',month:'long'})} · ${esc(bcSrcName(m))} · качество ${BC_QNAME[bcQuality(m,c?c.p:null)]}</div>`;
+  if(c){
+    const muName=c.mu==='smm'?'Мышцы (SMM)':'Сухая масса';
+    h+=`<div class="section-lbl" style="margin:14px 0 2px">С прошлого замера, ${c.days} ${plural(c.days,'день','дня','дней')}</div>
+      ${bcDeltaRow('Вес','weight',c)}${bcDeltaRow(muName,c.mu,c)}${bcDeltaRow('Жир','bfm',c)}${bcDeltaRow('Процент жира','pbf',c)}`;
+  }
+  // Safety notes
+  if(s.teen) h+=bcNote(s.teenCut?'Похудение до 18 лет трекер не считает: телу нужна энергия на рост. Если хочется сбросить вес, лучше обсудить это с врачом.':'До 18 лет считаем осторожно: без жёсткого дефицита и не больше 2.2 г белка на кг. Нормы для взрослых не показываем.');
+  if(s.veryLowBmi) h+=bcNote('Вес сейчас заметно ниже нормы для твоего роста. Дефицит не ставим, и стоит показаться врачу.','warn');
+  if(s.pregnant) h+=bcNote('Во время беременности и кормления дефицит не ставим, а цифры анализатора не толкуем: вода в теле меняется. Замеры можно хранить для себя, а питание лучше обсудить с врачом.');
+  else if(s.medical) h+=bcNote('При таких состояниях вода в теле меняется из-за болезни или лекарств, и анализатор ошибается. Показываем цифры, но план по ним не меняем. Вопросы по питанию лучше обсудить с врачом.');
+  if((m.ecwTbw!=null&&m.ecwTbw>0.400)||(m.vfl!=null&&m.vfl>=15)) h+=bcNote('Одно из значений выше обычного для такого замера. Это не диагноз: на него влияют вода, время и прибор. Если есть вопросы, их можно обсудить с врачом.'); // S-12
+  r.msgs.forEach(([cls,t])=>{h+=bcNote(t,cls);});
+  // One plan change (U-02, D-60)
+  if(r.prop&&!m.decided){
+    h+=`<div class="bc-prop"><b class="t">Предлагаю обновить план</b>
+      ${r.prop.lines.map(([a,b])=>`<div class="ln"><span>${a}</span><b>${b}</b></div>`).join('')}
+      <p class="sub" style="margin:8px 0 12px">${r.prop.why}</p>
+      <div class="row" style="gap:8px"><button class="btn sm" style="flex:1" onclick="bcAccept(true)">Принять</button><button class="btn ghost sm" style="flex:1" onclick="bcAccept(false)">Оставить как было</button></div></div>`;
+  } else if(m.decided==='accepted') h+=bcNote('План обновлён по этому замеру ✓');
+  if(r.goalHint&&!s.ed) h+=`<div class="bc-note">${r.goalHint.t}<div style="margin-top:10px"><button class="btn ghost sm" onclick="obOpen(true)">Сменить цель</button></div></div>`;
+  // Training
+  if(!s.noDecisions) bcTrain(m).forEach(t=>{
+    if((t.k==='arms'||t.k==='legs')&&!m.trainDecided){
+      h+=`<div class="bc-prop"><b class="t">Акцент в тренировках</b><p class="sub" style="margin:0 0 8px">${t.t}</p>
+        ${t.ch.length?t.ch.map(x=>`<div class="ln"><span>${esc(x.name)}</span><b>${x.from} → ${x.to}</b></div>`).join('')+`<div class="row" style="gap:8px;margin-top:12px"><button class="btn sm" style="flex:1" onclick="bcApplyEmphasis('${t.k}',true)">Добавить</button><button class="btn ghost sm" style="flex:1" onclick="bcApplyEmphasis('${t.k}',false)">Не сейчас</button></div>`
+          :'<p class="sub" style="margin:0">В программе нет подходящих упражнений: добавь их в «Программа».</p>'}</div>`;
+    } else if(t.k==='base') h+=`<div class="bc-note">${t.t}${t.btn?`<div style="margin-top:10px"><button class="btn ghost sm" onclick="pqOpen(true)">Подобрать программу</button></div>`:''}</div>`;
+    else if(t.k==='asym') h+=bcNote(t.t);
+  });
+  // Next measurement (R-01…R-03); off when S-10 is on
+  const nx=!s.ed&&bcNext();
+  if(nx){
+    const left=dayDiff(todayKey(),nx.date), hr=nx.hour!=null?`, около ${nx.hour}:00`:'';
+    const when=left<=0?'Пора сделать замер':left===1?'Завтра замер':'Следующий замер: '+fmtDate(nx.date,{day:'numeric',month:'long',weekday:'short'});
+    h+=`<div class="bc-next"><b>${when}${hr}</b><span>${left<=0?'':'На том же приборе и в то же время, чтобы цифры можно было сравнить.'}</span>`;
+    if(left<=1) h+=`<ul class="bc-prep"><li>Накануне без алкоголя и бани, тренировка не позже чем за сутки</li><li>Утром сходи в туалет и не ешь за 3 часа до замера</li><li>Пей как обычно, просто не много воды в последний час</li><li>Тот же прибор${hr?' и то же время'+hr.replace(', около',' (около')+')':''}</li></ul>`;
+    h+='</div>';
+  }
+  h+=`<button class="btn" style="margin-top:12px" onclick="bcOpen()">+ Добавить замер</button>`;
+  el.innerHTML=`<div class="card">${h}</div>`;
+}
+
+/* ---------- Entry sheet ---------- */
+let bc=null;   // {step, f, src, model, date, cond, segOpen, fl, errs}
+function bcOpen(view){
+  if(bcBlocked()){toast('Доступно с 16 лет');return;}
+  const last=bcLast(), lc=(last&&last.cond)||{};
+  const fl=bcFlags();
+  bc={step:view==='hist'?'hist':fl.asked?'src':'safety',f:{},
+      src:fl.implant?'tape':last?last.source:null,model:last&&last.model||'',date:todayKey(),
+      cond:{hour:new Date().getHours(),fasted:null,train:null,water:false,alc:false,
+            creatine:lc.creatine==='new'&&dayDiff(last.date,todayKey())>28?'long':(lc.creatine||'no')},
+      segOpen:false,fl:{implant:!!fl.implant,pregnant:!!fl.pregnant,medical:!!fl.medical},
+      age:S.profile.age||'',height:S.profile.height||'',errs:{}};
+  $('bcModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  bcRender();
+}
+function bcClose(){bc=null;$('bcModal').classList.remove('active');document.body.style.overflow='';}
+function bcGo(step){bc.step=step;bcRender();$('bcModal').querySelector('.modal-sheet').scrollTop=0;}
+function bcSet(k,v){bc[k]=v;bcRender();}
+function bcCond(k,v){bc.cond[k]=v;bcRender();}
+function bcIn(k,el){
+  bc.f[k]=el.value; el.classList.remove('bad'); delete bc.errs[k];
+  if(k==='bfm'||k==='ffm'){delete bc.errs.pbf;const p=$('bcf_pbf');if(p){p.classList.remove('bad');const e=p.parentNode.querySelector('.bc-err');if(e)e.remove();}}
+  const e=el.parentNode.querySelector('.bc-err'); if(e) e.remove();
+}
+function bcInp(k,ph){
+  const F=BC_F[k], err=bc.errs[k];
+  return `<div class="field"><label class="lbl" for="bcf_${k}">${F.l}${F.u&&!/[(,]/.test(F.l)?', '+F.u:''}</label>
+    <input type="text" inputmode="decimal" id="bcf_${k}" class="${err?'bad':''}" placeholder="${ph||''}" value="${esc(bc.f[k]||'')}" oninput="bcIn('${k}',this)">${err?`<div class="bc-err">${err}</div>`:''}</div>`;
+}
+function bcSafetyNext(){
+  const a=parseInt(bc.age,10), hgt=bcNum(bc.height);
+  if(!S.profile.age){if(!(a>=12&&a<=90)){toast('Укажи возраст','err');return;}S.profile.age=a;}
+  if(!S.profile.height){if(!(hgt>=120&&hgt<=230)){toast('Укажи рост','err');return;}S.profile.height=hgt;}
+  S.profile.bcFlags={...bc.fl,asked:true};
+  save();
+  if(bcBlocked()){bcClose();renderProgress();return;}
+  if(bc.fl.implant) bc.src='tape';
+  if(bc.fromHist){bc.fromHist=false;renderProgress();bcGo('hist');return;}
+  bcGo('src');
+}
+function bcSrcNext(){
+  if(!bc.src){toast('Выбери, чем мерил','err');return;}
+  if(bcFlags().implant&&bc.src!=='tape'){toast('С имплантом подходит только сантиметр','err');return;}
+  if(!bc.date||bc.date>todayKey()){toast('Дата замера не может быть в будущем','err');return;}   // O-11
+  bcGo('vals');
+}
+// O-10: impossible values block saving
+function bcValidate(){
+  const e={}, n=k=>bcNum(bc.f[k]), src=bc.src;
+  const keys=[...BC_FIELDS[src],...(src==='inbody'?BC_EXTRA:[])];
+  keys.forEach(k=>{
+    if(k==='hip'&&bcSex()!=='f') return;
+    const v=n(k), F=BC_F[k];
+    if(bc.f[k]&&v==null) e[k]='Нужно число';
+    else if(v!=null&&(v<F.min||v>F.max)) e[k]=`Бывает от ${F.min} до ${F.max}`;
+  });
+  const need=src==='inbody'?['weight']:src==='tape'?['weight','waist','neck'].concat(bcSex()==='f'?['hip']:[]):['weight','pbf'];
+  need.forEach(k=>{if(n(k)==null&&!e[k])e[k]='Обязательное поле';});
+  if(src==='inbody'&&n('pbf')==null&&n('bfm')==null&&n('ffm')==null&&!e.pbf) e.pbf='Нужен процент жира, масса жира или безжировая масса';
+  if(src==='tape'&&!e.waist&&!e.neck&&n('waist')<=n('neck')) e.waist='Талия должна быть больше шеи';
+  if(src==='inbody'&&bc.segOpen) BC_SEG.forEach(([k,,lo,hi])=>{
+    const kg=n('s_'+k+'_kg'), pc=n('s_'+k+'_pct');
+    if(kg!=null&&(kg<lo||kg>hi)) e['s_'+k+'_kg']=1;
+    if(pc!=null&&(pc<40||pc>200)) e['s_'+k+'_pct']=1;
+  });
+  return e;
+}
+function bcValsNext(){
+  bc.errs=bcValidate();
+  if(Object.keys(bc.errs).length){bcRender();toast('Проверь отмеченные поля','err');return;}
+  bcGo('cond');
+}
+function bcCondNext(){
+  if(!bc.cond.fasted||!bc.cond.train){toast('Ответь про еду и тренировку','err');return;}
+  bcGo('check');
+}
+// Measurement from the form, plus consistency warnings (O-02…O-11)
+function bcBuild(){
+  const f=bc.f, n=k=>bcNum(f[k]), src=bc.src, warn=[];
+  const m={id:'bc'+Date.now().toString(36),t:Date.now(),date:bc.date,source:src,model:src==='tape'?'':String(bc.model||'').trim().slice(0,40),weight:n('weight')};
+  const c=bc.cond, hr=parseInt(c.hour,10);
+  m.cond={hour:hr>=0&&hr<=23?hr:null,fasted:c.fasted,train:c.train,water:!!c.water,alc:!!c.alc,creatine:c.creatine};
+  if(src==='tape') m.tape={waist:n('waist'),neck:n('neck'),hip:bcSex()==='f'?n('hip'):null};
+  else{
+    m.pbf=n('pbf');
+    if(src==='inbody'){
+      ['bfm','smm','ffm',...BC_EXTRA].forEach(k=>{const v=n(k);if(v!=null)m[k]=v;});
+      if(bc.segOpen){
+        const seg={};
+        BC_SEG.forEach(([k])=>{const kg=n('s_'+k+'_kg'),pct=n('s_'+k+'_pct');if(kg!=null||pct!=null)seg[k]={kg,pct};});
+        if(Object.keys(seg).length) m.seg=seg;
+      }
+    }
+  }
+  const w=m.weight, ent={...m};
+  if(ent.bfm!=null&&ent.ffm!=null&&Math.abs(w-ent.bfm-ent.ffm)>0.3) warn.push('Вес минус масса жира не равен безжировой массе. Проверь FFM и BFM.');   // O-02
+  if(ent.bfm!=null&&ent.pbf!=null&&Math.abs(ent.bfm/w*100-ent.pbf)>0.3) warn.push('Процент жира не сходится с массой жира и весом. Проверь PBF.'); // O-03
+  bcDerive(m);
+  if(src==='inbody'&&m.bmrDevice!=null&&m.ffm!=null&&Math.abs(370+21.6*m.ffm-m.bmrDevice)>10) warn.push('Основной обмен не сходится с безжировой массой (InBody считает его от FFM). Проверь BMR и FFM.'); // O-05
+  if(m.smm!=null&&m.ffm!=null&&(m.smm>=m.ffm||m.smm/m.ffm<0.45||m.smm/m.ffm>0.65)) warn.push('Скелетные мышцы обычно составляют около половины безжировой массы. Проверь SMM.'); // O-06
+  if(m.seg&&m.ffm!=null){
+    const kgs=BC_SEG.map(([k])=>m.seg[k]&&m.seg[k].kg);
+    if(kgs.every(x=>x!=null)){const sum=kgs.reduce((a,b)=>a+b,0);if(sum<0.8*m.ffm||sum>0.98*m.ffm)warn.push('Сумма сегментов не сходится с безжировой массой. Проверь цифры по рукам, ногам и корпусу.');} // O-08
+    const sg=bcSegInfo(m);
+    if((sg.arm&&sg.arm.pct>25)||(sg.leg&&sg.leg.pct>25)) warn.push('Правая и левая сторона отличаются больше чем на 25%. Проверь, не перепутаны ли колонки.'); // O-09
+  }
+  const tr=weightTrend(), tw=tr.length?trendAt(tr,m.date):null;
+  if(tw!=null&&Math.abs(w-tw)>3) warn.push(`Вес на ${Math.abs(w-tw).toFixed(1)} кг отличается от твоего обычного. Это точно твой и свежий бланк?`); // O-11
+  if(m.pbf==null) warn.push('Не получилось посчитать процент жира. Проверь мерки.');
+  return {m,warn};
+}
+function bcSave(){
+  const {m}=bcBuild();
+  if(m.pbf==null||m.pbf<2||m.pbf>70){toast('Проверь цифры: процент жира не получается','err');return;}
+  S.bodycomp.push(m);
+  save(); bcClose(); renderProgress();
+  toast('Замер сохранён ✓','ok');
+}
+async function bcDelete(id){
+  const ok=await showConfirm('Удалить этот замер?');
+  if(!ok) return;
+  S.bodycomp=S.bodycomp.filter(m=>m.id!==id);
+  save(); renderProgress(); if(bc) bcRender();
+}
+function bcChip(k,v,t){return `<button class="chip${bc.cond[k]===v?' on':''}" onclick="bcCond('${k}','${v}')">${t}</button>`;}
+function bcCheckRow(k,t,on){return `<label class="bc-check"><input type="checkbox" ${on?'checked':''} onchange="bc.fl.${k}=this.checked"><span>${t}</span></label>`;}
+function bcRender(){
+  if(!bc) return;
+  const top=(t,back)=>`<div class="row between" style="margin-bottom:14px">${back?`<button class="icon-btn" onclick="bcGo('${back}')" aria-label="Назад" style="font-size:20px;color:var(--text)">‹</button>`:''}<h3 class="modal-title" style="margin-bottom:0;flex:1">${t}</h3><button class="btn ghost sm" onclick="bcClose()">Закрыть</button></div>`;
+  let h='';
+  if(bc.step==='safety'){
+    h=top('Пара вопросов о здоровье')+`<p class="sub">Спросим один раз. От ответов зависит, какие замеры подходят и что можно советовать. Отметь, если есть:</p>
+      ${!S.profile.age||!S.profile.height?`<div class="g2" style="margin-bottom:8px">${!S.profile.age?`<div><label class="lbl">Возраст, лет</label><input type="number" inputmode="numeric" value="${esc(bc.age)}" oninput="bc.age=this.value"></div>`:''}${!S.profile.height?`<div><label class="lbl">Рост, см</label><input type="number" inputmode="numeric" value="${esc(bc.height)}" oninput="bc.height=this.value"></div>`:''}</div>`:''}
+      ${bcCheckRow('implant','Кардиостимулятор или другой электронный имплант',bc.fl.implant)}
+      ${bcSex()==='f'?bcCheckRow('pregnant','Беременность или кормление грудью',bc.fl.pregnant):''}
+      ${bcCheckRow('medical','Болезни почек, сердца или печени, отёки, приём мочегонных или инсулина',bc.fl.medical)}
+      <p class="ob-note" style="margin-top:12px">Если ничего из этого нет, просто нажми «Дальше». Ответы можно поменять в «Истории».</p>
+      <button class="btn" onclick="bcSafetyNext()">Дальше</button>`;
+  } else if(bc.step==='src'){
+    const imp=bcFlags().implant;
+    h=top('Новый замер')+`<p class="sub">Чем мерил?</p><div class="ob-opts" style="margin-bottom:12px">
+      ${Object.entries(BC_SRC).map(([k,x])=>{const off=imp&&k!=='tape';return `<button class="ob-opt${bc.src===k?' on':''}" ${off?'disabled style="opacity:.45"':''} onclick="bcSet('src','${k}')"><span class="em">${x.em}</span><div><b>${x.name}</b><span>${off?'с имплантом биоимпеданс не делают':x.desc}</span></div></button>`;}).join('')}</div>
+      <div class="g2">
+        <div class="field"><label class="lbl" for="bcDate">Дата замера</label><input type="date" id="bcDate" max="${todayKey()}" value="${bc.date}" onchange="bc.date=this.value"></div>
+        ${bc.src&&bc.src!=='tape'?`<div class="field"><label class="lbl" for="bcModel">Модель, если знаешь</label><input type="text" id="bcModel" placeholder="${bc.src==='inbody'?'InBody 270':'Xiaomi'}" value="${esc(bc.model)}" oninput="bc.model=this.value"></div>`:''}
+      </div>
+      <p class="ob-note">Сравниваем только замеры с одного прибора: у разных приборов разные цифры.</p>
+      <button class="btn" onclick="bcSrcNext()">Дальше</button>`;
+  } else if(bc.step==='vals'){
+    const src=bc.src;
+    h=top(src==='tape'?'Мерки':src==='inbody'?'Цифры с распечатки':'Цифры с весов','src');
+    if(src==='inbody'){
+      h+=`<p class="sub">Перепиши цифры с распечатки. Безжировую массу можно не вводить: посчитаем сами.</p>
+        <div class="g2">${bcInp('weight','70.0')}${bcInp('pbf','15.0')}${bcInp('bfm','10.5')}${bcInp('smm','33.0')}</div>
+        ${bcInp('ffm','59.5')}
+        <div class="section-lbl" style="margin-top:4px">По желанию</div>
+        <div class="g3">${bcInp('bmrDevice','1650')}${bcInp('vfl','4')}${bcInp('ecwTbw','0.380')}</div>
+        <button class="btn ghost sm" style="width:100%;margin:4px 0 12px" onclick="bc.segOpen=!bc.segOpen;bcRender()">${bc.segOpen?'Скрыть сегменты':'+ Сегменты: руки, ноги, корпус'}</button>
+        ${bc.segOpen?`<div class="bc-seg-grid"><span></span><span class="lbl" style="margin:0">кг</span><span class="lbl" style="margin:0">% нормы</span>
+          ${BC_SEG.map(([k,nm])=>`<span>${nm}</span>${['kg','pct'].map(u=>{const key='s_'+k+'_'+u;return `<input type="text" inputmode="decimal" class="${bc.errs[key]?'bad':''}" value="${esc(bc.f[key]||'')}" oninput="bcIn('${key}',this)">`;}).join('')}`).join('')}</div>
+          <p class="ob-note" style="margin-top:8px">Блок «Сегментарный анализ мышц» (Segmental Lean Analysis): килограммы и проценты. Жир по сегментам не нужен.</p>`:''}`;
+    } else if(src==='tape'){
+      h+=`<p class="sub">Мерь утром, сантиметр прилегает, но не давит. ${bcSex()==='f'?'Талию — в самом узком месте, бёдра — по самой широкой части ягодиц':'Талию — на уровне пупка'}, шею — чуть ниже кадыка.</p>
+        ${bcInp('weight','70.0')}<div class="g2">${bcInp('waist','80')}${bcInp('neck','37')}</div>${bcSex()==='f'?bcInp('hip','95'):''}
+        <p class="ob-note">Процент жира посчитаем по формуле ВМС США от мерок и роста (${bcHeight()||'—'} см).</p>`;
+    } else {
+      h+=`<p class="sub">Из приложения весов нужны только вес и процент жира.</p><div class="g2">${bcInp('weight','70.0')}${bcInp('pbf','18.0')}</div>
+        <p class="ob-note">«Мышечную массу», «возраст тела» и висцеральный жир с весов не вносим: у весов закрытые формулы, и эти цифры не совпадают с настоящими.</p>`;
+    }
+    h+=`<button class="btn" onclick="bcValsNext()">Дальше</button>`;
+  } else if(bc.step==='cond'){
+    const c=bc.cond;
+    h=top('Как прошёл замер','vals')+`<p class="sub">От условий зависит, насколько можно верить разнице с прошлым замером.</p>
+      <div class="field" style="max-width:160px"><label class="lbl" for="bcHour">Время замера, час</label><input type="number" id="bcHour" inputmode="numeric" min="0" max="23" value="${c.hour!=null?c.hour:''}" oninput="bc.cond.hour=this.value"></div>
+      <label class="lbl">Последний раз ел</label><div class="bc-chips">${bcChip('fasted','3+','3 часа назад и больше')}${bcChip('fasted','2-3','2–3 часа назад')}${bcChip('fasted','lt2','меньше 2 часов')}</div>
+      <label class="lbl">Последняя тренировка</label><div class="bc-chips">${bcChip('train','24+','больше суток назад')}${bcChip('train','12-24','12–24 часа')}${bcChip('train','lt12','меньше 12 часов')}</div>
+      <label class="lbl">Креатин</label><div class="bc-chips">${bcChip('creatine','no','не принимаю')}${bcChip('creatine','long','больше месяца')}${bcChip('creatine','new','начал меньше месяца назад')}</div>
+      <label class="bc-check"><input type="checkbox" ${c.water?'checked':''} onchange="bc.cond.water=this.checked"><span>Выпил больше 0,5 л воды за час до замера</span></label>
+      <label class="bc-check" style="border-bottom:none"><input type="checkbox" ${c.alc?'checked':''} onchange="bc.cond.alc=this.checked"><span>Алкоголь, баня или болезнь за последние 2 дня</span></label>
+      <button class="btn" style="margin-top:10px" onclick="bcCondNext()">Дальше</button>`;
+  } else if(bc.step==='check'){
+    const {m,warn}=bcBuild(), p=bcPrev(m), fails=bcFails(m,p), q=bcQuality(m,p);
+    const row=(nm,v,u)=>v==null?'':`<div class="bc-row"><span>${nm}</span><b class="v">${typeof v==='number'?(u==='ккал'?Math.round(v):u===''?v:v.toFixed(1)):v}${u?(u==='%'?'':' ')+u:''}</b></div>`;
+    h=top('Проверь цифры','cond')+`<p class="sub">Сохраняем только после твоего подтверждения.</p>
+      ${row('Дата',fmtDate(m.date,{day:'numeric',month:'long'}),'')}${row('Прибор',bcSrcName(m),'')}
+      ${row('Вес',m.weight,'кг')}${row('Процент жира',m.pbf,'%')}${row('Масса жира',m.bfm,'кг')}${row('Безжировая масса',m.ffm,'кг')}${row('Скелетные мышцы',m.smm,'кг')}
+      ${row('Основной обмен',m.bmrDevice,'ккал')}${row('Висцеральный жир',m.vfl,'')}${row('ECW/TBW',m.ecwTbw,'')}
+      <div class="bc-note${q==='low'?' warn':''}" style="margin-top:12px"><b>Качество замера: ${BC_QNAME[q]}</b><br>${fails.length?fails.map(x=>esc(x.t)).join(', ').replace(/^./,ch=>ch.toUpperCase())+'.':'Всё по правилам 👍'}${q==='low'?'<br>Такой замер сохраним только для сравнения, план по нему менять не будем.':''}</div>
+      ${warn.map(t=>bcNote('⚠️ '+t,'warn')).join('')}
+      <div class="row" style="gap:8px;margin-top:14px">${warn.length?`<button class="btn ghost" style="flex:1" onclick="bcGo('vals')">Исправить</button>`:''}<button class="btn" style="flex:1" onclick="bcSave()">${warn.length?'Сохранить так':'Всё верно, сохранить'}</button></div>`;
+  } else if(bc.step==='hist'){
+    const ms=bcSorted().reverse();
+    h=top('История замеров')+(ms.length?ms.map(m=>`<div class="prog-ex-row"><div class="prog-ex-info"><div class="prog-ex-nm">${fmtDate(m.date,{day:'numeric',month:'long',year:'numeric'})}</div>
+        <div class="prog-ex-det">${esc(bcSrcName(m))} · ${m.weight.toFixed(1)} кг · жир ${m.pbf!=null?m.pbf.toFixed(1)+'%':'—'}${m.smm!=null?' · мышцы '+m.smm.toFixed(1)+' кг':m.ffm!=null?' · сухая '+m.ffm.toFixed(1)+' кг':''}</div></div>
+        <button class="prog-del" onclick="bcDelete('${m.id}')" aria-label="Удалить">✕</button></div>`).join(''):'<div class="empty"><p>Замеров пока нет</p></div>')+
+      `<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="bc.fl={...bcFlags()};bc.fromHist=true;bcGo('safety')">Ответы о здоровье</button>`;
+  }
+  $('bcBody').innerHTML=h;
 }
 
 /* ============================================================
