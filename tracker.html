@@ -90,6 +90,9 @@ button{font-family:inherit;cursor:pointer}
 .bear-step.on .bear-crop{opacity:1;outline:2px solid var(--accent);outline-offset:-2px}
 .bear-step span{font-size:11px;color:var(--muted);white-space:nowrap}
 .bear-step.on span{color:var(--accent);font-weight:700}
+.bear-ask{font-size:12.5px;color:var(--muted);margin-top:8px}
+.bear-fit{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.bear-fit .chip{padding:5px 10px;font-size:12.5px}
 @media (prefers-reduced-motion:no-preference){.bear-fig img{animation:bearBreath 4s ease-in-out infinite;transform-origin:50% 100%}}
 @keyframes bearBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
@@ -5516,22 +5519,37 @@ let bearOpen=false, bearBroken={};
 function bearCol(key,i){const c=BEAR_COLS[key];return [c[i]+(i?4:0),c[i+1]-(i<BEAR_STAGES-1?4:0)];}
 // Which bear looks like the person at the start: sheet (gain = thin→big, cut = heavy→fit) and panel.
 // Body fat from a body-comp measurement or the silhouette answer wins; otherwise BMI from start weight and height.
-function bearBody(sex,g,w,h,targetW){
-  const fem=sex==='f', bmi=h>0&&w>0?w/Math.pow(h/100,2):null;
-  const m=bcLast(), q=S.profile.q||{}, trained=((S.profile.program||{}).exp)==='reg';
+// How trained the person is at the start: the bear's own answer wins, then the program questionnaire
+const BEAR_FIT={none:'Не качался',some:'Немного качался',built:'Уже накачан'};
+function bearFit(){
+  const f=S.profile.bearFit; if(BEAR_FIT[f]) return f;
+  return {new:'none',back:'some',reg:'built'}[(S.profile.program||{}).exp]||null;
+}
+// Which bear looks like the person at the start: sheet (gain = thin→big, cut = heavy→fit) and panel.
+// Body fat from a body-comp measurement or the silhouette answer wins; otherwise BMI from start weight and height.
+// The same 80 kg is a plain heavy bear for someone who never trained and a muscular one for someone who did.
+function bearBody(sex,g,w,h,targetW,fit){
+  const fem=sex==='f', bmi=h>0&&w>0?w/Math.pow(h/100,2):null, cutGoal=g==='cut'||g==='recomp';
+  const m=bcLast(), q=S.profile.q||{}, built=fit==='built', lvl=built?2:fit==='some'?1:0;
   let fat=null;
   if(m&&m.pbf!=null&&dayDiff(m.date,todayKey())<=90) fat=+m.pbf;
   else if(q.silhouette&&q.silhouette!=='skip'&&PZ_SIL[sex][q.silhouette]){const r=PZ_SIL[sex][q.silhouette];fat=(r[0]+r[1])/2;}
   const F=fem?[40,35,30]:[30,25,20];                                  // body fat %: very heavy / heavy / a bit heavy
+  const heavy=fat!=null?fat>=F[2]:bmi!=null&&bmi>=25;
   let sheet, from;
-  if(fat!=null&&fat>=F[2]) {sheet='cut'; from=fat>=F[0]?0:fat>=F[1]?1:2;}
-  else if(fat==null&&bmi!=null&&bmi>=25) {sheet='cut'; from=bmi>=31?0:trained&&bmi<27.5?2:1;}   // heavy and untrained: a plain heavy bear, not a pumped one
-  else if(bmi==null&&fat==null) {sheet=(g==='cut'||g==='recomp')?'cut':'gain'; from=0;}   // nothing known: old behaviour
-  else if(g==='cut') {sheet='cut'; from=(bmi||22)>=23?2:3;}                           // lean but wants to cut
+  if(bmi==null&&fat==null) {sheet=cutGoal?'cut':'gain'; from=0;}                    // nothing known: old behaviour
+  else if(heavy){
+    const cls=fat!=null?(fat>=F[0]?0:fat>=F[1]?1:2):(bmi>=31?0:bmi>=27.5?1:2);       // 0 very heavy … 2 a bit heavy
+    if(built&&cls>=1&&!cutGoal) {sheet='gain'; from=3;}                             // big and trained, wants more: muscular bear
+    else {sheet='cut'; from=cls===0?(built?1:0):Math.min(3,1+(cls===2?lvl:Math.min(lvl,1)));}   // untrained heavy: plain heavy bear
+  }
+  else if(g==='cut') {sheet='cut'; from=built?3:2;}                                  // lean but wants to cut
   else {
     sheet='gain';
     if(fat!=null&&fat<(fem?23:15)&&bmi!=null&&bmi>=24) from=3;                       // lean and heavy: already muscular
-    else from=bmi==null?1:bmi<18.5?0:bmi<(fem?22:23)?1:2;
+    else if(bmi!=null&&bmi<18.5) from=built?1:0;
+    else if(bmi!=null&&bmi>=(fem?22:23)) from=[1,2,3][lvl];                            // upper normal: trained shows it
+    else from=built?2:1;
   }
   let to=BEAR_STAGES-1;
   const tb=h>0&&targetW>0?targetW/Math.pow(h/100,2):null;
@@ -5544,13 +5562,18 @@ function bearBody(sex,g,w,h,targetW){
 }
 // Fixed when the goal is set, so a new measurement doesn't make the bear jump
 function bearPlan(){
-  const p=S.profile, sex=p.sex==='f'?'f':'m', g=goalKey();
-  const sig=[sex,g,+p.startWeight||0,+p.targetWeight||0,+p.height||0,(p.q&&p.q.silhouette)||''].join('|');
+  const p=S.profile, sex=p.sex==='f'?'f':'m', g=goalKey(), fit=bearFit();
+  const sig=[sex,g,+p.startWeight||0,+p.targetWeight||0,+p.height||0,(p.q&&p.q.silhouette)||'',fit||''].join('|');
   if(!p.bear||p.bear.sig!==sig||!BEAR_COLS[p.bear.key]){
-    p.bear=Object.assign({sig},bearBody(sex,g,+p.startWeight,+p.height,+p.targetWeight));
+    p.bear=Object.assign({sig},bearBody(sex,g,+p.startWeight,+p.height,+p.targetWeight,fit));
     save();
   }
   return p.bear;
+}
+function bearSetFit(f,ev){
+  if(ev) ev.stopPropagation();
+  if(!BEAR_FIT[f]) return;
+  S.profile.bearFit=f; save(); renderBearCard();
 }
 function bearState(){
   if(pzNoNum()) return null;                      // no body talk in the «без цифр» mode
@@ -5579,6 +5602,8 @@ function renderBearCard(){
   if(!b||bearBroken[b.src]){el.innerHTML='';return;}
   const H=224, k=H/BEAR_H, [x0,x1]=bearCol(b.key,b.panel), boxW=Math.round((x1-x0)*k);
   const fmt=v=>(Math.round(v*10)/10).toString().replace('.',',');
+  const fit=bearFit();
+  const fitChips=`<div class="bear-fit">${Object.entries(BEAR_FIT).map(([k,v])=>`<button class="chip${fit===k?' on':''}" onclick="bearSetFit('${k}',event)">${v}</button>`).join('')}</div>`;
   const steps=[];
   for(let j=0;j<b.n;j++){
     const [a,z]=bearCol(b.key,b.from+j), w=z-a;
@@ -5592,9 +5617,11 @@ function renderBearCard(){
       <div class="bear-ttl">${b.title}</div>
       <div class="bear-dots">${Array.from({length:b.n},(_,j)=>`<i class="${j<=b.i?'on':''}"></i>`).join('')}</div>
       <div class="bear-next">${esc(b.next)}</div>
+      ${fit?'':`<div class="bear-ask">Ты уже качался? Подберём мишку точнее:</div>${fitChips}`}
       <div class="bear-more">${bearOpen?'Скрыть план':'Весь план →'}</div>
     </div></div>${bearOpen?`<div class="card" style="padding:12px;margin-top:-4px"><div class="bear-plan" aria-label="План: мишка от старта к цели">${steps.join('')}</div>
-      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Первый мишка похож на тебя на старте: мы подобрали его по росту, весу${S.profile.q&&S.profile.q.silhouette&&S.profile.q.silhouette!=='skip'||bcLast()?' и телосложению':''}. Дальше он меняется вместе с тобой.</p></div>`:''}`;
+      ${fit?`<div class="bear-ask" style="margin-top:12px">Форма на старте:</div>${fitChips}`:''}
+      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Первый мишка похож на тебя на старте: мы подобрали его по росту, весу${S.profile.q&&S.profile.q.silhouette&&S.profile.q.silhouette!=='skip'||bcLast()?', телосложению':''} и опыту в зале. Дальше он меняется вместе с тобой.</p></div>`:''}`;
 }
 
 /* ============================================================
