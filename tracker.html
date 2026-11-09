@@ -354,6 +354,8 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
 .ob-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
 .ob-opt{display:flex;align-items:center;gap:14px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 16px;color:var(--text);font-family:inherit;transition:border-color .15s,background .15s}
 .ob-opt .em{font-size:26px;width:34px;text-align:center;flex-shrink:0}
+.ob-opt .em.bc-pic{width:56px;height:56px}.bc-pic svg{width:56px;height:56px;display:block}
+.bc-help{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px;margin-bottom:12px}.bc-help svg{width:100%;height:auto;display:block;max-height:170px;font-family:inherit}
 .ob-opt b{display:block;font-size:16px;margin-bottom:2px}
 .ob-opt span{display:block;color:var(--muted);font-size:13px;line-height:1.35}
 .ob-opt.on{border-color:var(--accent);background:var(--accent-dim)}
@@ -4649,6 +4651,17 @@ const BC_SRC={
   bia4:{name:'Умные весы',em:'⚖️',desc:'встаёшь босиком, ручек нет',w:0.3},
   tape:{name:'Сантиметр',em:'📏',desc:'талия и шея, у девушек ещё бёдра',w:0.4},
 };
+const BC_PIC={
+  inbody:'<svg viewBox="0 0 64 64"><rect x="10" y="54" width="34" height="6" rx="2" fill="var(--line)"/><rect x="24" y="12" width="7" height="44" rx="2" fill="var(--muted)"/><rect x="16" y="6" width="23" height="9" rx="3" fill="var(--accent)"/><rect x="11" y="20" width="6" height="12" rx="3" fill="#f0a060"/><rect x="38" y="20" width="6" height="12" rx="3" fill="#f0a060"/><g transform="rotate(7 52 34)"><rect x="42" y="14" width="19" height="34" rx="2" fill="var(--surface)" stroke="var(--muted)"/><rect x="45" y="18" width="10" height="2" fill="var(--accent)"/><rect x="45" y="24" width="13" height="2" fill="var(--line)"/><rect x="45" y="29" width="8" height="3" fill="var(--accent)"/><rect x="45" y="34" width="12" height="3" fill="#f0a060"/><rect x="45" y="39" width="6" height="3" fill="var(--muted)"/></g></svg>',
+  bia8:'<svg viewBox="0 0 64 64"><rect x="10" y="40" width="44" height="20" rx="5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><rect x="24" y="44" width="16" height="6" rx="2" fill="var(--line)"/><path d="M32 40V16" stroke="var(--muted)" stroke-width="2.5"/><rect x="20" y="8" width="24" height="8" rx="4" fill="#f0a060"/></svg>',
+  bia4:'<svg viewBox="0 0 64 64"><rect x="8" y="24" width="48" height="32" rx="7" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><rect x="24" y="29" width="16" height="7" rx="2" fill="var(--line)"/><ellipse cx="22" cy="46" rx="5" ry="7" fill="var(--muted)" opacity=".5"/><ellipse cx="42" cy="46" rx="5" ry="7" fill="var(--muted)" opacity=".5"/></svg>',
+  tape:'<svg viewBox="0 0 64 64"><circle cx="32" cy="10" r="6" fill="var(--muted)"/><path d="M22 20h20l3 18-3 22H22l-3-22z" fill="var(--line)"/><path d="M26 18h12" stroke="#f0a060" stroke-width="3"/><path d="M19 34h26" stroke="#f0a060" stroke-width="3"/><path d="M19 44h26" stroke="#f0a060" stroke-width="3" stroke-dasharray="3 2"/></svg>',
+};
+const BC_HELP={
+  inbody:'<svg viewBox="0 0 240 150"><rect x="6" y="6" width="228" height="138" rx="8" fill="var(--surface)" stroke="var(--line)"/><rect x="18" y="16" width="70" height="8" rx="2" fill="var(--accent)"/><text x="18" y="44" font-size="10" fill="var(--muted)">Вес</text><rect x="112" y="36" width="40" height="10" rx="2" fill="#f0a060"/><text x="18" y="62" font-size="10" fill="var(--muted)">Скелетные мышцы</text><rect x="112" y="54" width="34" height="10" rx="2" fill="#f0a060"/><text x="18" y="80" font-size="10" fill="var(--muted)">Масса жира</text><rect x="112" y="72" width="28" height="10" rx="2" fill="#f0a060"/><text x="18" y="98" font-size="10" fill="var(--muted)">Процент жира</text><rect x="112" y="90" width="26" height="10" rx="2" fill="#f0a060"/><rect x="160" y="34" width="62" height="96" rx="4" fill="none" stroke="var(--accent)" stroke-dasharray="4 3"/><circle cx="191" cy="50" r="6" fill="var(--muted)"/><rect x="183" y="58" width="16" height="30" rx="4" fill="var(--muted)"/><rect x="170" y="60" width="10" height="26" rx="4" fill="var(--accent)"/><rect x="202" y="60" width="10" height="26" rx="4" fill="var(--accent)"/><rect x="183" y="90" width="7" height="32" rx="3" fill="var(--accent)"/><rect x="192" y="90" width="7" height="32" rx="3" fill="var(--accent)"/><text x="191" y="142" font-size="9" fill="var(--muted)" text-anchor="middle">сегменты</text><text x="18" y="128" font-size="10" fill="var(--accent)">Оранжевое переписать</text></svg>',
+  bia:'<svg viewBox="0 0 240 150"><rect x="80" y="6" width="80" height="138" rx="14" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><rect x="92" y="22" width="56" height="8" rx="3" fill="var(--line)"/><text x="120" y="56" font-size="20" font-weight="700" fill="#f0a060" text-anchor="middle">70.0</text><text x="120" y="68" font-size="9" fill="var(--muted)" text-anchor="middle">вес, кг</text><text x="120" y="96" font-size="20" font-weight="700" fill="#f0a060" text-anchor="middle">18%</text><text x="120" y="108" font-size="9" fill="var(--muted)" text-anchor="middle">жир</text><rect x="92" y="118" width="56" height="6" rx="3" fill="var(--line)"/><rect x="92" y="128" width="40" height="6" rx="3" fill="var(--line)"/><text x="10" y="76" font-size="10" fill="var(--accent)">Нужны только</text><text x="10" y="90" font-size="10" fill="var(--accent)">эти две цифры</text><text x="168" y="124" font-size="9" fill="var(--muted)">остальное</text><text x="168" y="136" font-size="9" fill="var(--muted)">не нужно</text></svg>',
+  tape:'<svg viewBox="0 0 240 150"><circle cx="120" cy="20" r="12" fill="var(--muted)"/><path d="M98 40h44l8 46-8 58H98l-8-58z" fill="var(--line)"/><path d="M112 34h16" stroke="#f0a060" stroke-width="4"/><path d="M90 70h60" stroke="#f0a060" stroke-width="4"/><path d="M90 92h60" stroke="#f0a060" stroke-width="4" stroke-dasharray="5 3"/><text x="158" y="38" font-size="10" fill="var(--text)">шея, ниже кадыка</text><text x="158" y="74" font-size="10" fill="var(--text)">талия</text><text x="158" y="96" font-size="10" fill="var(--text)">бёдра (девушки)</text></svg>',
+};
 const BC_ORDER=['inbody','bia8','tape','bia4'];   // F-01: most accurate first
 const BC_SEM={                                    // Q-07: device error, starting assumptions
   inbody:{smm:.3,ffm:.4,bfm:.4,pbf:.6,weight:.3,segArm:.06,segLeg:.12},
@@ -5324,7 +5337,7 @@ function bcRender(){
   } else if(bc.step==='src'){
     const imp=bcFlags().implant;
     h=top('Новый замер')+`<p class="sub">Чем мерил?</p><div class="ob-opts" style="margin-bottom:12px">
-      ${Object.entries(BC_SRC).map(([k,x])=>{const off=imp&&k!=='tape';return `<button class="ob-opt${bc.src===k?' on':''}" ${off?'disabled style="opacity:.45"':''} onclick="bcSet('src','${k}')"><span class="em">${x.em}</span><div><b>${x.name}</b><span>${off?'с имплантом биоимпеданс не делают':x.desc}</span></div></button>`;}).join('')}</div>
+      ${Object.entries(BC_SRC).map(([k,x])=>{const off=imp&&k!=='tape';return `<button class="ob-opt${bc.src===k?' on':''}" ${off?'disabled style="opacity:.45"':''} onclick="bcSet('src','${k}')"><span class="em bc-pic">${BC_PIC[k]}</span><div><b>${x.name}</b><span>${off?'с имплантом биоимпеданс не делают':x.desc}</span></div></button>`;}).join('')}</div>
       <div class="g2">
         <div class="field"><label class="lbl" for="bcDate">Дата замера</label><input type="date" id="bcDate" max="${todayKey()}" value="${bc.date}" onchange="bc.date=this.value"></div>
         ${bc.src&&bc.src!=='tape'?`<div class="field"><label class="lbl" for="bcModel">Модель, если знаешь</label><input type="text" id="bcModel" placeholder="${bc.src==='inbody'?'InBody 270':'Xiaomi'}" value="${esc(bc.model)}" oninput="bc.model=this.value"></div>`:''}
@@ -5335,7 +5348,7 @@ function bcRender(){
     const src=bc.src;
     h=top(src==='tape'?'Мерки':src==='inbody'?'Цифры с распечатки':'Цифры с весов','src');
     if(src==='inbody'){
-      h+=`<p class="sub">Перепиши цифры с распечатки. Безжировую массу можно не вводить: посчитаем сами.</p>
+      h+=`<div class="bc-help">${BC_HELP.inbody}</div><p class="sub">Перепиши цифры с распечатки. Безжировую массу можно не вводить: посчитаем сами.</p>
         <div class="g2">${bcInp('weight','70.0')}${bcInp('pbf','15.0')}${bcInp('bfm','10.5')}${bcInp('smm','33.0')}</div>
         ${bcInp('ffm','59.5')}
         <div class="section-lbl" style="margin-top:4px">По желанию</div>
@@ -5345,11 +5358,11 @@ function bcRender(){
           ${BC_SEG.map(([k,nm])=>`<span>${nm}</span>${['kg','pct'].map(u=>{const key='s_'+k+'_'+u;return `<input type="text" inputmode="decimal" class="${bc.errs[key]?'bad':''}" value="${esc(bc.f[key]||'')}" oninput="bcIn('${key}',this)">`;}).join('')}`).join('')}</div>
           <p class="ob-note" style="margin-top:8px">Блок «Сегментарный анализ мышц» (Segmental Lean Analysis): килограммы и проценты. Жир по сегментам не нужен.</p>`:''}`;
     } else if(src==='tape'){
-      h+=`<p class="sub">Мерь утром, сантиметр прилегает, но не давит. ${bcSex()==='f'?'Талию — в самом узком месте, бёдра — по самой широкой части ягодиц':'Талию — на уровне пупка'}, шею — чуть ниже кадыка.</p>
+      h+=`<div class="bc-help">${BC_HELP.tape}</div><p class="sub">Мерь утром, сантиметр прилегает, но не давит. ${bcSex()==='f'?'Талию — в самом узком месте, бёдра — по самой широкой части ягодиц':'Талию — на уровне пупка'}, шею — чуть ниже кадыка.</p>
         ${bcInp('weight','70.0')}<div class="g2">${bcInp('waist','80')}${bcInp('neck','37')}</div>${bcSex()==='f'?bcInp('hip','95'):''}
         <p class="ob-note">Процент жира посчитаем по формуле ВМС США от мерок и роста (${bcHeight()||'—'} см).</p>`;
     } else {
-      h+=`<p class="sub">Из приложения весов нужны только вес и процент жира.</p><div class="g2">${bcInp('weight','70.0')}${bcInp('pbf','18.0')}</div>
+      h+=`<div class="bc-help">${BC_HELP.bia}</div><p class="sub">Из приложения весов нужны только вес и процент жира.</p><div class="g2">${bcInp('weight','70.0')}${bcInp('pbf','18.0')}</div>
         <p class="ob-note">«Мышечную массу», «возраст тела» и висцеральный жир с весов не вносим: у весов закрытые формулы, и эти цифры не совпадают с настоящими.</p>`;
     }
     h+=`<button class="btn" onclick="bcValsNext()">Дальше</button>`;
