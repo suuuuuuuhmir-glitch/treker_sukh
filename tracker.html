@@ -81,10 +81,15 @@ button{font-family:inherit;cursor:pointer}
 .bear-ttl{font-size:21px;font-weight:800;line-height:1.15}
 .bear-dots{display:flex;gap:5px}.bear-dots i{flex:1;height:6px;border-radius:3px;background:var(--surface3)}.bear-dots i.on{background:var(--grad)}
 .bear-next{font-size:13px;color:var(--muted);line-height:1.4}
-.bear-all{position:relative;border-radius:14px;overflow:hidden}
-.bear-all img{width:100%;height:100%;display:block}
 .bear-more{font-size:12.5px;font-weight:700;color:var(--accent-light)}
-.bear-all .hl{position:absolute;top:0;bottom:0;border:2px solid var(--accent);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
+.bear-plan{display:flex;gap:4px;align-items:flex-end}
+.bear-step{min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bear-crop{position:relative;width:100%;overflow:hidden;border-radius:8px;opacity:.55}
+.bear-crop img{position:absolute;top:0;height:100%;max-width:none}
+.bear-step.done .bear-crop{opacity:.8}
+.bear-step.on .bear-crop{opacity:1;outline:2px solid var(--accent);outline-offset:-2px}
+.bear-step span{font-size:11px;color:var(--muted);white-space:nowrap}
+.bear-step.on span{color:var(--accent);font-weight:700}
 @media (prefers-reduced-motion:no-preference){.bear-fig img{animation:bearBreath 4s ease-in-out infinite;transform-origin:50% 100%}}
 @keyframes bearBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
@@ -5427,43 +5432,87 @@ const BEAR_COLS={                              // panel borders in px, left to r
 const BEAR_TITLES=['Только начинаем','Первые шаги','Форма меняется','Уже заметно','Почти у цели','Цель взята'];
 let bearOpen=false, bearBroken={};
 function bearCol(key,i){const c=BEAR_COLS[key];return [c[i]+(i?4:0),c[i+1]-(i<BEAR_STAGES-1?4:0)];}
+// Which bear looks like the person at the start: sheet (gain = thin→big, cut = heavy→fit) and panel.
+// Body fat from a body-comp measurement or the silhouette answer wins; otherwise BMI from start weight and height.
+function bearBody(sex,g,w,h,targetW){
+  const fem=sex==='f', bmi=h>0&&w>0?w/Math.pow(h/100,2):null;
+  const m=bcLast(), q=S.profile.q||{}, trained=((S.profile.program||{}).exp)==='reg';
+  let fat=null;
+  if(m&&m.pbf!=null&&dayDiff(m.date,todayKey())<=90) fat=+m.pbf;
+  else if(q.silhouette&&q.silhouette!=='skip'&&PZ_SIL[sex][q.silhouette]){const r=PZ_SIL[sex][q.silhouette];fat=(r[0]+r[1])/2;}
+  const F=fem?[40,35,30]:[30,25,20];                                  // body fat %: very heavy / heavy / a bit heavy
+  let sheet, from;
+  if(fat!=null&&fat>=F[2]) {sheet='cut'; from=fat>=F[0]?0:fat>=F[1]?1:2;}
+  else if(fat==null&&bmi!=null&&bmi>=25) {sheet='cut'; from=bmi>=31?0:trained&&bmi<27.5?2:1;}   // heavy and untrained: a plain heavy bear, not a pumped one
+  else if(bmi==null&&fat==null) {sheet=(g==='cut'||g==='recomp')?'cut':'gain'; from=0;}   // nothing known: old behaviour
+  else if(g==='cut') {sheet='cut'; from=(bmi||22)>=23?2:3;}                           // lean but wants to cut
+  else {
+    sheet='gain';
+    if(fat!=null&&fat<(fem?23:15)&&bmi!=null&&bmi>=24) from=3;                       // lean and heavy: already muscular
+    else from=bmi==null?1:bmi<18.5?0:bmi<(fem?22:23)?1:2;
+  }
+  let to=BEAR_STAGES-1;
+  const tb=h>0&&targetW>0?targetW/Math.pow(h/100,2):null;
+  if(tb!=null&&(g==='gain'||g==='cut')){
+    if(sheet==='gain') to=tb<21?3:tb<24?4:5;
+    else to=tb<23?5:tb<25?4:tb<27.5?3:2;
+  }
+  to=Math.min(BEAR_STAGES-1,Math.max(to,from+2));
+  return {key:sex+'-'+sheet,from,to};
+}
+// Fixed when the goal is set, so a new measurement doesn't make the bear jump
+function bearPlan(){
+  const p=S.profile, sex=p.sex==='f'?'f':'m', g=goalKey();
+  const sig=[sex,g,+p.startWeight||0,+p.targetWeight||0,+p.height||0,(p.q&&p.q.silhouette)||''].join('|');
+  if(!p.bear||p.bear.sig!==sig||!BEAR_COLS[p.bear.key]){
+    p.bear=Object.assign({sig},bearBody(sex,g,+p.startWeight,+p.height,+p.targetWeight));
+    save();
+  }
+  return p.bear;
+}
 function bearState(){
   if(pzNoNum()) return null;                      // no body talk in the «без цифр» mode
-  const sex=S.profile.sex==='f'?'f':'m', g=goalKey(), fem=sex==='f';
-  const path=(g==='cut'||g==='recomp')?'cut':'gain', key=sex+'-'+path;
-  let stage, next='';
+  const fem=S.profile.sex==='f', g=goalKey(), pl=bearPlan(), n=pl.to-pl.from+1;
+  let i, next='', marks=null;
   if(g==='gain'||g==='cut'){
     const start=+S.profile.startWeight, goal=+S.profile.targetWeight, cur=latestWeight();
     const frac=goal===start?1:Math.max(0,Math.min(1,(cur-start)/(goal-start)));
-    stage=frac>=1?BEAR_STAGES-1:Math.min(BEAR_STAGES-2,Math.floor(frac*(BEAR_STAGES-1)));
-    if(stage<BEAR_STAGES-1){
-      const thr=start+(stage+1)/(BEAR_STAGES-1)*(goal-start), left=Math.abs(thr-cur);
-      next=`До следующего этапа ${g==='gain'?'+':'−'}${left.toFixed(1)} кг`;
+    i=frac>=1?n-1:Math.min(n-2,Math.floor(frac*(n-1)));
+    marks=Array.from({length:n},(_,j)=>start+j/(n-1)*(goal-start));
+    if(i<n-1){
+      const left=Math.abs(marks[i+1]-cur);
+      next=`До следующего этапа ${goal>start?'+':'−'}${left.toFixed(1)} кг`;
     } else next=fem?'Ты дошла до цели. Можно ставить новую.':'Ты дошёл до цели. Можно ставить новую.';
   } else {
-    const per=12, n=S.sessions.length, base=g==='recomp'?1:2;   // recomp/maintain: a stage every ~4 weeks of training
-    stage=Math.min(BEAR_STAGES-1,base+Math.floor(n/per));
-    next=stage<BEAR_STAGES-1?`До следующего этапа ${per-n%per} трен.`:'Мишка в лучшей форме. Держи её.';
+    const per=12, s=S.sessions.length;                // recomp/maintain: a stage every ~4 weeks of training
+    i=Math.min(n-1,Math.floor(s/per));
+    next=i<n-1?`До следующего этапа ${per-s%per} трен.`:'Мишка в лучшей форме. Держи её.';
   }
-  return {key,src:`mascot/${key}.jpg`,stage,next,fem};
+  const title=BEAR_TITLES[i===n-1?BEAR_STAGES-1:Math.round(i/(n-1)*(BEAR_STAGES-1))];
+  return {key:pl.key,src:`mascot/${pl.key}.jpg`,from:pl.from,to:pl.to,n,i,panel:pl.from+i,title,next,fem,marks};
 }
 function renderBearCard(){
   const el=$('bearCard'); if(!el) return;
   const b=bearState();
   if(!b||bearBroken[b.src]){el.innerHTML='';return;}
-  const H=224, k=H/BEAR_H, [x0,x1]=bearCol(b.key,b.stage), boxW=Math.round((x1-x0)*k);
-  const all=BEAR_COLS[b.key];
-  el.innerHTML=`<div class="card bear-card" onclick="bearOpen=!bearOpen;renderBearCard()" role="button" aria-expanded="${bearOpen}" aria-label="${b.fem?'Твоя мишка':'Твой мишка'}: этап ${b.stage+1} из ${BEAR_STAGES}">
+  const H=224, k=H/BEAR_H, [x0,x1]=bearCol(b.key,b.panel), boxW=Math.round((x1-x0)*k);
+  const fmt=v=>(Math.round(v*10)/10).toString().replace('.',',');
+  const steps=[];
+  for(let j=0;j<b.n;j++){
+    const [a,z]=bearCol(b.key,b.from+j), w=z-a;
+    const lbl=b.marks?fmt(b.marks[j])+' кг':j===0?'старт':j*12+' трен.';
+    steps.push(`<div class="bear-step${j===b.i?' on':j<b.i?' done':''}" style="flex:${w} 1 0"><div class="bear-crop" style="aspect-ratio:${w}/${BEAR_H}"><img src="${b.src}" alt="" style="width:${BEAR_W/w*100}%;left:${-a/w*100}%"></div><span>${j===b.i?'ты тут':esc(lbl)}</span></div>`);
+  }
+  el.innerHTML=`<div class="card bear-card" onclick="bearOpen=!bearOpen;renderBearCard()" role="button" aria-expanded="${bearOpen}" aria-label="${b.fem?'Твоя мишка':'Твой мишка'}: этап ${b.i+1} из ${b.n}">
     <div class="bear-fig" style="flex-basis:${boxW}px;width:${boxW}px;height:${H}px"><img src="${b.src}" alt="" width="${Math.round(BEAR_W*k)}" height="${H}" style="width:${BEAR_W*k}px;height:${H}px;left:${-x0*k}px;transform-origin:${(x0+x1)/2*k}px ${H}px" onerror="bearBroken['${b.src}']=1;renderBearCard()"></div>
     <div class="bear-info">
-      <div class="bear-eb">${b.fem?'Твоя мишка':'Твой мишка'} · этап ${b.stage+1} из ${BEAR_STAGES}</div>
-      <div class="bear-ttl">${BEAR_TITLES[b.stage]}</div>
-      <div class="bear-dots">${Array.from({length:BEAR_STAGES},(_,i)=>`<i class="${i<=b.stage?'on':''}"></i>`).join('')}</div>
+      <div class="bear-eb">${b.fem?'Твоя мишка':'Твой мишка'} · этап ${b.i+1} из ${b.n}</div>
+      <div class="bear-ttl">${b.title}</div>
+      <div class="bear-dots">${Array.from({length:b.n},(_,j)=>`<i class="${j<=b.i?'on':''}"></i>`).join('')}</div>
       <div class="bear-next">${esc(b.next)}</div>
-      <div class="bear-more">${bearOpen?'Скрыть этапы':'Все этапы →'}</div>
-    </div></div>${bearOpen?`<div class="card" style="padding:12px;margin-top:-4px"><div class="bear-all" style="aspect-ratio:${BEAR_W}/${BEAR_H}"><img src="${b.src}" alt="Все этапы: мишка меняется от старта к цели">
-      <div class="hl" style="left:${all[b.stage]/BEAR_W*100}%;width:${(all[b.stage+1]-all[b.stage])/BEAR_W*100}%"></div></div>
-      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Мишка меняется вместе с тобой: чем ближе цель, тем дальше этап.</p></div>`:''}`;
+      <div class="bear-more">${bearOpen?'Скрыть план':'Весь план →'}</div>
+    </div></div>${bearOpen?`<div class="card" style="padding:12px;margin-top:-4px"><div class="bear-plan" aria-label="План: мишка от старта к цели">${steps.join('')}</div>
+      <p class="muted" style="font-size:12.5px;margin:10px 2px 0">Первый мишка похож на тебя на старте: мы подобрали его по росту, весу${S.profile.q&&S.profile.q.silhouette&&S.profile.q.silhouette!=='skip'||bcLast()?' и телосложению':''}. Дальше он меняется вместе с тобой.</p></div>`:''}`;
 }
 
 /* ============================================================
