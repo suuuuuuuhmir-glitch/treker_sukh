@@ -1,12 +1,12 @@
 {
-  "name": "Набор массы — Трекер",
-  "short_name": "Масса",
-  "description": "Персональный трекер набора мышечной массы",
+  "name": "МишкаФит — тренировки, питание, вес",
+  "short_name": "МишкаФит",
+  "description": "Трекер тренировок, питания и веса. Мишка меняется вместе с тобой.",
   "start_url": "tracker.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0E0C0B",
-  "theme_color": "#0E0C0B",
+  "background_color": "#0B0B10",
+  "theme_color": "#0B0B10",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -16,9 +16,21 @@
       "purpose": "any"
     },
     {
-      "src": "icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "maskable"
     }
   ]
