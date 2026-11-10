@@ -1,6 +1,6 @@
-const SHELL_CACHE = 'gymtracker-shell-v27';
+const SHELL_CACHE = 'gymtracker-shell-v28';
 const FONT_CACHE  = 'gymtracker-fonts-v2';
-const SHELL_FILES = ['tracker.html', 'manifest.json', 'icon.svg'];
+const SHELL_FILES = ['tracker.html', 'manifest.json', 'icon.svg', 'icon-180.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(

@@ -1,21 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#14110F" rx="80"/>
-  <!-- bar -->
-  <rect x="160" y="242" width="192" height="28" rx="8" fill="#352E27"/>
-  <!-- left plate outer -->
-  <rect x="76" y="188" width="92" height="136" rx="18" fill="#251F1B" stroke="#352E27" stroke-width="3"/>
-  <!-- left plate fill -->
-  <rect x="92" y="204" width="60" height="104" rx="12" fill="#FF6A2B"/>
-  <!-- left plate shine -->
-  <rect x="94" y="206" width="14" height="100" rx="6" fill="rgba(255,255,255,.12)"/>
-  <!-- left collar -->
-  <rect x="148" y="230" width="16" height="52" rx="5" fill="#9A9087"/>
-  <!-- right plate outer -->
-  <rect x="344" y="188" width="92" height="136" rx="18" fill="#251F1B" stroke="#352E27" stroke-width="3"/>
-  <!-- right plate fill -->
-  <rect x="360" y="204" width="60" height="104" rx="12" fill="#FF6A2B"/>
-  <!-- right plate shine -->
-  <rect x="362" y="206" width="14" height="100" rx="6" fill="rgba(255,255,255,.12)"/>
-  <!-- right collar -->
-  <rect x="348" y="230" width="16" height="52" rx="5" fill="#9A9087"/>
+  <defs>
+    <linearGradient id="g" x1="96" y1="96" x2="416" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3F7DFF"/><stop offset=".5" stop-color="#8C5BFF"/><stop offset="1" stop-color="#E846F2"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="256" cy="236" r="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#241848"/><stop offset=".55" stop-color="#110E1F"/><stop offset="1" stop-color="#0B0B10"/>
+    </radialGradient>
+    <radialGradient id="face" cx="256" cy="250" r="190" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E1734"/><stop offset="1" stop-color="#110E1C"/>
+    </radialGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="18"/></filter>
+    <g id="head" stroke="url(#g)" stroke-width="24" stroke-linejoin="round">
+      <circle cx="146" cy="170" r="58" fill="#14101F"/>
+      <circle cx="366" cy="170" r="58" fill="#14101F"/>
+      <ellipse cx="256" cy="294" rx="160" ry="148" fill="#14101F"/>
+    </g>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <use href="#head" filter="url(#glow)"/>
+  <use href="#head"/>
+  <circle cx="146" cy="170" r="22" fill="url(#g)" opacity=".5"/>
+  <circle cx="366" cy="170" r="22" fill="url(#g)" opacity=".5"/>
+  <ellipse cx="256" cy="294" rx="148" ry="136" fill="url(#face)"/>
+  <ellipse cx="256" cy="350" rx="76" ry="58" fill="none" stroke="url(#g)" stroke-width="13" opacity=".85"/>
+  <path d="M228 322c0-10 12-16 28-16s28 6 28 16c0 12-14 22-28 22s-28-10-28-22z" fill="url(#g)"/>
+  <path d="M256 344v13M256 357c-7 9-18 11-27 6M256 357c7 9 18 11 27 6" fill="none" stroke="url(#g)" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="198" cy="272" r="15" fill="#F5F1FF"/>
+  <circle cx="314" cy="272" r="15" fill="#F5F1FF"/>
+  <path d="M174 243l40 9M338 243l-40 9" fill="none" stroke="url(#g)" stroke-width="12" stroke-linecap="round"/>
 </svg>
