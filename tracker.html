@@ -317,6 +317,7 @@ textarea.food-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 
 .food-res .kp small{display:block;color:var(--muted);font-size:11px;font-family:inherit;font-weight:600}
 .food-text-toggle{background:none;border:none;color:var(--muted);font-family:inherit;font-weight:600;font-size:13px;padding:12px 0 4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .food-entry{cursor:pointer}
+.food-entry .tm .i{width:17px;height:17px;color:var(--accent);margin-top:1px}
 .fm-name{font-size:20px;font-weight:800;overflow-wrap:anywhere}
 .fm-grams{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px 0 10px}
 .fm-step{width:50px;height:50px;border-radius:99px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--text);font-size:24px;cursor:pointer;flex-shrink:0}
@@ -547,6 +548,16 @@ nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .supp-row:last-of-type{border-bottom:none}
 .supp-row .nm{font-size:14.5px;font-weight:700}
 .supp-row .ds{color:var(--muted);font-size:12px;margin-top:1px}
+.supp-row>div:first-child{min-width:0}
+.supp-act{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.supp-plus{padding:7px 0;width:34px;justify-content:center;font-size:16px;line-height:1}
+.supp-edit{padding:7px 13px;font-size:12.5px}
+.supp-empty{color:var(--muted);font-size:13px;line-height:1.45;margin:0 0 12px}
+.supp-presets{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 14px}
+.supp-presets .chip{padding:7px 12px;font-size:13px}
+.supp-prev{background:rgba(139,108,255,.08);border:1px solid rgba(139,108,255,.28);border-radius:var(--r-sm);padding:11px 13px;font-size:13.5px;margin:2px 0 14px;line-height:1.45}
+.supp-prev b{font-family:var(--f-num)}
+.supp-h{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px}
 .macro-mini{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
 .macro-mini b{font-family:var(--f-num);font-size:18px;font-weight:800}
 .macro-mini span{color:var(--muted);font-size:13px}
@@ -790,16 +801,9 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <div class="card">
     <div class="card-head">
       <h3 class="card-title"><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-pill"/></svg></span>Добавки</h3>
-      <span class="muted" style="font-size:12.5px">каждый день</span>
+      <button class="btn ghost sm supp-edit" onclick="suppManage()">Мои добавки</button>
     </div>
-    <div class="supp-row">
-      <span class="nm">Креатин 5 г</span>
-      <button class="chip" id="qCrea" onclick="toggleSupp('creatine')">отметить</button>
-    </div>
-    <div class="supp-row" id="qGainRow">
-      <span class="nm">Гейнер (порция)</span>
-      <button class="chip" id="qGain" onclick="toggleSupp('gainer')">отметить</button>
-    </div>
+    <div id="qSupps"></div>
   </div>
   </div>
 </div>
@@ -899,21 +903,9 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <div class="card">
     <div class="card-head">
       <h3 class="card-title"><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-pill"/></svg></span>Добавки</h3>
+      <button class="btn ghost sm supp-edit" onclick="suppManage()">Мои добавки</button>
     </div>
-    <div class="supp-row">
-      <div>
-        <div class="nm">Креатин 5 г</div>
-        <div class="ds">каждый день, даже в дни отдыха</div>
-      </div>
-      <button class="chip" id="nCrea" onclick="toggleSupp('creatine', nutritionDate)">отметить</button>
-    </div>
-    <div class="supp-row" id="nGainRow">
-      <div>
-        <div class="nm">Гейнер</div>
-        <div class="ds">половина порции ~600 ккал на молоке</div>
-      </div>
-      <button class="chip" id="nGain" onclick="toggleSupp('gainer', nutritionDate)">отметить</button>
-    </div>
+    <div id="nSupps"></div>
   </div>
 
   <details class="fold">
@@ -1168,6 +1160,14 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
       <input type="number" inputmode="numeric" id="scanCode" placeholder="или введи цифры" style="flex:1">
       <button class="btn sm" onclick="foodScanManual()">Найти</button>
     </div>
+  </div>
+</div>
+
+<!-- ==================== SUPPLEMENTS ==================== -->
+<div class="modal-bg" id="suppModal" onclick="if(event.target===this)suppClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="suppBody"></div>
   </div>
 </div>
 
@@ -1496,7 +1496,7 @@ function load(){
         profile:{startDate:tomorrowKey(),startWeight:70,targetWeight:75,schedule:SPLIT_SCHEDULE.slice(),goal:'gain',onboarded:false},
         weights:[],sessions:[],
         plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),planVersion:PLAN_VERSION,planSince:todayKey(),
-        nutrition:{},
+        nutrition:{},supps:[],
         settings:{restTimer:90,notifications:false},
       };
       migrateV1();
@@ -1534,6 +1534,7 @@ function normalizeState(){
   days().forEach(d=>{S.plan[d]=S.plan[d]||[];});
   S.nutrition=S.nutrition||{};
   S.myFoods=S.myFoods||[];
+  suppMigrate();
   S.checkins=S.checkins||[];
   S.bodycomp=S.bodycomp||[];
   S.settings=S.settings||{restTimer:90,notifications:false};
@@ -1725,9 +1726,7 @@ function renderToday(){
   }
 
   const n=S.nutrition[todayKey()]||{};
-  setChip('qCrea',n.creatine);
-  setChip('qGain',n.gainer);
-  $('qGainRow').style.display=goalKey()==='gain'?'':'none';
+  $('qSupps').innerHTML=suppRowsHtml(todayKey());
 
   // Tiles: food, protein, week, tonnage
   const tot=foodTotals(todayKey());
@@ -1785,14 +1784,6 @@ function goWorkout(){
   curDay=sd;
   switchTab('workout');
   setDay(sd);
-}
-function toggleSupp(k, d){
-  d=d||todayKey();
-  S.nutrition[d]=S.nutrition[d]||{};
-  S.nutrition[d][k]=!S.nutrition[d][k];
-  save();
-  if(d===todayKey()) renderToday();
-  renderNutrition();
 }
 
 /* ============================================================
@@ -2072,13 +2063,11 @@ function renderNutrition(){
   const nextBtn=$('nutrNextBtn'); if(nextBtn) nextBtn.disabled=isToday;
 
   const n=S.nutrition[nutritionDate]||{};
-  setChip('nCrea',n.creatine);
-  setChip('nGain',n.gainer);
+  $('nSupps').innerHTML=suppRowsHtml(nutritionDate);
   const g=GOALS[goalKey()];
   $('nutrEyebrow').textContent=g.nutr;
   $('nutrWhy').innerHTML='<b style="color:var(--text)">Почему так.</b> '+esc(g.why);
   const gain=goalKey()==='gain';
-  $('nGainRow').style.display=gain||n.gainer?'':'none';
   $('nutrGainerTip').style.display=gain?'':'none';
   renderFoodLog();
 }
@@ -2297,7 +2286,6 @@ const FOOD_DB = [
   {n:'Пиво',              s:['пиво','пива'],                k:43, p:0.5, d:500},
   {n:'Чай / кофе / вода', s:['чай','кофе','вода','воды','воду'], k:0,p:0,d:250},
 ];
-const GAINER_TICK = {k:600,p:25};   // отметка «Гейнер» в добавках = полпорции на молоке
 
 let foodDraft=null;   // {text, items, src}
 
@@ -2311,7 +2299,7 @@ function foodTotals(d){
   const n=S.nutrition[d]||{};
   let k=0,p=0;
   (n.log||[]).forEach(e=>{k+=e.k||0;p+=e.p||0;});
-  if(n.gainer){k+=GAINER_TICK.k;p+=GAINER_TICK.p;}
+  Object.values(n.sup||{}).forEach(t=>{k+=(t.k||0)*(t.x||0);p+=(t.p||0)*(t.x||0);});
   return {k:Math.round(k),p:Math.round(p)};
 }
 
@@ -2436,7 +2424,17 @@ function renderFoodLog(){
       <div class="kc">${e.k} ккал<small>${Math.round(e.p)} г белка</small></div>
       <button class="food-del" onclick="event.stopPropagation();foodDelete('${e.id}')" aria-label="Удалить">×</button>
     </div>`);
-  if(n.gainer) rows.push(`<div class="food-entry"><div class="tm"></div><div class="bd"><div class="tx">Гейнер</div><div class="ds">отмечен в добавках</div></div><div class="kc">${GAINER_TICK.k} ккал<small>${GAINER_TICK.p} г белка</small></div><span style="width:22px"></span></div>`);
+  // Supplements taken that day go into the diary too (the ones with calories or protein)
+  Object.entries(n.sup||{}).forEach(([id,t])=>{
+    if(!t.x||!(t.k||t.p||t.c||t.f))return;
+    const cf=[t.c?'у '+fmtSup(t.c*t.x):'',t.f?'ж '+fmtSup(t.f*t.x):''].filter(Boolean).join(' · ')+(t.c||t.f?' г':'');
+    rows.push(`<div class="food-entry" onclick="suppManage()">
+      <div class="tm">${icoSvg('i-pill')}</div>
+      <div class="bd"><div class="tx">${esc(t.n)}</div><div class="ds">добавка · ${t.x>1?t.x+' × ':''}${esc(suppDoseTxt(t.g,t.u))}${cf?' · '+cf:''}</div></div>
+      <div class="kc">${Math.round(t.k*t.x)} ккал<small>${Math.round(t.p*t.x)} г белка</small></div>
+      <button class="food-del" onclick="event.stopPropagation();suppUntake('${esc(id)}','${nutritionDate}')" aria-label="Убрать">×</button>
+    </div>`);
+  });
   $('foodLog').innerHTML=rows.length?rows.join(''):'<div class="muted" style="font-size:13px;padding:8px 0">Пока ничего не записано.</div>';
 }
 function plural(n,a,b,c){const m10=n%10,m100=n%100;return m10===1&&m100!==11?a:(m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c);}
@@ -2681,6 +2679,232 @@ function foodCustomSave(){
   const code=$('fcCode').value;
   const f={id:'my'+Date.now().toString(36),n:cap(n),k:Math.round(k),p:round1(p),d:d>0?Math.round(d):100,code,src:'custom'};
   foodPortionOpen(f,f.d);
+}
+
+/* ============================================================
+   SUPPLEMENTS
+   S.supps = [{id,n,dose,unit,base:'100'|'dose',k,p,c,f,ds?}]
+     k/p/c/f are per 100 g (ml) when base==='100', otherwise per one portion.
+   S.nutrition[date].sup = {id:{x,n,g,u,k,p,c,f}} — what was taken that day:
+     x portions, k/p/c/f for ONE portion copied at the moment it was taken,
+     so editing a supplement later does not rewrite old days.
+   Calories and protein count in foodTotals and show in the food diary.
+   ============================================================ */
+const SUPP_UNITS={g:'г',ml:'мл',scoop:'ложка',portion:'порция',caps:'капс.',tab:'таб.',pcs:'шт.'};
+const SUPP_PRESETS=[
+  {id:'creatine', n:'Креатин',            dose:5,  unit:'g',    base:'dose',k:0,  p:0, c:0, f:0, ds:'каждый день, даже в дни отдыха'},
+  {id:'protein',  n:'Протеин',            dose:30, unit:'g',    base:'100', k:380,p:75,c:8, f:6},
+  {id:'gainer',   n:'Гейнер',             dose:85, unit:'g',    base:'100', k:380,p:15,c:75,f:3},
+  {id:'casein',   n:'Казеин',             dose:30, unit:'g',    base:'100', k:360,p:80,c:6, f:2},
+  {id:'bcaa',     n:'BCAA',               dose:5,  unit:'g',    base:'dose',k:0,  p:0, c:0, f:0},
+  {id:'collagen', n:'Коллаген',           dose:10, unit:'g',    base:'100', k:360,p:90,c:0, f:0},
+  {id:'omega3',   n:'Омега-3',            dose:1,  unit:'caps', base:'dose',k:9,  p:0, c:0, f:1},
+  {id:'vitd',     n:'Витамин D',          dose:1,  unit:'caps', base:'dose',k:0,  p:0, c:0, f:0},
+  {id:'magnesium',n:'Магний',             dose:1,  unit:'tab',  base:'dose',k:0,  p:0, c:0, f:0},
+  {id:'multi',    n:'Мультивитамины',     dose:1,  unit:'tab',  base:'dose',k:0,  p:0, c:0, f:0},
+  {id:'preworkout',n:'Предтрен',          dose:10, unit:'g',    base:'dose',k:10, p:0, c:2, f:0},
+  {id:'isotonic', n:'Изотоник',           dose:40, unit:'g',    base:'100', k:380,p:0, c:95,f:0},
+  {id:'bar',      n:'Протеиновый батончик',dose:1, unit:'pcs',  base:'dose',k:200,p:20,c:20,f:7},
+];
+// The old «Гейнер» tick was half a serving on milk, ~600 kcal and 25 g protein
+const SUPP_OLD_GAINER={id:'gainer',n:'Гейнер',ds:'полпорции на молоке',dose:1,unit:'portion',base:'dose',k:600,p:25,c:85,f:13};
+let supp=null;   // sheet state {view:'list'|'form', f:{...}, editId}
+
+function fmtSup(x){x=Math.round(x*10)/10;return String(x).replace('.',',');}
+const SUPP_PLURAL={scoop:['ложка','ложки','ложек'],portion:['порция','порции','порций']};
+function suppDoseTxt(g,u){
+  const pl=SUPP_PLURAL[u];
+  return fmtSup(g)+' '+(pl?(g%1?pl[1]:plural(g,pl[0],pl[1],pl[2])):(SUPP_UNITS[u]||u||''));
+}
+function suppPer100Ok(u){return u==='g'||u==='ml';}
+// Nutrition for one portion
+function suppPortion(s){
+  const m=s.base==='100'&&suppPer100Ok(s.unit)?(s.dose||0)/100:1;
+  return {k:round1((s.k||0)*m),p:round1((s.p||0)*m),c:round1((s.c||0)*m),f:round1((s.f||0)*m)};
+}
+function suppNutrTxt(v,short){
+  if(!(v.k||v.p||v.c||v.f)) return 'без калорий';
+  if(short) return Math.round(v.k)+' ккал'+(v.p?', '+fmtSup(v.p)+' г белка':'');
+  return Math.round(v.k)+' ккал'+(v.p?' · б '+fmtSup(v.p):'')+(v.c?' · у '+fmtSup(v.c):'')+(v.f?' · ж '+fmtSup(v.f):'');
+}
+function suppMigrate(){
+  const N=S.nutrition||{};
+  if(!Array.isArray(S.supps)){
+    // Before this, everyone had creatine, and gainer on a weight gain
+    const usedG=Object.values(N).some(n=>n&&n.gainer);
+    S.supps=[{...SUPP_PRESETS[0]}];
+    if(S.profile.goal==='gain'||usedG) S.supps.push({...SUPP_OLD_GAINER});
+  }
+  Object.values(N).forEach(n=>{
+    if(!n||typeof n!=='object')return;
+    [['creatine',SUPP_PRESETS[0]],['gainer',SUPP_OLD_GAINER]].forEach(([k,def])=>{
+      if(!(k in n))return;
+      if(n[k]){n.sup=n.sup||{};if(!n.sup[k]){const v=suppPortion(def);n.sup[k]={x:1,n:def.n,g:def.dose,u:def.unit,...v};}}
+      delete n[k];
+    });
+  });
+}
+function suppRowsHtml(d){
+  const sup=((S.nutrition[d]||{}).sup)||{}, noNum=pzNoNum();
+  const list=S.supps.map(s=>({id:s.id,n:s.n,ds:s.ds,g:s.dose,u:s.unit,v:suppPortion(s),x:(sup[s.id]||{}).x||0}));
+  // taken that day but removed from the list since — still shown so it can be undone
+  Object.entries(sup).forEach(([id,t])=>{if(t.x&&!S.supps.some(s=>s.id===id))list.push({id,n:t.n,g:t.g,u:t.u,v:t,x:t.x});});
+  if(!list.length) return `<p class="supp-empty">Отмечай, что принимаешь: креатин, протеин, витамины… Калории и белок из них сами попадут в питание.</p>
+    <button class="btn ghost sm" style="width:100%" onclick="suppManage()">+ Добавить добавку</button>`;
+  return list.map(r=>{
+    const ds=[suppDoseTxt(r.g,r.u)];
+    if(!noNum){const tot={k:r.v.k*Math.max(1,r.x),p:r.v.p*Math.max(1,r.x),c:r.v.c*Math.max(1,r.x),f:r.v.f*Math.max(1,r.x)};ds.push(suppNutrTxt(tot,true));}
+    if(r.x>1) ds[0]=r.x+' × '+ds[0];
+    else if(r.ds&&!r.x) ds.push(r.ds);
+    return `<div class="supp-row">
+      <div><div class="nm">${esc(r.n)}</div><div class="ds">${esc(ds.join(' · '))}</div></div>
+      <div class="supp-act">${r.x?`<button class="chip supp-plus" onclick="suppTake('${esc(r.id)}','${d}')" aria-label="Ещё порция">+</button>`:''}
+        <button class="chip${r.x?' on':''}" onclick="${r.x?'suppUntake':'suppTake'}('${esc(r.id)}','${d}')">${r.x?(r.x>1?'✓ ×'+r.x:'✓ принял'):'принять'}</button></div>
+    </div>`;
+  }).join('');
+}
+function suppRefresh(d){
+  save();
+  renderToday();
+  renderNutrition();
+}
+function suppTake(id,d){
+  d=d||todayKey();
+  S.nutrition[d]=S.nutrition[d]||{};
+  const n=S.nutrition[d]; n.sup=n.sup||{};
+  if(n.sup[id]) n.sup[id].x=(n.sup[id].x||0)+1;
+  else{
+    const s=S.supps.find(x=>x.id===id); if(!s)return;
+    n.sup[id]={x:1,n:s.n,g:s.dose,u:s.unit,...suppPortion(s)};
+  }
+  const t=n.sup[id];
+  suppRefresh(d);
+  if(t.k&&!pzNoNum()) toast('+'+Math.round(t.k)+' ккал в питание','ok');
+}
+// Tap on the green chip removes one portion
+function suppUntake(id,d){
+  const n=S.nutrition[d||todayKey()]; if(!n||!n.sup||!n.sup[id])return;
+  if(n.sup[id].x>1) n.sup[id].x--; else delete n.sup[id];
+  if(!Object.keys(n.sup).length) delete n.sup;
+  suppRefresh(d);
+}
+
+/* ---------- Sheet: my supplements ---------- */
+function suppManage(){
+  supp={view:'list'};
+  $('suppModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  suppRender();
+}
+function suppClose(){supp=null;$('suppModal').classList.remove('active');document.body.style.overflow='';}
+function suppRender(){
+  const b=$('suppBody'); if(!supp)return;
+  if(supp.view==='form'){b.innerHTML=suppFormHtml();suppPreview();return;}
+  const noNum=pzNoNum();
+  const mine=S.supps.map(s=>`<div class="supp-row">
+      <div><div class="nm">${esc(s.n)}</div><div class="ds">${esc(suppDoseTxt(s.dose,s.unit)+(noNum?'':' · '+suppNutrTxt(suppPortion(s))))}</div></div>
+      <button class="btn icon" onclick="suppForm('${esc(s.id)}')" aria-label="Изменить">${icoSvg('i-pen')}</button>
+    </div>`).join('');
+  const have=new Set(S.supps.map(s=>s.id));
+  const pre=SUPP_PRESETS.filter(p=>!have.has(p.id)).map(p=>`<button class="chip" onclick="suppForm(null,'${p.id}')">+ ${esc(p.n)}</button>`).join('');
+  b.innerHTML=`<div class="row between" style="margin-bottom:6px">
+      <h3 class="modal-title" style="margin-bottom:0">Мои добавки</h3>
+      <button class="btn ghost sm" onclick="suppClose()">Готово</button>
+    </div>
+    <p class="muted" style="font-size:13px;margin:0 0 6px">Что ты принимаешь. Если в добавке есть калории (протеин, гейнер), при отметке они попадут в питание.</p>
+    ${mine||'<p class="supp-empty" style="margin-top:10px">Пока пусто. Выбери из списка или впиши свою.</p>'}
+    <div class="supp-h">Добавить</div>
+    ${pre?`<div class="supp-presets">${pre}</div>`:''}
+    <button class="btn" onclick="suppForm()">+ Своя добавка</button>`;
+}
+function suppForm(editId,presetId){
+  const src=editId?S.supps.find(s=>s.id===editId):presetId?SUPP_PRESETS.find(p=>p.id===presetId):null;
+  const f=src?{...src}:{n:'',dose:'',unit:'g',base:'100',k:'',p:'',c:'',f:''};
+  if(!src) f.id=null;
+  supp={view:'form',editId:editId||null,presetId:presetId||null,f};
+  suppRender();
+  $('suppModal').querySelector('.modal-sheet').scrollTop=0;
+  if(!src) setTimeout(()=>{const i=$('spName');if(i)i.focus();},60);
+}
+function suppFormHtml(){
+  const f=supp.f, p100=suppPer100Ok(f.unit), base=p100?f.base:'dose';
+  const per=base==='100'?(f.unit==='ml'?'на 100 мл':'на 100 г'):'на порцию';
+  const v=x=>x===''||x==null?'':esc(String(x).replace('.',','));
+  const units=Object.entries(SUPP_UNITS).map(([k,l])=>`<button class="chip${f.unit===k?' on':''}" onclick="suppSetUnit('${k}')">${l}</button>`).join('');
+  return `<div class="row between" style="margin-bottom:12px">
+      <h3 class="modal-title" style="margin-bottom:0">${supp.editId?'Изменить':'Добавка'}</h3>
+      <button class="btn ghost sm" onclick="supp.view='list';suppRender()">Назад</button>
+    </div>
+    <div class="field"><label class="lbl" for="spName">Название</label><input type="text" id="spName" value="${esc(f.n||'')}" placeholder="Креатин, протеин, витамин C…" oninput="supp.f.n=this.value"></div>
+    <label class="lbl">Одна порция</label>
+    <div class="row" style="gap:8px;margin-bottom:8px">
+      <input type="text" inputmode="decimal" id="spDose" value="${v(f.dose)}" placeholder="${f.unit==='g'?'5':'1'}" style="width:96px;flex:0 0 96px" oninput="suppIn('dose',this)">
+      <span class="muted" style="font-size:14px;font-weight:700">${esc(SUPP_UNITS[f.unit])}</span>
+    </div>
+    <div class="bc-chips">${units}</div>
+    <label class="lbl">Калории и БЖУ</label>
+    ${p100?`<div class="seg" style="margin-bottom:10px"><button class="${base==='100'?'on':''}" onclick="suppSetBase('100')">${f.unit==='ml'?'на 100 мл':'на 100 г'}</button><button class="${base==='dose'?'on':''}" onclick="suppSetBase('dose')">на порцию</button></div>`:''}
+    <div class="g2" style="margin-bottom:10px">
+      <div><label class="lbl" for="spK">Ккал ${per}</label><input type="text" inputmode="decimal" id="spK" value="${v(f.k)}" placeholder="0" oninput="suppIn('k',this)"></div>
+      <div><label class="lbl" for="spP">Белки, г</label><input type="text" inputmode="decimal" id="spP" value="${v(f.p)}" placeholder="0" oninput="suppIn('p',this)"></div>
+      <div><label class="lbl" for="spC">Углеводы, г</label><input type="text" inputmode="decimal" id="spC" value="${v(f.c)}" placeholder="0" oninput="suppIn('c',this)"></div>
+      <div><label class="lbl" for="spF">Жиры, г</label><input type="text" inputmode="decimal" id="spF" value="${v(f.f)}" placeholder="0" oninput="suppIn('f',this)"></div>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin:0 0 10px">Перепиши с банки. У креатина и витаминов калорий нет, оставь пустым.</p>
+    <div class="supp-prev" id="spPrev"></div>
+    <button class="btn" onclick="suppSave()">${supp.editId?'Сохранить':'Добавить'}</button>
+    ${supp.editId?`<button class="btn danger" style="margin-top:8px" onclick="suppDelete()">Удалить добавку</button>`:''}`;
+}
+function suppNum(x){const n=parseFloat(String(x==null?'':x).replace(',','.'));return isNaN(n)?0:n;}
+function suppIn(k,el){supp.f[k]=el.value;suppPreview();}
+function suppSetUnit(u){
+  const f=supp.f; f.n=$('spName').value;
+  f.unit=u; if(!suppPer100Ok(u)) f.base='dose';
+  suppRender();
+}
+function suppSetBase(b){supp.f.n=$('spName').value;supp.f.base=b;suppRender();}
+function suppDraft(){
+  const f=supp.f;
+  return {n:cap(String(f.n||'').trim()),dose:suppNum(f.dose)||(f.unit==='g'||f.unit==='ml'?0:1),unit:f.unit,
+    base:suppPer100Ok(f.unit)?f.base:'dose',k:suppNum(f.k),p:suppNum(f.p),c:suppNum(f.c),f:suppNum(f.f),ds:f.ds};
+}
+function suppPreview(){
+  const el=$('spPrev'); if(!el)return;
+  const d=suppDraft();
+  if(!d.dose){el.innerHTML='Напиши, сколько в одной порции.';return;}
+  const v=suppPortion(d);
+  el.innerHTML='За один приём ('+esc(suppDoseTxt(d.dose,d.unit))+'): '+(v.k||v.p||v.c||v.f
+    ?`<b>${Math.round(v.k)}</b> ккал · белки <b>${fmtSup(v.p)}</b> · углеводы <b>${fmtSup(v.c)}</b> · жиры <b>${fmtSup(v.f)}</b> г. Это добавится в питание, когда отметишь.`
+    :'без калорий, в питание не идёт.');
+}
+function suppSave(){
+  const d=suppDraft();
+  if(!d.n){toast('Напиши название','err');return;}
+  if(!(d.dose>0)){toast('Напиши размер порции','err');return;}
+  if(d.k>5000||d.p>1000||d.c>1000||d.f>1000){toast('Слишком большие числа','err');return;}
+  if(d.base==='100'&&(d.p+d.c+d.f>100.5)){toast('На 100 г белков, углеводов и жиров вместе не больше 100 г','err');return;}
+  if(!d.ds) delete d.ds;
+  if(supp.editId){
+    const i=S.supps.findIndex(s=>s.id===supp.editId);
+    if(i>=0){const old=S.supps[i];S.supps[i]={...d,id:old.id};if(old.n!==d.n||old.dose!==d.dose||old.unit!==d.unit) delete S.supps[i].ds;}
+  } else {
+    let id=supp.presetId&&!S.supps.some(s=>s.id===supp.presetId)?supp.presetId:'s'+Date.now().toString(36);
+    if(supp.presetId&&d.n!==SUPP_PRESETS.find(p=>p.id===supp.presetId).n) delete d.ds;
+    S.supps.push({...d,id});
+  }
+  toast(supp.editId?'Сохранено':'Добавлено: '+d.n,'ok');
+  supp={view:'list'};
+  suppRefresh();
+  suppRender();
+}
+async function suppDelete(){
+  const s=S.supps.find(x=>x.id===supp.editId); if(!s)return;
+  const ok=await showConfirm('Удалить «'+s.n+'» из списка? Уже отмеченные дни останутся в питании.','Удалить');
+  if(!ok)return;
+  S.supps=S.supps.filter(x=>x.id!==s.id);
+  supp={view:'list'};
+  suppRefresh();
+  suppRender();
 }
 
 /* ---------- Barcode scanner ---------- */
