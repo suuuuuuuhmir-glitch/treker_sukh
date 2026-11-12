@@ -211,7 +211,7 @@ button{font-family:inherit;cursor:pointer}
 .chip.good-on{background:var(--good);color:#04130D;border-color:var(--good)}
 
 /* ===================== INPUTS ===================== */
-input[type=number],input[type=date],input[type=text],input[type=password]{
+input[type=number],input[type=date],input[type=text],input[type=password],input[type=email]{
   background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--text);
   border-radius:14px;padding:12px 14px;
   font-family:var(--f-body);font-size:16px;font-weight:600;width:100%;
@@ -368,6 +368,57 @@ details.fold[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
 details.fold[open]{border-color:rgba(139,108,255,.26)}
 details.fold .fold-body{padding:0 18px 18px}
 details.fold .fold-body>p.sub:first-child{margin-top:0}
+/* account */
+#acctModal{z-index:97}
+#acctModal .modal-sheet{max-width:520px}
+.acct-btn{padding:0;overflow:hidden}
+.acct-btn .i{width:19px;height:19px}
+.acct-btn.on{background:var(--grad-d);border-color:transparent;box-shadow:0 4px 14px rgba(123,77,255,.35);color:#fff;font-weight:800;font-size:15px}
+.acct-row{display:flex;align-items:center;gap:13px;width:100%;text-align:left;color:var(--text);background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 60%),var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow);font-family:var(--f-body)}
+.acct-row:active{transform:scale(.99)}
+.acct-av{width:44px;height:44px;flex:0 0 44px;border-radius:15px;display:grid;place-items:center;background:var(--grad-d);color:#fff;font-weight:800;font-size:18px;box-shadow:var(--glow)}
+.acct-av .i{width:22px;height:22px}
+.acct-av.off{background:var(--accent-dim);color:var(--accent-light);box-shadow:none;border:1px solid var(--accent-mid)}
+.acct-row-t{flex:1;min-width:0}
+.acct-row-t b{display:block;font-size:15.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-row-t small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-row-t small.ok{color:var(--good)}
+.acct-row-t small.err,.acct-pill.err{color:var(--danger)}
+.chev{width:8px;height:8px;border-right:2px solid var(--muted);border-top:2px solid var(--muted);transform:rotate(45deg);flex-shrink:0;margin-right:4px}
+.acct-hero{text-align:center;padding:2px 0 4px}
+.acct-orb{width:68px;height:68px;margin:0 auto;border-radius:24px;display:grid;place-items:center;background:var(--grad-d);color:#fff;box-shadow:0 10px 34px rgba(123,77,255,.5),0 0 0 6px rgba(123,77,255,.1);font-weight:800;font-size:28px}
+.acct-orb .i{width:34px;height:34px;stroke-width:1.7}
+.acct-hero .modal-title{margin:16px 0 6px}
+.acct-hero .sub{max-width:310px;margin:0 auto 18px}
+.acct-perks{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:9px}
+.acct-perks li{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:600}
+.acct-perks .i{width:14px;height:14px;stroke-width:2.6;color:var(--good)}
+.acct-perks span{width:26px;height:26px;flex:0 0 26px;border-radius:9px;display:grid;place-items:center;background:var(--good-dim)}
+.acct-pw{position:relative}
+.acct-pw input{padding-right:84px}
+.acct-pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--accent-light);font-weight:700;font-size:13px;padding:8px 10px;font-family:var(--f-body)}
+.acct-note{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;color:var(--muted);font-weight:600;margin:14px 0 2px;text-align:center}
+.acct-note .i{width:14px;height:14px}
+.acct-mail{font-size:18px;font-weight:800;margin-top:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-pill{display:inline-flex;align-items:center;gap:6px;margin:8px 0 20px;padding:6px 12px;border-radius:99px;background:var(--good-dim);color:var(--good);font-size:13px;font-weight:700}
+.acct-pill .i{width:15px;height:15px}
+.acct-pill.err{background:var(--danger-dim)}
+.acct-pill.busy{background:var(--accent-dim);color:var(--accent-light)}
+.acct-orb.del{background:var(--danger-dim);color:var(--danger);box-shadow:none;border:1px solid rgba(255,79,110,.3)}
+.btn.acct-danger{background:var(--danger);box-shadow:none}
+.acct-forgot{display:block;margin:-4px 0 12px auto;background:none;border:none;color:var(--accent-light);font-weight:700;font-size:13px;padding:4px 2px;font-family:var(--f-body)}
+.acct-msg{display:flex;gap:10px;align-items:flex-start;background:var(--good-dim);color:var(--good);border-radius:14px;padding:11px 13px;font-size:13.5px;font-weight:600;line-height:1.4;margin:0 0 14px}
+.acct-msg .i{width:16px;height:16px;margin-top:1px;stroke-width:2.4}
+.acct-del{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:16px 0 4px;width:100%;text-decoration:underline;text-underline-offset:3px;font-family:var(--f-body)}
+.acct-strip{display:flex;align-items:center;gap:2px;margin-bottom:12px;padding:6px 4px 6px 12px;border-radius:18px;border:1px solid rgba(139,108,255,.3);background:linear-gradient(90deg,rgba(47,107,255,.13),rgba(214,60,230,.09)),var(--surface)}
+.acct-strip-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;background:none;border:none;color:var(--text);text-align:left;padding:5px 0;font-family:var(--f-body)}
+.acct-strip-ic{width:36px;height:36px;flex:0 0 36px;border-radius:12px;display:grid;place-items:center;background:var(--grad-d);color:#fff;box-shadow:var(--glow)}
+.acct-strip-ic .i{width:19px;height:19px}
+.acct-strip-t{min-width:0;flex:1}
+.acct-strip-t b{display:block;font-size:14.5px;font-weight:800}
+.acct-strip-t small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px}
+.acct-strip .chev{margin-right:6px}
+.acct-strip-x{width:34px;height:34px;flex:0 0 34px;border:none;background:none;color:var(--muted);font-size:20px;line-height:1;border-radius:99px}
 .fold-group{font-family:var(--f-disp);font-size:13px;color:var(--muted);font-weight:500;letter-spacing:.16em;text-transform:uppercase;margin:24px 4px 10px}
 .fold-group:first-of-type{margin-top:4px}
 
@@ -473,6 +524,8 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
 .confirm-bg.active .confirm-card{transform:scale(1)}
 .confirm-msg{font-size:15px;margin-bottom:20px;line-height:1.55;font-weight:600}
 .confirm-btns{display:flex;gap:10px}
+#confirmYes{background:var(--danger);color:#fff;box-shadow:none}
+#confirmYes.safe{background:var(--grad);box-shadow:var(--glow)}
 
 /* ===================== TOAST ===================== */
 .toast{
@@ -482,7 +535,7 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
   background:rgba(30,30,40,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line2);
   color:var(--text);padding:11px 18px;border-radius:99px;
   font-weight:700;font-size:14px;opacity:0;transition:.25s;
-  z-index:70;pointer-events:none;white-space:nowrap;
+  z-index:110;pointer-events:none;white-space:nowrap;
   box-shadow:0 8px 28px rgba(0,0,0,.5);
   max-width:calc(100vw - 32px);text-align:center;
 }
@@ -673,6 +726,10 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12.5V6a1.5 1.5 0 0 1 3 0v5.5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11.5V6a1.5 1.5 0 0 1 3 0v7.5a6.5 6.5 0 0 1-6.5 6.5H10a6 6 0 0 1-4.9-2.6L2.9 14a1.5 1.5 0 0 1 2.3-1.8L8 15"/></symbol>
   <symbol id="i-body" viewBox="0 0 24 24"><circle cx="12" cy="4.6" r="2.1"/><path d="M5 9l7 1.2L19 9M12 10.2v5M8.8 21l3.2-5.8 3.2 5.8"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3.5H6.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V9z"/><path d="M14 3.5V9h5.5M8.5 13h7M8.5 16.5h4.5"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 19h10.3a4.2 4.2 0 0 0 .5-8.37A6 6 0 0 0 6.4 9.4 4.8 4.8 0 0 0 7 19z"/></symbol>
+  <symbol id="i-cloud-ok" viewBox="0 0 24 24"><path d="M7 19h10.3a4.2 4.2 0 0 0 .5-8.37A6 6 0 0 0 6.4 9.4 4.8 4.8 0 0 0 7 19z"/><path d="M9.3 14.1l1.9 1.9 3.7-3.9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.3 4.3L19 7.2"/></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14"/><path d="M10 8l-4 4 4 4M6 12h9"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.6"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
   <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c3.9 0 6.8-2.6 6.8-6.4 0-2.9-1.8-5.2-3.3-6.9-.3 1.8-1.3 3-2.5 3 .1-3-1.3-5.4-3.8-7 .4 3.3-1.7 5.3-3.2 6.9A6.3 6.3 0 0 0 5.2 14.6C5.2 18.4 8.1 21 12 21z"/></symbol>
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2.5L4.8 13.4h6.6l-1 8.1 8.2-10.9h-6.6z"/></symbol>
@@ -696,11 +753,10 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
       <h2>Сегодня</h2>
     </div>
     <div class="topbar-r">
-      <button class="icon-btn more-btn" onclick="switchTab('more')" aria-label="Ещё: настройки, синхронизация, бэкап"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
+      <button class="icon-btn acct-btn" id="acctBtn" onclick="acctOpen()" aria-label="Аккаунт" style="display:none"></button>
+      <button class="icon-btn more-btn" onclick="switchTab('more')" aria-label="Ещё: настройки и аккаунт"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
     </div>
   </div>
-
-  <div id="movedCard"></div>
 
   <div class="hero" id="hero">
     <div class="hero-bear" id="heroBear" aria-hidden="true"></div>
@@ -730,6 +786,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   </div>
 
   <div id="bearCard"></div>
+  <div id="acctNudge"></div>
   <div id="weekCard"></div>
   <div id="pzCard"></div>
 
@@ -971,9 +1028,14 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <button class="back-btn" onclick="switchTab(prevTab)">‹ Назад</button>
   <div class="topbar" style="margin-top:0">
     <div class="topbar-l">
-      <div class="eyebrow">Настройки и служебное</div>
+      <div class="eyebrow">Настройки и аккаунт</div>
       <h2>Ещё</h2>
     </div>
+  </div>
+
+  <div id="acctWrap" style="display:none">
+    <div class="fold-group" style="margin-top:4px">Аккаунт</div>
+    <div id="acctCard"></div>
   </div>
 
   <div class="fold-group">Цели</div>
@@ -1010,43 +1072,16 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   </details>
 
   <div class="fold-group">Данные</div>
-  <details class="fold" id="syncFold">
-    <summary><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-sync"/></svg></span>Синхронизация с GitHub<span class="s-sub" id="syncSummary"></span></summary>
-    <div class="fold-body">
-      <div class="row between" style="margin-bottom:10px;align-items:flex-start">
-        <p class="sub" id="syncStatus" style="margin:0">Не настроено</p>
-        <button class="btn ghost sm" id="syncToggle" onclick="toggleSyncBody()" style="flex-shrink:0">Скрыть</button>
-      </div>
-      <div id="syncBody">
-      <p class="sub" style="margin-top:0">После каждого изменения данные сами отправляются JSON-файлом в твой приватный репозиторий. Фото не отправляются. Токен хранится только на этом устройстве.</p>
-      <div class="field"><label class="lbl">Токен (fine-grained)</label><input type="password" id="syncToken" placeholder="github_pat_..." autocomplete="off"></div>
-      <div class="g2" style="margin-bottom:10px">
-        <div><label class="lbl">Владелец</label><input type="text" id="syncOwner" placeholder="логин GitHub" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-        <div><label class="lbl">Репозиторий</label><input type="text" id="syncRepo" placeholder="treker-data" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-      </div>
-      <div class="field"><label class="lbl">Файл</label><input type="text" id="syncPath" placeholder="gymtracker.json" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-      <div class="row" style="gap:8px">
-        <button class="btn sm" style="flex:1" onclick="saveSyncSettings()">Сохранить</button>
-        <button class="btn ghost sm" style="flex:1" onclick="syncNow(true)">Синхр. сейчас</button>
-        <button class="btn ghost sm" style="flex:1" onclick="disableSync()">Отключить</button>
-      </div>
-      </div>
-    </div>
-  </details>
-
   <details class="fold">
-    <summary><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-save"/></svg></span>Резервная копия<span class="s-sub"></span></summary>
+    <summary><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-save"/></svg></span>Копия в файл<span class="s-sub"></span></summary>
     <div class="fold-body">
-      <p class="sub" style="margin-top:0">Сохраняй бэкап и переноси данные между устройствами.</p>
+      <p class="sub" id="fileSub" style="margin-top:0">Можно скачать все данные файлом на всякий случай или загрузить их обратно.</p>
       <div class="row" style="gap:8px">
-        <button class="btn ghost sm" style="flex:1" onclick="exportData()">↑ Экспорт JSON</button>
-        <button class="btn ghost sm" style="flex:1" onclick="importData()">↓ Импорт JSON</button>
+        <button class="btn ghost sm" style="flex:1" onclick="exportData()">↑ Скачать файл</button>
+        <button class="btn ghost sm" style="flex:1" onclick="importData()">↓ Загрузить файл</button>
       </div>
-      <p class="sub" style="margin:14px 0 8px">Переезд на новый адрес или телефон: скопируй код здесь и вставь его в новом трекере. Переносит всё, включая анкету и синхронизацию.</p>
-      <div class="row" style="gap:8px">
-        <button class="btn ghost sm" style="flex:1" onclick="moveCopy()">⧉ Скопировать код</button>
-        <button class="btn ghost sm" style="flex:1" onclick="movePaste()">⎘ Вставить код</button>
-      </div>
+      <p class="sub" style="margin:14px 0 8px">Переезжаешь со старой иконки трекера? Там нажми «Скопировать код», а здесь вставь его.</p>
+      <button class="btn ghost sm" style="width:100%" onclick="movePaste()">⎘ Вставить код переноса</button>
       <div id="moveBox" style="display:none;margin-top:10px">
         <textarea class="food-in" id="moveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
         <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('moveIn').value)">Перенести данные</button>
@@ -1070,7 +1105,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <details class="fold">
     <summary><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-alert"/></svg></span>Сброс<span class="s-sub"></span></summary>
     <div class="fold-body">
-      <p class="sub" style="margin-top:0">Удаляет все записи на этом устройстве. Сначала сделай резервную копию.</p>
+      <p class="sub" id="resetSub" style="margin-top:0">Удаляет все записи на этом устройстве.</p>
       <button class="btn danger" onclick="resetData()">Сбросить все данные</button>
     </div>
   </details>
@@ -1171,6 +1206,14 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   </div>
 </div>
 
+<!-- ==================== ACCOUNT ==================== -->
+<div class="modal-bg" id="acctModal" onclick="if(event.target===this)acctClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="acctBody"></div>
+  </div>
+</div>
+
 <!-- ==================== BODY COMPOSITION ==================== -->
 <div class="modal-bg" id="bcModal" onclick="if(event.target===this)bcClose()">
   <div class="modal-sheet">
@@ -1197,7 +1240,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
     <div class="confirm-msg" id="confirmMsg"></div>
     <div class="confirm-btns">
       <button class="btn ghost sm" style="flex:1" id="confirmNo">Отмена</button>
-      <button class="btn sm" style="flex:1;background:var(--danger);color:#fff" id="confirmYes">Удалить</button>
+      <button class="btn sm" style="flex:1" id="confirmYes">Удалить</button>
     </div>
   </div>
 </div>
@@ -1631,10 +1674,12 @@ function toast(msg,type=''){
 /* ============================================================
    CONFIRM
    ============================================================ */
-function showConfirm(msg,yesLabel='Удалить'){
+function showConfirm(msg,yesLabel='Удалить',noLabel='Отмена',safe=false){
   return new Promise(resolve=>{
     $('confirmMsg').textContent=msg;
     $('confirmYes').textContent=yesLabel;
+    $('confirmNo').textContent=noLabel;
+    $('confirmYes').classList.toggle('safe',!!safe);
     $('confirmBg').classList.add('active');
     const yes=()=>{cleanup();resolve(true);};
     const no=()=>{cleanup();resolve(false);};
@@ -3445,12 +3490,14 @@ function renderNotifSetting(){
     </button>`;
 }
 async function resetData(){
-  const ok=await showConfirm('Сбросить ВСЕ данные? Это нельзя отменить.','Сбросить');
+  const inAcct=signedIn();
+  const ok=await showConfirm(inAcct?'Сбросить все данные на этом телефоне? Ты выйдешь из аккаунта, а копия в облаке останется.':'Сбросить ВСЕ данные? Это нельзя отменить.','Сбросить');
   if(!ok)return;
+  if(inAcct) acctOut();
   localStorage.removeItem(KEY);
   localStorage.removeItem(KEY_WIP);
   localStorage.removeItem(KEY_HEALTH);
-  load(); wip={}; renderAll();
+  load(); wip={}; renderAll(); renderAcct();
   toast('Данные сброшены');
 }
 
@@ -3485,22 +3532,16 @@ function importData(){
 
 /* ============================================================
    MOVE CODE
-   Moves everything (S, health answers, sync settings) between
-   origins or devices through the clipboard. Needed when the app
-   moves to a new domain: localStorage does not follow the address.
+   The old *.github.io copy of the app is stuck on its own cache and
+   can only hand out a code with S and the health answers. Pasting it
+   here brings that data over. Accounts do this job for everyone else.
    ============================================================ */
 const MOVE_PREFIX='TREKER1:';
-function moveCode(){
-  return MOVE_PREFIX+b64utf8(JSON.stringify({v:1,S,H,sync:syncCfg}));
-}
-async function moveCopy(){
-  const code=moveCode();
-  try{await navigator.clipboard.writeText(code);toast('Код скопирован. Вставь его в новом трекере','ok');return true;}
-  catch(e){
-    const box=$('moveBox'),inp=$('moveIn');
-    if(box&&inp){box.style.display='';inp.value=code;inp.select();}
-    toast('Выдели код в поле и скопируй вручную');return false;
-  }
+function unb64utf8(b64){
+  const bin=atob(b64.replace(/\s/g,''));
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 async function movePaste(fromOb){
   let txt='';
@@ -3519,250 +3560,556 @@ async function moveApply(txt){
   if(!ok)return;
   S=d.S;normalizeState();save();
   H=d.H||null;hStore();
-  if(d.sync){syncCfg=d.sync;storeSyncCfg();}
   wip={};obClose();renderAll();
-  if(typeof renderSyncSettings==='function') try{renderSyncSettings();}catch(e){}
   toast('Данные перенесены ✓','ok');
 }
 
-/* When GitHub Pages gets a custom domain, the old *.github.io address
-   redirects there. The installed app still runs from its cache, so it
-   can notice the redirect and show how to move. */
-let movedTo=null;
-async function checkMoved(){
-  if(!/\.github\.io$/.test(location.hostname)||!navigator.onLine) return;
-  try{
-    const r=await fetch('index.html?probe='+Date.now(),{cache:'no-store'});
-    const u=new URL(r.url);
-    if(r.redirected&&u.host!==location.host){movedTo=u.origin+'/tracker.html';renderMoved();}
-  }catch(e){}
-}
-function renderMoved(){
-  const el=$('movedCard');if(!el)return;
-  if(!movedTo){el.innerHTML='';return;}
-  const host=esc(new URL(movedTo).host);
-  el.innerHTML=`<div class="card" style="border-color:var(--accent-mid)">
-    <div style="font-weight:700;font-size:17px;margin-bottom:6px">Трекер переехал на ${host}</div>
-    <p class="sub" style="margin:0 0 10px">Данные сами не переедут. 1) Нажми кнопку: код скопируется и откроется новый адрес. 2) Там «Поделиться» → «На экран Домой». 3) Открой новую иконку и нажми «Перенести данные». Эту старую иконку потом можно удалить.</p>
-    <button class="btn" style="width:100%" onclick="moveGo()">Скопировать код и открыть</button>
-  </div>`;
-}
-async function moveGo(){
-  await moveCopy();
-  window.open(movedTo,'_blank');
-}
-
 /* ============================================================
-   GITHUB SYNC
-   Keeps a copy of S (same JSON as exportData(), no photos) in a
-   private repo via the contents API, both ways: local changes are
-   pushed, and on open the newer copy (by S.updatedAt) wins, so the
-   browser and the home-screen app end up with the same data.
-   Config (incl. token) lives in its own key, never in S.
+   ACCOUNT & CLOUD COPY
+   Local-first, as before: S lives in localStorage and the app works
+   offline. When signed in, changes go to the account shortly after
+   the last edit, and on open the account copy is checked, so all
+   devices end up with the same data.
+   Health answers (H) and photos stay on this device (QZ-23).
+   acct = {provider, email, sess, rev, syncedAt, lastSync, lastError}
+     rev       version of the account copy this device last saw
+               (null right after login: compare before sending)
+     syncedAt  S.updatedAt of the last copy sent or taken
    ============================================================ */
-const KEY_SYNC='gymtracker_sync_v1';
-const SYNC_DELAY=4000, SYNC_RETRY=60000;
-let syncCfg=null, syncTimer=null, syncBusy=false, syncAgain=false;
+/* Where accounts live. Firebase (Google) for now; the Yandex Cloud
+   function in server/ is the drop-in replacement:
+     {provider:'yandex', url:'https://functions.yandexcloud.net/<id>'}
+   The Firebase web key and project id are public by design: access is
+   guarded by Firestore rules (each person reads and writes only
+   users/<their uid>), see server/README.md. */
+const CLOUD=window.MF_CLOUD||{provider:'firebase',apiKey:'AIzaSyAdJ9VHSAmqvJeErawH5JceDTpqBLO3g0g',projectId:'mishkafit'};
+const KEY_ACCT='gymtracker_account_v1';
+const KEY_NUDGE='gymtracker_acct_nudge_off';
+const SYNC_DELAY=15000, SYNC_RETRY=60000;   // changes go up 15 s after the last edit, or when the app is hidden
+const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+let acct=null, syncTimer=null, syncBusy=false, syncAgain=false, acctBusy=false;
 
-function loadSyncCfg(){
-  try{syncCfg=JSON.parse(localStorage.getItem(KEY_SYNC))||null;}catch(e){syncCfg=null;}
+// Backend contract (both throw {status, error, message} or {net:true}):
+//   register(email,password,data) -> {email, sess, rev}
+//   login(email,password)         -> {email, sess}
+//   get(sess)                     -> {rev, savedAt, data}   (data null if empty)
+//   put(sess,data,baseRev)        -> {rev, savedAt}; 409 + the account copy if baseRev is stale
+//   logout(sess), remove(sess), reset(email) (reset only where mail is set up),
+//   check(sess) (optional: throws 401 if the account is gone)
+// sess is kept in acct.sess; a backend may refresh tokens in it.
+function firebaseBackend(c){
+  const AUTH=c.authUrl||'https://identitytoolkit.googleapis.com/v1';
+  const TOKEN=c.tokenUrl||'https://securetoken.googleapis.com/v1';
+  const FS=c.fsUrl||'https://firestore.googleapis.com/v1';
+  const key='?key='+encodeURIComponent(c.apiKey);
+  const docUrl=uid=>`${FS}/projects/${c.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
+  const BAD=['bad','Неверная почта или пароль'], AGAIN=['auth','Войди в аккаунт ещё раз'];
+  const ERR={EMAIL_EXISTS:['exists','Такой аккаунт уже есть — войди в него'],EMAIL_NOT_FOUND:BAD,INVALID_PASSWORD:BAD,
+    INVALID_LOGIN_CREDENTIALS:BAD,INVALID_EMAIL:['email','Проверь адрес почты'],MISSING_PASSWORD:['password','Введи пароль'],
+    WEAK_PASSWORD:['password','Пароль — минимум 8 символов'],USER_DISABLED:['bad','Этот аккаунт отключён'],
+    TOO_MANY_ATTEMPTS_TRY_LATER:['locked','Слишком много попыток. Попробуй через несколько минут'],
+    CREDENTIAL_TOO_OLD_LOGIN_AGAIN:AGAIN,TOKEN_EXPIRED:AGAIN,INVALID_ID_TOKEN:AGAIN,USER_NOT_FOUND:AGAIN,
+    INVALID_REFRESH_TOKEN:AGAIN,INVALID_GRANT_TYPE:AGAIN,MISSING_REFRESH_TOKEN:AGAIN,
+    // setup mistakes in the Firebase console, so they are easy to spot
+    OPERATION_NOT_ALLOWED:['setup','В Firebase не включён вход по почте'],CONFIGURATION_NOT_FOUND:['setup','В Firebase не включён вход по почте'],
+    PERMISSION_DENIED:['setup','Облако не пускает: проверь правила Firestore'],API_KEY_INVALID:['setup','Неверный ключ Firebase']};
+  async function call(url,opt){
+    let r;
+    try{r=await fetch(url,{cache:'no-store',...opt});}catch(e){throw {net:true,message:'Нет связи с сервером'};}
+    let j=null;
+    try{j=await r.json();}catch(e){}
+    if(r.ok) return j||{};
+    const er=(j&&j.error)||{}, msg=String(er.message||'');
+    const code=er.status==='PERMISSION_DENIED'?er.status:/^API key not valid/.test(msg)?'API_KEY_INVALID':msg.split(/[ :]/)[0], m=ERR[code];
+    throw {status:m&&m[0]==='auth'?401:r.status,error:m?m[0]:code,fsStatus:er.status||'',
+      message:m?m[1]:r.status>=500?'Сервер не отвечает, попробую позже':'Ошибка сервера '+r.status};
+  }
+  const post=(url,body)=>call(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const sessFrom=j=>({uid:j.localId||j.user_id,idToken:j.idToken||j.id_token,refreshToken:j.refreshToken||j.refresh_token,
+    exp:Date.now()+((+(j.expiresIn||j.expires_in)||3600)-300)*1000});
+  async function token(sess){
+    if(sess.idToken&&sess.exp>Date.now()) return sess.idToken;
+    const j=await call(`${TOKEN}/token${key}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(sess.refreshToken||'')});
+    Object.assign(sess,sessFrom(j)); acctStore();
+    return sess.idToken;
+  }
+  async function fs(sess,url,opt={}){
+    const go=t=>call(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}});
+    try{return await go(await token(sess));}
+    catch(e){ if(e.status!==401) throw e; sess.exp=0; return go(await token(sess)); }   // token died early: refresh once
+  }
+  const out=j=>{
+    if(!j||!j.fields) return {rev:0,savedAt:0,data:null};
+    let data=null; try{data=JSON.parse(j.fields.data.stringValue);}catch(e){}
+    return {rev:j.updateTime,savedAt:+((j.fields.savedAt||{}).integerValue||0),data};
+  };
+  async function get(sess){
+    try{return out(await fs(sess,docUrl(sess.uid)));}
+    catch(e){ if(e.status===404) return {rev:0,savedAt:0,data:null}; throw e; }
+  }
+  // The whole state is one JSON string field, so Firestore's rules on
+  // nested arrays and field names never get in the way. updateTime is
+  // the version: the write only lands if nobody saved in between.
+  async function put(sess,data,baseRev){
+    const savedAt=Date.now(), json=JSON.stringify(data);
+    if(json.length>900000) throw {status:413,message:'Слишком много данных для облака'};   // Firestore: 1 MB per document
+    const pre=baseRev?'currentDocument.updateTime='+encodeURIComponent(baseRev):'currentDocument.exists=false';
+    try{
+      const j=await fs(sess,docUrl(sess.uid)+'?'+pre,{method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fields:{data:{stringValue:json},savedAt:{integerValue:String(savedAt)}}})});
+      return {rev:j.updateTime,savedAt};
+    }catch(e){
+      if(e.status===409||e.status===404||e.fsStatus==='FAILED_PRECONDITION'||e.fsStatus==='ALREADY_EXISTS'){
+        throw {...(await get(sess)),status:409,message:'В аккаунте есть новые данные'};
+      }
+      throw e;
+    }
+  }
+  return {
+    get, put,
+    async register(email,password,data){
+      const j=await post(`${AUTH}/accounts:signUp${key}`,{email,password,returnSecureToken:true});
+      const sess=sessFrom(j);
+      let rev=0;
+      try{ if(data) rev=(await put(sess,data,0)).rev; }catch(e){}   // if this fails, the next sync sends it
+      return {email:j.email||email,sess,rev};
+    },
+    async login(email,password){
+      const j=await post(`${AUTH}/accounts:signInWithPassword${key}`,{email,password,returnSecureToken:true});
+      return {email:j.email||email,sess:sessFrom(j)};
+    },
+    async logout(){},
+    // A deleted account's token still opens Firestore for up to an hour,
+    // so before filling an account that suddenly looks empty, ask Google
+    // whether it still exists.
+    async check(sess){await post(`${AUTH}/accounts:lookup${key}`,{idToken:await token(sess)});},
+    async remove(sess){
+      try{await fs(sess,docUrl(sess.uid),{method:'DELETE'});}catch(e){if(e.status!==404) throw e;}
+      await post(`${AUTH}/accounts:delete${key}`,{idToken:await token(sess)});
+    },
+    async reset(email){   // the letter and the page for the new password come in Russian
+      await call(`${AUTH}/accounts:sendOobCode${key}`,{method:'POST',headers:{'Content-Type':'application/json','X-Firebase-Locale':'ru'},
+        body:JSON.stringify({requestType:'PASSWORD_RESET',email})});
+    },
+  };
 }
-function storeSyncCfg(){
+// server/index.js on Yandex Cloud. One POST for everything; text/plain
+// keeps it a "simple" request, so there is no CORS preflight.
+function yandexBackend(c){
+  async function api(op,payload){
+    let r;
+    try{
+      r=await fetch(c.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+        body:JSON.stringify({op,...payload}),cache:'no-store'});
+    }catch(e){throw {net:true,message:'Нет связи с сервером'};}
+    let j=null;
+    try{j=await r.json();}catch(e){}
+    if(!r.ok||!j) throw {...(j||{}),status:r.status,message:(j&&j.message)||'Ошибка сервера '+r.status};
+    return j;
+  }
+  return {
+    async register(email,password,data){const r=await api('register',{email,password,data});return {email:r.email,sess:{token:r.token},rev:r.rev};},
+    async login(email,password){const r=await api('login',{email,password});return {email:r.email,sess:{token:r.token}};},
+    get:sess=>api('get',{token:sess.token}),
+    put:(sess,data,baseRev)=>api('put',{token:sess.token,data,baseRev}),
+    logout:sess=>api('logout',{token:sess.token}),
+    remove:sess=>api('delete',{token:sess.token}),
+  };
+}
+const cloud=CLOUD.provider==='yandex'?(CLOUD.url?yandexBackend(CLOUD):null)
+  :(CLOUD.apiKey&&CLOUD.projectId?firebaseBackend(CLOUD):null);
+const CLOUD_ON=!!cloud;
+
+function acctLoad(){
+  try{acct=JSON.parse(localStorage.getItem(KEY_ACCT))||null;}catch(e){acct=null;}
+  if(acct&&acct.sess&&acct.provider!==CLOUD.provider) acct={email:acct.email,expired:true};   // moved to another backend
+  // GitHub sync is gone: drop its token from this device
+  try{localStorage.removeItem('gymtracker_sync_v1');}catch(e){}
+}
+function acctStore(){
   try{
-    if(syncCfg) localStorage.setItem(KEY_SYNC,JSON.stringify(syncCfg));
-    else localStorage.removeItem(KEY_SYNC);
+    if(acct) localStorage.setItem(KEY_ACCT,JSON.stringify(acct));
+    else localStorage.removeItem(KEY_ACCT);
   }catch(e){}
 }
-function syncReady(){return !!(syncCfg&&syncCfg.token&&syncCfg.owner&&syncCfg.repo&&syncCfg.path);}
+function signedIn(){return !!(CLOUD_ON&&acct&&acct.sess);}
+function dirty(){return (S.updatedAt||0)!==(acct.syncedAt||0);}
+function hasRecords(){return !!(S.weights.length||S.sessions.length||Object.keys(S.nutrition||{}).length);}
+function fmtWhen(t){return new Date(t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
+function acctOut(){
+  const sess=acct&&acct.sess;
+  acct=null; acctStore();
+  clearTimeout(syncTimer); syncTimer=null;
+  if(sess&&cloud) cloud.logout(sess).catch(()=>{});
+}
 
 function scheduleSync(delay=SYNC_DELAY){
-  if(!syncReady()) return;
+  if(!signedIn()) return;
   clearTimeout(syncTimer);
   syncTimer=setTimeout(()=>syncNow(false),delay);
 }
-function b64utf8(str){
-  const bytes=new TextEncoder().encode(str);
-  let bin='';
-  for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
-  return btoa(bin);
+function syncFail(e,manual){
+  if(e&&e.status===401){
+    acct={email:acct.email,expired:true}; acctStore();
+    clearTimeout(syncTimer); syncTimer=null;
+    renderAcct(); renderNudge();
+    toast('Войди в аккаунт ещё раз','err');
+    return;
+  }
+  acct.lastError=(e&&e.message)||'Ошибка';
+  acctStore();
+  if(manual) toast(acct.lastError,'err');
+  if(!e||e.net||!e.status||e.status>=500){
+    clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncNow(false),SYNC_RETRY);
+  }
 }
-function unb64utf8(b64){
-  const bin=atob(b64.replace(/\s/g,''));
-  const bytes=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
+
+// Send local changes. baseRev guards against overwriting a newer copy
+// from another device: on 409 the server hands that copy back.
+async function syncNow(manual,force){
+  if(!signedIn()) return;
+  clearTimeout(syncTimer); syncTimer=null;
+  if(syncBusy){syncAgain=true;return;}
+  if(acct.rev==null) return pullSync(manual);
+  if(!force&&!dirty()){ if(manual) return pullSync(true); return; }
+  if(!navigator.onLine){
+    acct.lastError='Нет сети, сохраню, когда появится'; acctStore(); renderAcct();
+    if(manual) toast('Нет сети','err');
+    return;
+  }
+  syncBusy=true; renderAcct('Сохраняю…');
+  const sentAt=S.updatedAt||0;
+  let conflict=null, ok=false;
+  try{
+    const res=await cloud.put(acct.sess,S,acct.rev);
+    acct.rev=res.rev; acct.syncedAt=sentAt; acct.lastSync=Date.now(); acct.lastError='';
+    acctStore(); ok=true;
+    if(manual) toast('Сохранено в аккаунте ✓','ok');
+  }catch(e){
+    if(e&&e.status===409) conflict=e; else syncFail(e,manual);
+  }finally{ syncBusy=false; renderAcct(); }
+  if(conflict) return resolveRemote(conflict,manual,false);
+  if(ok&&(syncAgain||dirty())){syncAgain=false;scheduleSync(500);}
 }
-function syncUrl(){
-  const path=syncCfg.path.split('/').map(encodeURIComponent).join('/');
-  return `https://api.github.com/repos/${encodeURIComponent(syncCfg.owner)}/${encodeURIComponent(syncCfg.repo)}/contents/${path}`;
+
+// Look at the account copy and bring both sides together.
+async function pullSync(manual){
+  if(!signedIn()||syncBusy) return;
+  if(!navigator.onLine){ if(manual) toast('Нет сети','err'); return; }
+  syncBusy=true; renderAcct('Проверяю…');
+  let remote=null;
+  try{ remote=await cloud.get(acct.sess); }
+  catch(e){ syncFail(e,manual); }
+  finally{ syncBusy=false; renderAcct(); }
+  if(remote) return resolveRemote(remote,manual);
 }
-function syncHeaders(){
-  return {'Authorization':'Bearer '+syncCfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+function syncedOk(rev,manual){
+  acct.rev=rev; acct.syncedAt=S.updatedAt||0; acct.lastSync=Date.now(); acct.lastError='';
+  acctStore(); renderAcct();
+  if(manual) toast('Всё сохранено ✓','ok');
 }
-// -> null if the file does not exist yet, else {sha, json, data}
-async function fetchRemote(){
-  const r=await fetch(syncUrl()+'?t='+Date.now(),{headers:syncHeaders(),cache:'no-store'});
-  if(r.status===404) return null;
-  if(!r.ok) throw {status:r.status};
-  const f=await r.json();
-  let json='',data=null;
-  try{json=unb64utf8(f.content||'');data=JSON.parse(json);}catch(e){}
-  return {sha:f.sha,json,data};
+// remote = {rev, savedAt, data}. The server counts versions (rev), so a
+// higher rev than ours is always the later copy, whatever the clocks say.
+async function resolveRemote(remote,manual){
+  if(!signedIn()) return;
+  const rd=remote.data&&typeof remote.data==='object'&&!Array.isArray(remote.data)?remote.data:null;
+  if(!rd){   // empty account: ours goes up
+    if(acct.rev&&cloud.check){   // it had data before: was it deleted on another device?
+      try{ await cloud.check(acct.sess); }catch(e){ return syncFail(e,manual); }
+      if(!signedIn()) return;
+    }
+    acct.rev=remote.rev||0; acctStore(); return syncNow(manual,true);
+  }
+  if(remote.rev===acct.rev) return dirty()?syncNow(manual):syncedOk(remote.rev,manual);
+  if((rd.updatedAt||0)===(S.updatedAt||0)) return syncedOk(remote.rev,manual);   // the same copy
+  if(acct.rev!=null){
+    // another device saved since we last agreed
+    if(!dirty()){ adoptRemote(remote); return; }
+    // and this one has changes too (e.g. it was offline): keep both
+    S=mergeStates(S,rd); normalizeState();
+    try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+    _savedJson=stateJson();
+    acct.rev=remote.rev; acctStore();
+    renderAll();
+    if($('tab-progress').classList.contains('active')) renderProgress();
+    return syncNow(manual,true);
+  }
+  // just signed in on this device: ask if both sides have records
+  let take=true;
+  if(hasRecords()){
+    const rUp=rd.updatedAt||0;
+    take=await showConfirm(`В аккаунте уже есть данные (изменены ${rUp?fmtWhen(rUp):'неизвестно когда'}), и они отличаются от данных на этом телефоне. Какие оставить? Другие будут заменены.`,'Из аккаунта','С этого телефона',true);
+  }
+  if(!signedIn()) return;   // signed out while the question was open
+  if(take){ adoptRemote(remote); toast('Данные загружены из аккаунта ✓','ok'); }
+  else { acct.rev=remote.rev; acctStore(); return syncNow(manual,true); }
 }
-async function putRemote(json,sha){
-  const body={message:`Трекер: обновление ${todayKey()}`,content:b64utf8(json)};
-  if(sha) body.sha=sha;
-  return fetch(syncUrl(),{method:'PUT',headers:{...syncHeaders(),'Content-Type':'application/json'},body:JSON.stringify(body)});
-}
-function localIsEmpty(){
-  return !S.updatedAt&&!S.weights.length&&!S.sessions.length&&!Object.keys(S.nutrition||{}).length;
+// Both copies changed since they last agreed. Keep the newer one as the
+// base and add the records only the other one has: weights, workouts,
+// food, check-ins, measurements, own foods and supplements. A record
+// deleted on one side may come back, but nothing typed in gets lost.
+function mergeStates(a,b){
+  const clone=x=>JSON.parse(JSON.stringify(x));
+  const [nw,old]=(a.updatedAt||0)>=(b.updatedAt||0)?[a,b]:[b,a];
+  const r=clone(nw);
+  const uni=(f,key)=>{
+    if(!Array.isArray(old[f])) return;
+    r[f]=Array.isArray(r[f])?r[f]:[];
+    const have=new Set(r[f].map(key));
+    old[f].forEach(x=>{const k=key(x);if(!have.has(k)){r[f].push(clone(x));have.add(k);}});
+  };
+  const byDate=f=>{if(Array.isArray(r[f])) r[f].sort((x,y)=>(x.date||'')<(y.date||'')?-1:(x.date||'')>(y.date||'')?1:0);};
+  uni('weights',x=>x.date);
+  uni('sessions',x=>x.id||x.date+'|'+x.day);
+  uni('checkins',x=>x.date);
+  uni('bodycomp',x=>x.date+'|'+x.src+'|'+x.pbf);
+  uni('myFoods',x=>x.id||x.n);
+  uni('supps',x=>x.id);
+  ['weights','sessions','checkins','bodycomp'].forEach(byDate);
+  r.nutrition=r.nutrition||{};
+  Object.entries(old.nutrition||{}).forEach(([d,day])=>{
+    const cur=r.nutrition[d];
+    if(!cur){r.nutrition[d]=clone(day);return;}
+    if(Array.isArray(day.log)){
+      cur.log=Array.isArray(cur.log)?cur.log:[];
+      const ids=new Set(cur.log.map(e=>e.id));
+      day.log.forEach(e=>{if(!e.id||!ids.has(e.id)){cur.log.push(clone(e));ids.add(e.id);}});
+    }
+    if(day.sup&&typeof day.sup==='object'){
+      cur.sup=cur.sup||{};
+      Object.keys(day.sup).forEach(k=>{if(!(k in cur.sup)) cur.sup[k]=clone(day.sup[k]);});
+    }
+  });
+  r.updatedAt=Date.now();
+  return r;
 }
 function adoptRemote(remote){
   S=remote.data; normalizeState();
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
   _savedJson=stateJson();
-  syncCfg.sha=remote.sha; syncCfg.lastJson=JSON.stringify(S,null,2);
+  acct.rev=remote.rev; acct.syncedAt=S.updatedAt||0; acct.lastSync=Date.now(); acct.lastError='';
+  acctStore();
   renderAll();
   if(S.profile.onboarded) obClose();
   if($('tab-progress').classList.contains('active')) renderProgress();
 }
-function syncFail(e,manual){
-  const st=e&&e.status;
-  syncCfg.lastError=st===401?'Токен не подходит или истёк':
-    st===403||st===404?'Нет доступа к репозиторию (проверь владельца, имя и права токена)':
-    st?'Ошибка GitHub '+st:'Нет связи с GitHub';
-  if(st===401||st===403||st===404) delete syncCfg.sha;
-  storeSyncCfg();
-  if(manual) toast(syncCfg.lastError,'err');
-  else if(!st||st>=500) scheduleSync(SYNC_RETRY);
+
+/* ---------- sign in / out ---------- */
+let acctMode='reg', acctBusyText='', acctDel=false, acctMsg='';
+function acctCreds(){
+  const e=$('acEmail'), p=$('acPass');
+  const email=(e.value||'').trim().toLowerCase(), password=p.value||'';
+  if(!EMAIL_RE.test(email)){toast('Проверь адрес почты','err');e.focus();return null;}
+  if(!password){toast('Введи пароль','err');p.focus();return null;}
+  if(acctMode!=='login'&&password.length<8){toast('Пароль — минимум 8 символов','err');p.focus();return null;}
+  return {email,password};
+}
+function acctBtns(on){document.querySelectorAll('.acct-go').forEach(b=>{b.disabled=on;b.style.opacity=on?'.6':'';});}
+function acctSubmit(){return acctMode==='login'?acctLogin():acctRegister();}
+async function acctRegister(){
+  if(acctBusy) return;
+  const c=acctCreds(); if(!c) return;
+  acctBusy=true; acctBtns(true);
+  let ok=false;
+  try{
+    const sentAt=S.updatedAt||0;
+    const r=await cloud.register(c.email,c.password,S);
+    acct={provider:CLOUD.provider,email:r.email,sess:r.sess,rev:r.rev,syncedAt:r.rev?sentAt:0,lastSync:Date.now(),lastError:''};
+    acctStore(); ok=true;
+  }catch(e){
+    toast(e.message||'Не получилось','err');
+    if(e.error==='exists') acctSetMode('login');
+  }
+  finally{ acctBusy=false; acctBtns(false); renderAcct(); renderNudge(); }
+  if(ok){ acctClose(); toast('Аккаунт создан, всё сохранено ✓','ok'); if(dirty()) scheduleSync(500); }
+}
+async function acctLogin(){
+  if(acctBusy) return;
+  const c=acctCreds(); if(!c) return;
+  acctBusy=true; acctBtns(true);
+  let ok=false;
+  try{
+    const r=await cloud.login(c.email,c.password);
+    acct={provider:CLOUD.provider,email:r.email,sess:r.sess,rev:null,syncedAt:0,lastError:''};
+    acctStore(); ok=true;
+  }catch(e){ toast(e.message||'Не получилось войти','err'); }
+  finally{ acctBusy=false; acctBtns(false); renderAcct(); renderNudge(); }
+  if(ok){ acctClose(); toast('Вход выполнен ✓','ok'); await pullSync(false); }
+}
+async function acctLogout(){
+  const ok=await showConfirm('Выйти из аккаунта? Данные останутся на этом телефоне.','Выйти','Отмена',true);
+  if(!ok||!acct) return;
+  if(signedIn()&&dirty()) await syncNow(false);   // send the last changes first
+  acctOut(); acctClose(); renderAcct(); renderNudge();
+  toast('Выход выполнен');
+}
+// Deleting asks for the password again: Google only lets a fresh
+// sign-in delete an account, and it guards against a borrowed phone.
+function acctDelete(){acctDel=true;renderAcctSheet();setTimeout(()=>{const i=$('acDelPass');if(i)i.focus();},50);}
+function acctDelCancel(){acctDel=false;renderAcctSheet();}
+async function acctDeleteGo(){
+  if(!signedIn()||acctBusy) return;
+  const pw=$('acDelPass').value||'';
+  if(!pw){toast('Введи пароль','err');$('acDelPass').focus();return;}
+  acctBusy=true; acctBtns(true);
+  let ok=false;
+  try{
+    const r=await cloud.login(acct.email,pw);
+    await cloud.remove(r.sess);
+    ok=true;
+  }catch(e){ toast(e.error==='bad'?'Неверный пароль':e.message||'Не получилось','err'); }
+  finally{ acctBusy=false; acctBtns(false); }
+  if(!ok) return;
+  acct=null; acctDel=false; acctStore(); clearTimeout(syncTimer); syncTimer=null;
+  acctClose(); renderAcct(); renderNudge();
+  toast('Аккаунт удалён');
+}
+async function acctForgot(){
+  const e=$('acEmail'), email=(e.value||'').trim().toLowerCase();
+  if(!EMAIL_RE.test(email)){toast('Сначала впиши свою почту','err');e.focus();return;}
+  if(acctBusy) return;
+  acctBusy=true; acctBtns(true);
+  try{ await cloud.reset(email); acctMsg=`Письмо для нового пароля отправлено на ${email}. Если его нет, проверь «Спам».`; }
+  catch(er){ toast(er.message||'Не получилось','err'); }
+  finally{ acctBusy=false; acctBtns(false); renderAcctSheet(); }
 }
 
-// Push local changes. On a sha conflict, fall back to pullSync (newer copy wins).
-async function syncNow(manual){
-  if(!syncReady()){ if(manual) toast('Сначала заполни настройки синхронизации','err'); return; }
-  clearTimeout(syncTimer);
-  if(syncBusy){syncAgain=true;return;}
-  const json=JSON.stringify(S,null,2);
-  if(!manual&&json===syncCfg.lastJson) return;
-  if(!navigator.onLine){
-    syncCfg.lastError='Нет сети, отправлю когда появится';storeSyncCfg();renderSyncStatus();
-    if(manual) toast('Нет сети','err');
+/* ---------- UI ----------
+   Header: a round account button next to the gear.
+   «Ещё»: one row that opens the account window.
+   Today: a slim hint under the bear until the person signs in. */
+const svgI=id=>`<svg class="i" viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
+function acctInitial(){return esc(((acct&&acct.email)||'?')[0].toUpperCase());}
+function acctStatus(){
+  if(acctBusyText) return {t:acctBusyText,c:'busy',i:'i-sync'};
+  if(acct.lastError) return {t:acct.lastError,c:'err',i:'i-alert'};
+  return {t:acct.lastSync?'Всё сохранено · '+fmtWhen(acct.lastSync):'Сохраняется в облаке',c:'ok',i:'i-cloud-ok'};
+}
+function acctOpen(mode){
+  if(!CLOUD_ON) return;
+  acctMode=mode||(acct&&acct.expired||!hasRecords()?'login':'reg');
+  acctDel=false; acctMsg='';
+  renderAcctSheet(true);
+  $('acctModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function acctClose(){
+  const m=$('acctModal'); if(!m||!m.classList.contains('active')) return;
+  m.classList.remove('active');
+  if(!$('obBg').classList.contains('active')) document.body.style.overflow='';
+}
+function acctSetMode(m){acctMode=m;acctMsg='';renderAcctSheet();}
+function acctPwToggle(b){
+  const i=$('acPass'), show=i.type==='password';
+  i.type=show?'text':'password'; b.textContent=show?'Скрыть':'Показать';
+}
+function renderAcct(text){
+  acctBusyText=text||'';
+  const on=!!CLOUD_ON, si=signedIn();
+  const alert=on&&(si?!!acct.lastError:!!(acct&&acct.expired));
+  document.querySelectorAll('.more-btn').forEach(b=>b.classList.toggle('has-alert',alert));
+  const btn=$('acctBtn');
+  if(btn){
+    btn.style.display=on?'':'none';
+    btn.classList.toggle('on',si);
+    btn.classList.toggle('has-alert',alert);
+    btn.innerHTML=si?acctInitial():svgI('i-cloud');
+    btn.setAttribute('aria-label',si?'Аккаунт: '+acct.email:'Войти в аккаунт');
+  }
+  const wrap=$('acctWrap'), row=$('acctCard');
+  if(wrap) wrap.style.display=on?'':'none';
+  if(row&&on){
+    const exp=!!(acct&&acct.expired);
+    let av,title,sub,cls;
+    if(si){const st=acctStatus();av=acctInitial();title=esc(acct.email);sub=esc(st.t);cls=st.c==='busy'?'':st.c;}
+    else{av=svgI('i-cloud');title=exp?'Войди снова':'Войти или создать аккаунт';sub=exp?'Вход истёк, данные пока только на телефоне':'Чтобы прогресс сохранялся в облаке';cls=exp?'err':'';}
+    row.innerHTML=`<button class="acct-row" onclick="acctOpen()"><span class="acct-av${si?'':' off'}">${av}</span>
+      <span class="acct-row-t"><b>${title}</b><small class="${cls}">${sub}</small></span><span class="chev"></span></button>`;
+  }
+  const m=$('acctModal');
+  if(m&&m.classList.contains('active')) renderAcctSheet();
+}
+function renderAcctSheet(fresh){
+  const el=$('acctBody'); if(!el) return;
+  if(signedIn()&&acctDel){
+    el.innerHTML=`<div class="acct-hero">
+        <div class="acct-orb del">${svgI('i-alert')}</div>
+        <div class="modal-title">Удалить аккаунт?</div>
+        <p class="sub">Копия данных в облаке удалится навсегда. На этом телефоне всё останется. Введи пароль, чтобы подтвердить.</p>
+      </div>
+      <form onsubmit="acctDeleteGo();return false">
+        <div class="field"><input type="password" id="acDelPass" autocomplete="current-password" placeholder="Пароль" aria-label="Пароль"></div>
+        <div class="row" style="gap:8px">
+          <button type="button" class="btn ghost sm" style="flex:1" onclick="acctDelCancel()">Отмена</button>
+          <button type="submit" class="btn sm acct-go acct-danger" style="flex:1">Удалить</button>
+        </div>
+      </form>`;
     return;
   }
-  if(syncCfg.sha===undefined){ return pullSync(manual); }
-  syncBusy=true; renderSyncStatus('Отправляю…');
-  let conflict=false;
-  try{
-    const r=await putRemote(json,syncCfg.sha);
-    if(r.status===409||r.status===422) conflict=true;
-    else{
-      if(!r.ok) throw {status:r.status};
-      const data=await r.json();
-      syncCfg.sha=data.content&&data.content.sha;
-      syncCfg.lastJson=json; syncCfg.lastSync=Date.now(); syncCfg.lastError='';
-      storeSyncCfg();
-      if(manual) toast('Синхронизировано ✓','ok');
-    }
-  }catch(e){ syncFail(e,manual); }
-  finally{ syncBusy=false; renderSyncStatus(); }
-  if(conflict){ delete syncCfg.sha; return pullSync(manual); }
-  if(syncAgain){syncAgain=false;scheduleSync(500);}
+  if(signedIn()){
+    const st=acctStatus();
+    el.innerHTML=`<div class="acct-hero">
+        <div class="acct-orb">${acctInitial()}</div>
+        <div class="acct-mail">${esc(acct.email)}</div>
+        <div class="acct-pill ${st.c}">${svgI(st.i)}${esc(st.t)}</div>
+        <p class="sub">Тренировки, еда и вес сохраняются сами. На другом телефоне или планшете просто войди с этой почтой.</p>
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn ghost sm" style="flex:1" onclick="syncNow(true)">Сохранить сейчас</button>
+        <button class="btn ghost sm" style="flex:1" onclick="acctLogout()">Выйти</button>
+      </div>
+      <button class="acct-del" onclick="acctDelete()">Удалить аккаунт</button>`;
+    return;
+  }
+  // keep what was typed when the window is drawn again
+  const em=!fresh&&$('acEmail')?$('acEmail').value:(acct&&acct.email)||'';
+  const pw=!fresh&&$('acPass')?$('acPass').value:'';
+  const exp=!!(acct&&acct.expired), login=acctMode==='login';
+  const title=exp?'Войди снова':login?'С возвращением':'Сохраняй прогресс';
+  const sub=exp?'Вход истёк. Войди, и данные снова будут сохраняться в облаке.'
+    :login?'Войди, и твои тренировки, еда и вес появятся на этом устройстве.'
+    :'Создай аккаунт, и всё будет само сохраняться в облаке.';
+  const perk=t=>`<li><span>${svgI('i-check')}</span>${t}</li>`;
+  el.innerHTML=`<div class="acct-hero">
+      <div class="acct-orb">${svgI('i-cloud')}</div>
+      <div class="modal-title">${title}</div>
+      <p class="sub">${sub}</p>
+    </div>
+    ${acctMsg?`<div class="acct-msg">${svgI('i-check')}<span>${esc(acctMsg)}</span></div>`:''}
+    ${login?'':`<ul class="acct-perks">${perk('Данные не пропадут, даже если сменишь телефон')}${perk('Один аккаунт на телефоне и планшете')}${perk('Сохраняется само, без файлов и кнопок')}</ul>`}
+    <div class="seg">
+      <button type="button" class="${login?'':'on'}" onclick="acctSetMode('reg')">Регистрация</button>
+      <button type="button" class="${login?'on':''}" onclick="acctSetMode('login')">Вход</button>
+    </div>
+    <form onsubmit="acctSubmit();return false" autocomplete="on">
+      <div class="field"><input type="email" id="acEmail" name="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Почта" aria-label="Почта"></div>
+      <div class="field acct-pw"><input type="password" id="acPass" name="password" autocomplete="${login?'current-password':'new-password'}" placeholder="${login?'Пароль':'Пароль, от 8 символов'}" aria-label="Пароль"><button type="button" onclick="acctPwToggle(this)">Показать</button></div>
+      ${login&&cloud&&cloud.reset?`<button type="button" class="acct-forgot" onclick="acctForgot()">Забыли пароль?</button>`:''}
+      <button type="submit" class="btn acct-go">${login?'Войти':'Создать аккаунт'}</button>
+    </form>
+    <p class="acct-note">${svgI('i-lock')}Здоровье и фото остаются только на телефоне</p>`;
+  $('acEmail').value=em; $('acPass').value=pw;
 }
-
-// Compare with the copy on GitHub: take it if it is newer, otherwise push ours.
-// askUser: first setup on this device, let the person choose when both have data.
-async function pullSync(manual,askUser){
-  if(!syncReady()||syncBusy) return;
-  if(!navigator.onLine){ if(manual) toast('Нет сети','err'); return; }
-  syncBusy=true; renderSyncStatus('Проверяю GitHub…');
-  let push=false;
-  try{
-    const remote=await fetchRemote();
-    const localJson=JSON.stringify(S,null,2);
-    if(!remote||!remote.data){
-      syncCfg.sha=remote?remote.sha:null; push=true;
-    } else if(remote.json===localJson){
-      syncCfg.sha=remote.sha; syncCfg.lastJson=localJson; syncCfg.lastSync=Date.now(); syncCfg.lastError='';
-      if(manual) toast('Уже синхронизировано ✓','ok');
-    } else {
-      syncCfg.sha=remote.sha;
-      let takeRemote;
-      if(localIsEmpty()) takeRemote=true;
-      else if(askUser){
-        const when=remote.data.updatedAt?new Date(remote.data.updatedAt).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'неизвестно когда';
-        syncBusy=false;
-        takeRemote=await showConfirm(`На GitHub уже есть данные (изменены ${when}), и они отличаются от данных на этом устройстве. Загрузить данные с GitHub сюда? Данные на этом устройстве будут заменены. «Отмена» — наоборот, отправить данные с этого устройства на GitHub.`,'Загрузить с GitHub');
-        syncBusy=true;
-      }
-      else takeRemote=(remote.data.updatedAt||0)>(S.updatedAt||0);
-      if(takeRemote){
-        adoptRemote(remote);
-        syncCfg.lastSync=Date.now(); syncCfg.lastError='';
-        toast('Данные загружены с GitHub ✓','ok');
-      } else push=true;
-    }
-    storeSyncCfg();
-  }catch(e){ syncFail(e,manual); }
-  finally{ syncBusy=false; renderSyncStatus(); }
-  if(push) syncNow(manual);
+function renderNudge(){
+  const el=$('acctNudge'); if(!el) return;
+  let off=false; try{off=!!localStorage.getItem(KEY_NUDGE);}catch(e){}
+  const exp=!!(acct&&acct.expired);
+  if(!CLOUD_ON||signedIn()||off||!S.profile.onboarded||(!exp&&!hasRecords())){el.innerHTML='';return;}
+  el.innerHTML=`<div class="acct-strip">
+    <button class="acct-strip-main" onclick="acctOpen('${exp?'login':'reg'}')">
+      <span class="acct-strip-ic">${svgI('i-cloud')}</span>
+      <span class="acct-strip-t"><b>${exp?'Войди в аккаунт снова':'Сохрани прогресс в облаке'}</b><small>${exp?'Вход истёк, новые записи не сохраняются':'Чтобы данные не пропали'}</small></span>
+      <span class="chev"></span>
+    </button>
+    <button class="acct-strip-x" onclick="nudgeOff()" aria-label="Скрыть">×</button>
+  </div>`;
 }
-
-function renderSyncStatus(text){
-  const el=$('syncStatus'); if(!el) return;
-  // sync lives in the «Ещё» tab, so flag errors on the gear button
-  const err=!text&&syncReady()&&!!syncCfg.lastError;
-  document.querySelectorAll('.more-btn').forEach(b=>b.classList.toggle('has-alert',err));
-  $('syncSummary').textContent=text?'…':!syncReady()?'выкл':err?'⚠ ошибка':'вкл';
-  if(text){el.textContent=text;return;}
-  if(!syncReady()){el.textContent='Не настроено';return;}
-  let t=syncCfg.lastSync?'Последняя синхронизация: '+new Date(syncCfg.lastSync).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Ещё не синхронизировалось';
-  if(syncCfg.lastError) t+=' · ⚠ '+syncCfg.lastError;
-  el.textContent=t;
-}
-// Settings are folded away once sync is set up; the status line stays visible.
-function setSyncBody(open){
-  $('syncBody').style.display=open?'':'none';
-  $('syncToggle').textContent=open?'Скрыть':'Настроить';
-}
-function toggleSyncBody(){setSyncBody($('syncBody').style.display==='none');}
-function renderSyncSettings(){
-  $('syncToken').value=syncCfg?syncCfg.token||'':'';
-  $('syncOwner').value=syncCfg?syncCfg.owner||'':'';
-  $('syncRepo').value=syncCfg?syncCfg.repo||'':'';
-  $('syncPath').value=syncCfg?syncCfg.path||'':'';
-  renderSyncStatus();
-}
-function initSyncCard(){renderSyncSettings();setSyncBody(!syncReady());}
-function saveSyncSettings(){
-  // none of these can contain spaces; iOS paste/autocorrect likes to add them
-  const clean=id=>$(id).value.replace(/\s+/g,'');
-  // tokens are [A-Za-z0-9_] only
-  let token=$('syncToken').value.replace(/[^A-Za-z0-9_]/g,'');
-  const owner=clean('syncOwner'),
-        repo=clean('syncRepo'), path=(clean('syncPath')||'gymtracker.json').replace(/^\/+/,'');
-  if(!token||!owner||!repo){toast('Заполни токен, владельца и репозиторий','err');return;}
-  // a token pasted on top of an old one: keep the last one
-  const pats=token.match(/github_pat_[A-Za-z0-9_]+?(?=github_pat_|$)/g);
-  if(pats) token=pats[pats.length-1];
-  if(!/^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(token)){toast('Токен вставлен неправильно, он должен начинаться с github_pat_','err');return;}
-  const same=syncCfg&&syncCfg.owner===owner&&syncCfg.repo===repo&&syncCfg.path===path;
-  syncCfg={...(same?syncCfg:{}),token,owner,repo,path,lastError:''};
-  if(!same){delete syncCfg.sha;delete syncCfg.lastJson;delete syncCfg.lastSync;}
-  storeSyncCfg(); renderSyncSettings();
-  clearTimeout(syncTimer);
-  pullSync(true,!same);
-}
-async function disableSync(){
-  if(!syncCfg) return;
-  const ok=await showConfirm('Отключить синхронизацию и удалить токен с этого устройства?','Отключить');
-  if(!ok) return;
-  syncCfg=null; storeSyncCfg(); clearTimeout(syncTimer); renderSyncSettings();
-  toast('Синхронизация отключена');
-}
+function nudgeOff(){try{localStorage.setItem(KEY_NUDGE,'1');}catch(e){} renderNudge();}
 window.addEventListener('online',()=>scheduleSync(1000));
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){ if(syncTimer) syncNow(false); }
-  else if(syncReady()&&!syncTimer) pullSync(false);
+  else if(signedIn()&&!syncTimer) pullSync(false);
 });
 
 /* ============================================================
@@ -4366,7 +4713,8 @@ function obRender(){
       <h1 class="ob-h">Какая у тебя цель?</h1>
       <p class="ob-sub">Под неё посчитаем калории, белок и подскажем, на что смотреть.</p>
       <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.ic||x.em,x.name,x.desc)).join('')}</div>
-      ${ob.mode==='new'?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="movePaste(true)">Уже пользовался трекером? Перенести данные</button>
+      ${ob.mode==='new'?`${CLOUD_ON?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="acctOpen('login')">У меня уже есть аккаунт — войти</button>`:''}
+      <button class="acct-del" onclick="movePaste(true)">Переезжаешь со старой иконки? Вставить код</button>
       <div id="obMoveBox" style="display:none;margin-top:10px"><textarea class="food-in" id="obMoveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
       <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('obMoveIn').value)">Перенести данные</button></div>`:''}`;
   } else if(k==='about'){
@@ -6075,6 +6423,7 @@ addEventListener('resize',()=>{clearTimeout(_bearRz);_bearRz=setTimeout(()=>{if(
 function renderAll(){
   document.body.classList.toggle('nonum',pzNoNum());
   renderToday();
+  renderNudge();
   renderBearCard();
   renderWeekCard();
   renderPzCard();
@@ -6087,7 +6436,7 @@ function renderAll(){
    INIT
    ============================================================ */
 function init(){
-  loadSyncCfg();
+  acctLoad();
   load();
 
   // Restore WIP day
@@ -6109,12 +6458,11 @@ function init(){
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   renderAll();
   if(planMigrated){planMigrated=false;save();}
-  initSyncCard();
+  renderAcct();
   renderAiSetting();
-  pullSync(false); // take a newer copy from GitHub, or send ours
+  pullSync(false); // take a newer copy from the account, or send ours
   if(!S.profile.onboarded) obOpen(false);
   checkWorkoutNotification();
-  checkMoved();
 
   // Register service worker
   if('serviceWorker' in navigator){
