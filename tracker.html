@@ -368,12 +368,52 @@ details.fold[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
 details.fold[open]{border-color:rgba(139,108,255,.26)}
 details.fold .fold-body{padding:0 18px 18px}
 details.fold .fold-body>p.sub:first-child{margin-top:0}
-.acct-who{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.acct-av{width:42px;height:42px;flex:0 0 42px;border-radius:14px;display:grid;place-items:center;background:var(--grad);color:#fff;font-weight:800;font-size:18px;box-shadow:var(--glow)}
-.acct-who b{display:block;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.acct-who .sub{margin:2px 0 0}
-.acct-err{color:var(--danger)}
-.acct-del{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:12px 0 0;width:100%;text-decoration:underline;text-underline-offset:3px}
+/* account */
+#acctModal{z-index:97}
+#acctModal .modal-sheet{max-width:520px}
+.acct-btn{padding:0;overflow:hidden}
+.acct-btn .i{width:19px;height:19px}
+.acct-btn.on{background:var(--grad-d);border-color:transparent;box-shadow:0 4px 14px rgba(123,77,255,.35);color:#fff;font-weight:800;font-size:15px}
+.acct-row{display:flex;align-items:center;gap:13px;width:100%;text-align:left;color:var(--text);background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0) 60%),var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow);font-family:var(--f-body)}
+.acct-row:active{transform:scale(.99)}
+.acct-av{width:44px;height:44px;flex:0 0 44px;border-radius:15px;display:grid;place-items:center;background:var(--grad-d);color:#fff;font-weight:800;font-size:18px;box-shadow:var(--glow)}
+.acct-av .i{width:22px;height:22px}
+.acct-av.off{background:var(--accent-dim);color:var(--accent-light);box-shadow:none;border:1px solid var(--accent-mid)}
+.acct-row-t{flex:1;min-width:0}
+.acct-row-t b{display:block;font-size:15.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-row-t small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-row-t small.ok{color:var(--good)}
+.acct-row-t small.err,.acct-pill.err{color:var(--danger)}
+.chev{width:8px;height:8px;border-right:2px solid var(--muted);border-top:2px solid var(--muted);transform:rotate(45deg);flex-shrink:0;margin-right:4px}
+.acct-hero{text-align:center;padding:2px 0 4px}
+.acct-orb{width:68px;height:68px;margin:0 auto;border-radius:24px;display:grid;place-items:center;background:var(--grad-d);color:#fff;box-shadow:0 10px 34px rgba(123,77,255,.5),0 0 0 6px rgba(123,77,255,.1);font-weight:800;font-size:28px}
+.acct-orb .i{width:34px;height:34px;stroke-width:1.7}
+.acct-hero .modal-title{margin:16px 0 6px}
+.acct-hero .sub{max-width:310px;margin:0 auto 18px}
+.acct-perks{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:9px}
+.acct-perks li{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:600}
+.acct-perks .i{width:14px;height:14px;stroke-width:2.6;color:var(--good)}
+.acct-perks span{width:26px;height:26px;flex:0 0 26px;border-radius:9px;display:grid;place-items:center;background:var(--good-dim)}
+.acct-pw{position:relative}
+.acct-pw input{padding-right:84px}
+.acct-pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--accent-light);font-weight:700;font-size:13px;padding:8px 10px;font-family:var(--f-body)}
+.acct-note{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;color:var(--muted);font-weight:600;margin:14px 0 2px;text-align:center}
+.acct-note .i{width:14px;height:14px}
+.acct-mail{font-size:18px;font-weight:800;margin-top:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-pill{display:inline-flex;align-items:center;gap:6px;margin:8px 0 20px;padding:6px 12px;border-radius:99px;background:var(--good-dim);color:var(--good);font-size:13px;font-weight:700}
+.acct-pill .i{width:15px;height:15px}
+.acct-pill.err{background:var(--danger-dim)}
+.acct-pill.busy{background:var(--accent-dim);color:var(--accent-light)}
+.acct-del{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:16px 0 4px;width:100%;text-decoration:underline;text-underline-offset:3px;font-family:var(--f-body)}
+.acct-strip{display:flex;align-items:center;gap:2px;margin-bottom:12px;padding:6px 4px 6px 12px;border-radius:18px;border:1px solid rgba(139,108,255,.3);background:linear-gradient(90deg,rgba(47,107,255,.13),rgba(214,60,230,.09)),var(--surface)}
+.acct-strip-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;background:none;border:none;color:var(--text);text-align:left;padding:5px 0;font-family:var(--f-body)}
+.acct-strip-ic{width:36px;height:36px;flex:0 0 36px;border-radius:12px;display:grid;place-items:center;background:var(--grad-d);color:#fff;box-shadow:var(--glow)}
+.acct-strip-ic .i{width:19px;height:19px}
+.acct-strip-t{min-width:0;flex:1}
+.acct-strip-t b{display:block;font-size:14.5px;font-weight:800}
+.acct-strip-t small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px}
+.acct-strip .chev{margin-right:6px}
+.acct-strip-x{width:34px;height:34px;flex:0 0 34px;border:none;background:none;color:var(--muted);font-size:20px;line-height:1;border-radius:99px}
 .fold-group{font-family:var(--f-disp);font-size:13px;color:var(--muted);font-weight:500;letter-spacing:.16em;text-transform:uppercase;margin:24px 4px 10px}
 .fold-group:first-of-type{margin-top:4px}
 
@@ -490,7 +530,7 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
   background:rgba(30,30,40,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line2);
   color:var(--text);padding:11px 18px;border-radius:99px;
   font-weight:700;font-size:14px;opacity:0;transition:.25s;
-  z-index:70;pointer-events:none;white-space:nowrap;
+  z-index:110;pointer-events:none;white-space:nowrap;
   box-shadow:0 8px 28px rgba(0,0,0,.5);
   max-width:calc(100vw - 32px);text-align:center;
 }
@@ -681,6 +721,10 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12.5V6a1.5 1.5 0 0 1 3 0v5.5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11.5V6a1.5 1.5 0 0 1 3 0v7.5a6.5 6.5 0 0 1-6.5 6.5H10a6 6 0 0 1-4.9-2.6L2.9 14a1.5 1.5 0 0 1 2.3-1.8L8 15"/></symbol>
   <symbol id="i-body" viewBox="0 0 24 24"><circle cx="12" cy="4.6" r="2.1"/><path d="M5 9l7 1.2L19 9M12 10.2v5M8.8 21l3.2-5.8 3.2 5.8"/></symbol>
   <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3.5H6.5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V9z"/><path d="M14 3.5V9h5.5M8.5 13h7M8.5 16.5h4.5"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 19h10.3a4.2 4.2 0 0 0 .5-8.37A6 6 0 0 0 6.4 9.4 4.8 4.8 0 0 0 7 19z"/></symbol>
+  <symbol id="i-cloud-ok" viewBox="0 0 24 24"><path d="M7 19h10.3a4.2 4.2 0 0 0 .5-8.37A6 6 0 0 0 6.4 9.4 4.8 4.8 0 0 0 7 19z"/><path d="M9.3 14.1l1.9 1.9 3.7-3.9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.3 4.3L19 7.2"/></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24"><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14"/><path d="M10 8l-4 4 4 4M6 12h9"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.6"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
   <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 21c3.9 0 6.8-2.6 6.8-6.4 0-2.9-1.8-5.2-3.3-6.9-.3 1.8-1.3 3-2.5 3 .1-3-1.3-5.4-3.8-7 .4 3.3-1.7 5.3-3.2 6.9A6.3 6.3 0 0 0 5.2 14.6C5.2 18.4 8.1 21 12 21z"/></symbol>
   <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2.5L4.8 13.4h6.6l-1 8.1 8.2-10.9h-6.6z"/></symbol>
@@ -704,11 +748,10 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
       <h2>Сегодня</h2>
     </div>
     <div class="topbar-r">
+      <button class="icon-btn acct-btn" id="acctBtn" onclick="acctOpen()" aria-label="Аккаунт" style="display:none"></button>
       <button class="icon-btn more-btn" onclick="switchTab('more')" aria-label="Ещё: настройки и аккаунт"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
     </div>
   </div>
-
-  <div id="acctNudge"></div>
 
   <div class="hero" id="hero">
     <div class="hero-bear" id="heroBear" aria-hidden="true"></div>
@@ -738,6 +781,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   </div>
 
   <div id="bearCard"></div>
+  <div id="acctNudge"></div>
   <div id="weekCard"></div>
   <div id="pzCard"></div>
 
@@ -986,7 +1030,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
 
   <div id="acctWrap" style="display:none">
     <div class="fold-group" style="margin-top:4px">Аккаунт</div>
-    <div class="card" id="acctCard"></div>
+    <div id="acctCard"></div>
   </div>
 
   <div class="fold-group">Цели</div>
@@ -1154,6 +1198,14 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div id="suppBody"></div>
+  </div>
+</div>
+
+<!-- ==================== ACCOUNT ==================== -->
+<div class="modal-bg" id="acctModal" onclick="if(event.target===this)acctClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="acctBody"></div>
   </div>
 </div>
 
@@ -3510,8 +3562,8 @@ async function moveApply(txt){
 /* ============================================================
    ACCOUNT & CLOUD COPY
    Local-first, as before: S lives in localStorage and the app works
-   offline. When signed in, every change goes to the account a few
-   seconds later (server/index.js), and on open the newer copy (by
+   offline. When signed in, changes go to the account shortly after
+   the last edit (server/index.js), and on open the newer copy (by
    S.updatedAt) wins, so all devices end up with the same data.
    Health answers (H) and photos stay on this device (QZ-23).
    acct = {email, token, rev, syncedAt, lastSync, lastError}
@@ -3522,7 +3574,7 @@ async function moveApply(txt){
 const API_URL=window.MF_API||'';
 const KEY_ACCT='gymtracker_account_v1';
 const KEY_NUDGE='gymtracker_acct_nudge_off';
-const SYNC_DELAY=4000, SYNC_RETRY=60000;
+const SYNC_DELAY=15000, SYNC_RETRY=60000;   // changes go up 15 s after the last edit, or when the app is hidden
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 let acct=null, syncTimer=null, syncBusy=false, syncAgain=false, acctBusy=false;
 
@@ -3708,31 +3760,37 @@ function adoptRemote(remote){
 }
 
 /* ---------- sign in / out ---------- */
-function acctCreds(pfx){
-  const email=($(pfx+'Email').value||'').trim().toLowerCase(), password=$(pfx+'Pass').value||'';
-  if(!EMAIL_RE.test(email)){toast('Проверь адрес почты','err');$(pfx+'Email').focus();return null;}
-  if(!password){toast('Введи пароль','err');$(pfx+'Pass').focus();return null;}
+let acctMode='reg', acctBusyText='';
+function acctCreds(){
+  const e=$('acEmail'), p=$('acPass');
+  const email=(e.value||'').trim().toLowerCase(), password=p.value||'';
+  if(!EMAIL_RE.test(email)){toast('Проверь адрес почты','err');e.focus();return null;}
+  if(!password){toast('Введи пароль','err');p.focus();return null;}
+  if(acctMode!=='login'&&password.length<8){toast('Пароль — минимум 8 символов','err');p.focus();return null;}
   return {email,password};
 }
-function acctBtns(on){document.querySelectorAll('.acct-go').forEach(b=>b.disabled=on);}
+function acctBtns(on){document.querySelectorAll('.acct-go').forEach(b=>{b.disabled=on;b.style.opacity=on?'.6':'';});}
+function acctSubmit(){return acctMode==='login'?acctLogin():acctRegister();}
 async function acctRegister(){
   if(acctBusy) return;
-  const c=acctCreds('ac'); if(!c) return;
-  if(c.password.length<8){toast('Пароль — минимум 8 символов','err');$('acPass').focus();return;}
+  const c=acctCreds(); if(!c) return;
   acctBusy=true; acctBtns(true);
+  let ok=false;
   try{
     const sentAt=S.updatedAt||0;
     const r=await api('register',{...c,data:S});
     acct={email:r.email,token:r.token,rev:r.rev,syncedAt:r.rev?sentAt:0,lastSync:Date.now(),lastError:''};
-    acctStore();
-    toast('Аккаунт создан, данные сохранены ✓','ok');
-  }catch(e){ toast(e.message||'Не получилось','err'); }
+    acctStore(); ok=true;
+  }catch(e){
+    toast(e.message||'Не получилось','err');
+    if(e.error==='exists') acctSetMode('login');
+  }
   finally{ acctBusy=false; acctBtns(false); renderAcct(); renderNudge(); }
-  if(signedIn()&&dirty()) scheduleSync(500);
+  if(ok){ acctClose(); toast('Аккаунт создан, всё сохранено ✓','ok'); if(dirty()) scheduleSync(500); }
 }
-async function acctLogin(pfx='ac'){
+async function acctLogin(){
   if(acctBusy) return;
-  const c=acctCreds(pfx); if(!c) return;
+  const c=acctCreds(); if(!c) return;
   acctBusy=true; acctBtns(true);
   let ok=false;
   try{
@@ -3741,13 +3799,13 @@ async function acctLogin(pfx='ac'){
     acctStore(); ok=true;
   }catch(e){ toast(e.message||'Не получилось войти','err'); }
   finally{ acctBusy=false; acctBtns(false); renderAcct(); renderNudge(); }
-  if(ok){ toast('Вход выполнен ✓','ok'); await pullSync(false); }
+  if(ok){ acctClose(); toast('Вход выполнен ✓','ok'); await pullSync(false); }
 }
 async function acctLogout(){
   const ok=await showConfirm('Выйти из аккаунта? Данные останутся на этом телефоне.','Выйти','Отмена',true);
   if(!ok||!acct) return;
   if(signedIn()&&dirty()) await syncNow(false);   // send the last changes first
-  acctOut(); renderAcct(); renderNudge();
+  acctOut(); acctClose(); renderAcct(); renderNudge();
   toast('Выход выполнен');
 }
 async function acctDelete(){
@@ -3757,44 +3815,106 @@ async function acctDelete(){
   try{ await api('delete',{token:acct.token}); }
   catch(e){ if(e.status!==401){ toast(e.message||'Не получилось','err'); return; } }
   acct=null; acctStore(); clearTimeout(syncTimer); syncTimer=null;
-  renderAcct(); renderNudge();
+  acctClose(); renderAcct(); renderNudge();
   toast('Аккаунт удалён');
 }
 
-/* ---------- UI ---------- */
-function acctFormHtml(pfx,full){
-  return `<form onsubmit="return false" autocomplete="on">
-    <div class="field"><label class="lbl" for="${pfx}Email">Почта</label><input type="email" id="${pfx}Email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@mail.ru"></div>
-    <div class="field"><label class="lbl" for="${pfx}Pass">Пароль</label><input type="password" id="${pfx}Pass" name="password" autocomplete="current-password" placeholder="${full?'Минимум 8 символов':'Пароль'}"></div>
-    ${full?`<div class="row" style="gap:8px"><button type="button" class="btn sm acct-go" style="flex:1" onclick="acctRegister()">Создать аккаунт</button>
-      <button type="button" class="btn ghost sm acct-go" style="flex:1" onclick="acctLogin()">Войти</button></div>`
-    :`<button type="button" class="btn sm acct-go" style="width:100%" onclick="acctLogin('${pfx}')">Войти</button>`}
-  </form>`;
+/* ---------- UI ----------
+   Header: a round account button next to the gear.
+   «Ещё»: one row that opens the account window.
+   Today: a slim hint under the bear until the person signs in. */
+const svgI=id=>`<svg class="i" viewBox="0 0 24 24"><use href="#${id}"/></svg>`;
+function acctInitial(){return esc(((acct&&acct.email)||'?')[0].toUpperCase());}
+function acctStatus(){
+  if(acctBusyText) return {t:acctBusyText,c:'busy',i:'i-sync'};
+  if(acct.lastError) return {t:acct.lastError,c:'err',i:'i-alert'};
+  return {t:acct.lastSync?'Всё сохранено · '+fmtWhen(acct.lastSync):'Сохраняется в облаке',c:'ok',i:'i-cloud-ok'};
+}
+function acctOpen(mode){
+  if(!API_URL) return;
+  acctMode=mode||(acct&&acct.expired||!hasRecords()?'login':'reg');
+  renderAcctSheet(true);
+  $('acctModal').classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function acctClose(){
+  const m=$('acctModal'); if(!m||!m.classList.contains('active')) return;
+  m.classList.remove('active');
+  if(!$('obBg').classList.contains('active')) document.body.style.overflow='';
+}
+function acctSetMode(m){acctMode=m;renderAcctSheet();}
+function acctPwToggle(b){
+  const i=$('acPass'), show=i.type==='password';
+  i.type=show?'text':'password'; b.textContent=show?'Скрыть':'Показать';
 }
 function renderAcct(text){
-  const wrap=$('acctWrap'), el=$('acctCard'); if(!wrap||!el) return;
-  wrap.style.display=API_URL?'':'none';
-  const alert=!!API_URL&&(signedIn()?!!acct.lastError:!!(acct&&acct.expired));
+  acctBusyText=text||'';
+  const on=!!API_URL, si=signedIn();
+  const alert=on&&(si?!!acct.lastError:!!(acct&&acct.expired));
   document.querySelectorAll('.more-btn').forEach(b=>b.classList.toggle('has-alert',alert));
-  if(!API_URL) return;
+  const btn=$('acctBtn');
+  if(btn){
+    btn.style.display=on?'':'none';
+    btn.classList.toggle('on',si);
+    btn.classList.toggle('has-alert',alert);
+    btn.innerHTML=si?acctInitial():svgI('i-cloud');
+    btn.setAttribute('aria-label',si?'Аккаунт: '+acct.email:'Войти в аккаунт');
+  }
+  const wrap=$('acctWrap'), row=$('acctCard');
+  if(wrap) wrap.style.display=on?'':'none';
+  if(row&&on){
+    const exp=!!(acct&&acct.expired);
+    let av,title,sub,cls;
+    if(si){const st=acctStatus();av=acctInitial();title=esc(acct.email);sub=esc(st.t);cls=st.c==='busy'?'':st.c;}
+    else{av=svgI('i-cloud');title=exp?'Войди снова':'Войти или создать аккаунт';sub=exp?'Вход истёк, данные пока только на телефоне':'Чтобы прогресс сохранялся в облаке';cls=exp?'err':'';}
+    row.innerHTML=`<button class="acct-row" onclick="acctOpen()"><span class="acct-av${si?'':' off'}">${av}</span>
+      <span class="acct-row-t"><b>${title}</b><small class="${cls}">${sub}</small></span><span class="chev"></span></button>`;
+  }
+  const m=$('acctModal');
+  if(m&&m.classList.contains('active')) renderAcctSheet();
+}
+function renderAcctSheet(fresh){
+  const el=$('acctBody'); if(!el) return;
   if(signedIn()){
-    const st=text||(acct.lastError?'⚠ '+acct.lastError:acct.lastSync?'Сохранено в облаке · '+fmtWhen(acct.lastSync):'Сохраняется в облаке');
-    el.innerHTML=`<div class="acct-who"><div class="acct-av">${esc((acct.email[0]||'?').toUpperCase())}</div>
-      <div style="min-width:0"><b>${esc(acct.email)}</b><p class="sub${acct.lastError&&!text?' acct-err':''}" id="acctStatus">${esc(st)}</p></div></div>
+    const st=acctStatus();
+    el.innerHTML=`<div class="acct-hero">
+        <div class="acct-orb">${acctInitial()}</div>
+        <div class="acct-mail">${esc(acct.email)}</div>
+        <div class="acct-pill ${st.c}">${svgI(st.i)}${esc(st.t)}</div>
+        <p class="sub">Тренировки, еда и вес сохраняются сами. На другом телефоне или планшете просто войди с этой почтой.</p>
+      </div>
       <div class="row" style="gap:8px">
-        <button class="btn ghost sm" style="flex:1" onclick="syncNow(true)">Сохранить</button>
+        <button class="btn ghost sm" style="flex:1" onclick="syncNow(true)">Сохранить сейчас</button>
         <button class="btn ghost sm" style="flex:1" onclick="acctLogout()">Выйти</button>
       </div>
       <button class="acct-del" onclick="acctDelete()">Удалить аккаунт</button>`;
     return;
   }
-  // keep what was typed if the card is drawn again
-  const em=$('acEmail')?$('acEmail').value:(acct&&acct.email)||'', pw=$('acPass')?$('acPass').value:'';
-  const exp=!!(acct&&acct.expired);
-  el.innerHTML=`<div class="card-head" style="margin-bottom:8px"><h3 class="card-title"><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span>${exp?'Войди снова':'Сохраняй всё в аккаунте'}</h3></div>
-    <p class="sub" style="margin:0 0 14px">${exp?'Вход истёк. Войди, и данные снова будут сохраняться в облаке.':'Тренировки, еда и вес будут сами сохраняться в облаке. Сменишь телефон — просто войдёшь снова.'}</p>
-    ${acctFormHtml('ac',true)}
-    <p class="sub" style="margin:12px 0 0">Ответы о здоровье и фото остаются только на этом телефоне.</p>`;
+  // keep what was typed when the window is drawn again
+  const em=!fresh&&$('acEmail')?$('acEmail').value:(acct&&acct.email)||'';
+  const pw=!fresh&&$('acPass')?$('acPass').value:'';
+  const exp=!!(acct&&acct.expired), login=acctMode==='login';
+  const title=exp?'Войди снова':login?'С возвращением':'Сохраняй прогресс';
+  const sub=exp?'Вход истёк. Войди, и данные снова будут сохраняться в облаке.'
+    :login?'Войди, и твои тренировки, еда и вес появятся на этом устройстве.'
+    :'Создай аккаунт, и всё будет само сохраняться в облаке.';
+  const perk=t=>`<li><span>${svgI('i-check')}</span>${t}</li>`;
+  el.innerHTML=`<div class="acct-hero">
+      <div class="acct-orb">${svgI('i-cloud')}</div>
+      <div class="modal-title">${title}</div>
+      <p class="sub">${sub}</p>
+    </div>
+    ${login?'':`<ul class="acct-perks">${perk('Данные не пропадут, даже если сменишь телефон')}${perk('Один аккаунт на телефоне и планшете')}${perk('Сохраняется само, без файлов и кнопок')}</ul>`}
+    <div class="seg">
+      <button type="button" class="${login?'':'on'}" onclick="acctSetMode('reg')">Регистрация</button>
+      <button type="button" class="${login?'on':''}" onclick="acctSetMode('login')">Вход</button>
+    </div>
+    <form onsubmit="acctSubmit();return false" autocomplete="on">
+      <div class="field"><input type="email" id="acEmail" name="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Почта" aria-label="Почта"></div>
+      <div class="field acct-pw"><input type="password" id="acPass" name="password" autocomplete="${login?'current-password':'new-password'}" placeholder="${login?'Пароль':'Пароль, от 8 символов'}" aria-label="Пароль"><button type="button" onclick="acctPwToggle(this)">Показать</button></div>
+      <button type="submit" class="btn acct-go">${login?'Войти':'Создать аккаунт'}</button>
+    </form>
+    <p class="acct-note">${svgI('i-lock')}Здоровье и фото остаются только на телефоне</p>`;
   $('acEmail').value=em; $('acPass').value=pw;
 }
 function renderNudge(){
@@ -3802,26 +3922,16 @@ function renderNudge(){
   let off=false; try{off=!!localStorage.getItem(KEY_NUDGE);}catch(e){}
   const exp=!!(acct&&acct.expired);
   if(!API_URL||signedIn()||off||!S.profile.onboarded||(!exp&&!hasRecords())){el.innerHTML='';return;}
-  el.innerHTML=`<div class="card">
-    <div class="row" style="align-items:flex-start;gap:12px">
-      <span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:800;font-size:15.5px;margin:5px 0 4px">${exp?'Войди в аккаунт снова':'Сохрани прогресс в аккаунте'}</div>
-        <p class="sub" style="margin:0 0 12px">${exp?'Вход истёк, и новые записи пока сохраняются только на этом телефоне.':'Тогда тренировки и вес не пропадут, даже если сменишь или потеряешь телефон.'}</p>
-        <button class="btn sm" onclick="acctGo()">${exp?'Войти':'Создать аккаунт'}</button>
-      </div>
-      <button class="icon-btn" onclick="nudgeOff()" aria-label="Скрыть" style="font-size:20px;color:var(--muted)">×</button>
-    </div></div>`;
+  el.innerHTML=`<div class="acct-strip">
+    <button class="acct-strip-main" onclick="acctOpen('${exp?'login':'reg'}')">
+      <span class="acct-strip-ic">${svgI('i-cloud')}</span>
+      <span class="acct-strip-t"><b>${exp?'Войди в аккаунт снова':'Сохрани прогресс в облаке'}</b><small>${exp?'Вход истёк, новые записи не сохраняются':'Чтобы данные не пропали'}</small></span>
+      <span class="chev"></span>
+    </button>
+    <button class="acct-strip-x" onclick="nudgeOff()" aria-label="Скрыть">×</button>
+  </div>`;
 }
 function nudgeOff(){try{localStorage.setItem(KEY_NUDGE,'1');}catch(e){} renderNudge();}
-function acctGo(){
-  switchTab('more');
-  setTimeout(()=>{const i=$('acEmail');if(!i)return;i.scrollIntoView({block:'center'});if(!i.value)i.focus();else $('acPass').focus();},200);
-}
-function obAcctShow(){
-  const b=$('obAcctBox'); if(!b) return;
-  b.style.display=''; $('obEmail').focus();
-}
 window.addEventListener('online',()=>scheduleSync(1000));
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){ if(syncTimer) syncNow(false); }
@@ -4429,8 +4539,7 @@ function obRender(){
       <h1 class="ob-h">Какая у тебя цель?</h1>
       <p class="ob-sub">Под неё посчитаем калории, белок и подскажем, на что смотреть.</p>
       <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.ic||x.em,x.name,x.desc)).join('')}</div>
-      ${ob.mode==='new'?`${API_URL?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="obAcctShow()">У меня уже есть аккаунт — войти</button>
-      <div id="obAcctBox" style="display:none;margin-top:12px">${acctFormHtml('ob',false)}</div>`:''}
+      ${ob.mode==='new'?`${API_URL?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="acctOpen('login')">У меня уже есть аккаунт — войти</button>`:''}
       <button class="acct-del" onclick="movePaste(true)">Переезжаешь со старой иконки? Вставить код</button>
       <div id="obMoveBox" style="display:none;margin-top:10px"><textarea class="food-in" id="obMoveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
       <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('obMoveIn').value)">Перенести данные</button></div>`:''}`;
