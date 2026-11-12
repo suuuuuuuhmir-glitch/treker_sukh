@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'gymtracker-shell-v29';
+const SHELL_CACHE = 'gymtracker-shell-v30';
 const FONT_CACHE  = 'gymtracker-fonts-v2';
 const SHELL_FILES = ['tracker.html', 'manifest.json', 'icon.svg', 'icon-180.png'];
 
@@ -40,9 +40,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-
-  // Move check goes to the network, so the app sees a domain redirect
-  if (url.origin === self.location.origin && url.searchParams.has('probe')) return;
 
   // App shell — cache-first, fallback to network
   if (url.origin === self.location.origin) {
