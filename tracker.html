@@ -404,6 +404,11 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
 .acct-pill .i{width:15px;height:15px}
 .acct-pill.err{background:var(--danger-dim)}
 .acct-pill.busy{background:var(--accent-dim);color:var(--accent-light)}
+.acct-orb.del{background:var(--danger-dim);color:var(--danger);box-shadow:none;border:1px solid rgba(255,79,110,.3)}
+.btn.acct-danger{background:var(--danger);box-shadow:none}
+.acct-forgot{display:block;margin:-4px 0 12px auto;background:none;border:none;color:var(--accent-light);font-weight:700;font-size:13px;padding:4px 2px;font-family:var(--f-body)}
+.acct-msg{display:flex;gap:10px;align-items:flex-start;background:var(--good-dim);color:var(--good);border-radius:14px;padding:11px 13px;font-size:13.5px;font-weight:600;line-height:1.4;margin:0 0 14px}
+.acct-msg .i{width:16px;height:16px;margin-top:1px;stroke-width:2.4}
 .acct-del{background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;padding:16px 0 4px;width:100%;text-decoration:underline;text-underline-offset:3px;font-family:var(--f-body)}
 .acct-strip{display:flex;align-items:center;gap:2px;margin-bottom:12px;padding:6px 4px 6px 12px;border-radius:18px;border:1px solid rgba(139,108,255,.3);background:linear-gradient(90deg,rgba(47,107,255,.13),rgba(214,60,230,.09)),var(--surface)}
 .acct-strip-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;background:none;border:none;color:var(--text);text-align:left;padding:5px 0;font-family:var(--f-body)}
@@ -3563,23 +3568,162 @@ async function moveApply(txt){
    ACCOUNT & CLOUD COPY
    Local-first, as before: S lives in localStorage and the app works
    offline. When signed in, changes go to the account shortly after
-   the last edit (server/index.js), and on open the newer copy (by
-   S.updatedAt) wins, so all devices end up with the same data.
+   the last edit, and on open the account copy is checked, so all
+   devices end up with the same data.
    Health answers (H) and photos stay on this device (QZ-23).
-   acct = {email, token, rev, syncedAt, lastSync, lastError}
+   acct = {provider, email, sess, rev, syncedAt, lastSync, lastError}
      rev       version of the account copy this device last saw
                (null right after login: compare before sending)
      syncedAt  S.updatedAt of the last copy sent or taken
    ============================================================ */
-const API_URL=window.MF_API||'';
+/* Where accounts live. Firebase (Google) for now; the Yandex Cloud
+   function in server/ is the drop-in replacement:
+     {provider:'yandex', url:'https://functions.yandexcloud.net/<id>'}
+   The Firebase web key and project id are public by design: access is
+   guarded by Firestore rules (each person reads and writes only
+   users/<their uid>), see server/README.md. */
+const CLOUD=window.MF_CLOUD||{provider:'firebase',apiKey:'',projectId:''};
 const KEY_ACCT='gymtracker_account_v1';
 const KEY_NUDGE='gymtracker_acct_nudge_off';
 const SYNC_DELAY=15000, SYNC_RETRY=60000;   // changes go up 15 s after the last edit, or when the app is hidden
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 let acct=null, syncTimer=null, syncBusy=false, syncAgain=false, acctBusy=false;
 
+// Backend contract (both throw {status, error, message} or {net:true}):
+//   register(email,password,data) -> {email, sess, rev}
+//   login(email,password)         -> {email, sess}
+//   get(sess)                     -> {rev, savedAt, data}   (data null if empty)
+//   put(sess,data,baseRev)        -> {rev, savedAt}; 409 + the account copy if baseRev is stale
+//   logout(sess), remove(sess), reset(email) (reset only where mail is set up),
+//   check(sess) (optional: throws 401 if the account is gone)
+// sess is kept in acct.sess; a backend may refresh tokens in it.
+function firebaseBackend(c){
+  const AUTH=c.authUrl||'https://identitytoolkit.googleapis.com/v1';
+  const TOKEN=c.tokenUrl||'https://securetoken.googleapis.com/v1';
+  const FS=c.fsUrl||'https://firestore.googleapis.com/v1';
+  const key='?key='+encodeURIComponent(c.apiKey);
+  const docUrl=uid=>`${FS}/projects/${c.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
+  const BAD=['bad','Неверная почта или пароль'], AGAIN=['auth','Войди в аккаунт ещё раз'];
+  const ERR={EMAIL_EXISTS:['exists','Такой аккаунт уже есть — войди в него'],EMAIL_NOT_FOUND:BAD,INVALID_PASSWORD:BAD,
+    INVALID_LOGIN_CREDENTIALS:BAD,INVALID_EMAIL:['email','Проверь адрес почты'],MISSING_PASSWORD:['password','Введи пароль'],
+    WEAK_PASSWORD:['password','Пароль — минимум 8 символов'],USER_DISABLED:['bad','Этот аккаунт отключён'],
+    TOO_MANY_ATTEMPTS_TRY_LATER:['locked','Слишком много попыток. Попробуй через несколько минут'],
+    CREDENTIAL_TOO_OLD_LOGIN_AGAIN:AGAIN,TOKEN_EXPIRED:AGAIN,INVALID_ID_TOKEN:AGAIN,USER_NOT_FOUND:AGAIN,
+    INVALID_REFRESH_TOKEN:AGAIN,INVALID_GRANT_TYPE:AGAIN,MISSING_REFRESH_TOKEN:AGAIN,
+    // setup mistakes in the Firebase console, so they are easy to spot
+    OPERATION_NOT_ALLOWED:['setup','В Firebase не включён вход по почте'],CONFIGURATION_NOT_FOUND:['setup','В Firebase не включён вход по почте'],
+    PERMISSION_DENIED:['setup','Облако не пускает: проверь правила Firestore'],API_KEY_INVALID:['setup','Неверный ключ Firebase']};
+  async function call(url,opt){
+    let r;
+    try{r=await fetch(url,{cache:'no-store',...opt});}catch(e){throw {net:true,message:'Нет связи с сервером'};}
+    let j=null;
+    try{j=await r.json();}catch(e){}
+    if(r.ok) return j||{};
+    const er=(j&&j.error)||{}, msg=String(er.message||'');
+    const code=er.status==='PERMISSION_DENIED'?er.status:/^API key not valid/.test(msg)?'API_KEY_INVALID':msg.split(/[ :]/)[0], m=ERR[code];
+    throw {status:m&&m[0]==='auth'?401:r.status,error:m?m[0]:code,fsStatus:er.status||'',
+      message:m?m[1]:r.status>=500?'Сервер не отвечает, попробую позже':'Ошибка сервера '+r.status};
+  }
+  const post=(url,body)=>call(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const sessFrom=j=>({uid:j.localId||j.user_id,idToken:j.idToken||j.id_token,refreshToken:j.refreshToken||j.refresh_token,
+    exp:Date.now()+((+(j.expiresIn||j.expires_in)||3600)-300)*1000});
+  async function token(sess){
+    if(sess.idToken&&sess.exp>Date.now()) return sess.idToken;
+    const j=await call(`${TOKEN}/token${key}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(sess.refreshToken||'')});
+    Object.assign(sess,sessFrom(j)); acctStore();
+    return sess.idToken;
+  }
+  async function fs(sess,url,opt={}){
+    const go=t=>call(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+t}});
+    try{return await go(await token(sess));}
+    catch(e){ if(e.status!==401) throw e; sess.exp=0; return go(await token(sess)); }   // token died early: refresh once
+  }
+  const out=j=>{
+    if(!j||!j.fields) return {rev:0,savedAt:0,data:null};
+    let data=null; try{data=JSON.parse(j.fields.data.stringValue);}catch(e){}
+    return {rev:j.updateTime,savedAt:+((j.fields.savedAt||{}).integerValue||0),data};
+  };
+  async function get(sess){
+    try{return out(await fs(sess,docUrl(sess.uid)));}
+    catch(e){ if(e.status===404) return {rev:0,savedAt:0,data:null}; throw e; }
+  }
+  // The whole state is one JSON string field, so Firestore's rules on
+  // nested arrays and field names never get in the way. updateTime is
+  // the version: the write only lands if nobody saved in between.
+  async function put(sess,data,baseRev){
+    const savedAt=Date.now(), json=JSON.stringify(data);
+    if(json.length>900000) throw {status:413,message:'Слишком много данных для облака'};   // Firestore: 1 MB per document
+    const pre=baseRev?'currentDocument.updateTime='+encodeURIComponent(baseRev):'currentDocument.exists=false';
+    try{
+      const j=await fs(sess,docUrl(sess.uid)+'?'+pre,{method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({fields:{data:{stringValue:json},savedAt:{integerValue:String(savedAt)}}})});
+      return {rev:j.updateTime,savedAt};
+    }catch(e){
+      if(e.status===409||e.status===404||e.fsStatus==='FAILED_PRECONDITION'||e.fsStatus==='ALREADY_EXISTS'){
+        throw {...(await get(sess)),status:409,message:'В аккаунте есть новые данные'};
+      }
+      throw e;
+    }
+  }
+  return {
+    get, put,
+    async register(email,password,data){
+      const j=await post(`${AUTH}/accounts:signUp${key}`,{email,password,returnSecureToken:true});
+      const sess=sessFrom(j);
+      let rev=0;
+      try{ if(data) rev=(await put(sess,data,0)).rev; }catch(e){}   // if this fails, the next sync sends it
+      return {email:j.email||email,sess,rev};
+    },
+    async login(email,password){
+      const j=await post(`${AUTH}/accounts:signInWithPassword${key}`,{email,password,returnSecureToken:true});
+      return {email:j.email||email,sess:sessFrom(j)};
+    },
+    async logout(){},
+    // A deleted account's token still opens Firestore for up to an hour,
+    // so before filling an account that suddenly looks empty, ask Google
+    // whether it still exists.
+    async check(sess){await post(`${AUTH}/accounts:lookup${key}`,{idToken:await token(sess)});},
+    async remove(sess){
+      try{await fs(sess,docUrl(sess.uid),{method:'DELETE'});}catch(e){if(e.status!==404) throw e;}
+      await post(`${AUTH}/accounts:delete${key}`,{idToken:await token(sess)});
+    },
+    async reset(email){   // the letter and the page for the new password come in Russian
+      await call(`${AUTH}/accounts:sendOobCode${key}`,{method:'POST',headers:{'Content-Type':'application/json','X-Firebase-Locale':'ru'},
+        body:JSON.stringify({requestType:'PASSWORD_RESET',email})});
+    },
+  };
+}
+// server/index.js on Yandex Cloud. One POST for everything; text/plain
+// keeps it a "simple" request, so there is no CORS preflight.
+function yandexBackend(c){
+  async function api(op,payload){
+    let r;
+    try{
+      r=await fetch(c.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+        body:JSON.stringify({op,...payload}),cache:'no-store'});
+    }catch(e){throw {net:true,message:'Нет связи с сервером'};}
+    let j=null;
+    try{j=await r.json();}catch(e){}
+    if(!r.ok||!j) throw {...(j||{}),status:r.status,message:(j&&j.message)||'Ошибка сервера '+r.status};
+    return j;
+  }
+  return {
+    async register(email,password,data){const r=await api('register',{email,password,data});return {email:r.email,sess:{token:r.token},rev:r.rev};},
+    async login(email,password){const r=await api('login',{email,password});return {email:r.email,sess:{token:r.token}};},
+    get:sess=>api('get',{token:sess.token}),
+    put:(sess,data,baseRev)=>api('put',{token:sess.token,data,baseRev}),
+    logout:sess=>api('logout',{token:sess.token}),
+    remove:sess=>api('delete',{token:sess.token}),
+  };
+}
+const cloud=CLOUD.provider==='yandex'?(CLOUD.url?yandexBackend(CLOUD):null)
+  :(CLOUD.apiKey&&CLOUD.projectId?firebaseBackend(CLOUD):null);
+const CLOUD_ON=!!cloud;
+
 function acctLoad(){
   try{acct=JSON.parse(localStorage.getItem(KEY_ACCT))||null;}catch(e){acct=null;}
+  if(acct&&acct.sess&&acct.provider!==CLOUD.provider) acct={email:acct.email,expired:true};   // moved to another backend
   // GitHub sync is gone: drop its token from this device
   try{localStorage.removeItem('gymtracker_sync_v1');}catch(e){}
 }
@@ -3589,29 +3733,15 @@ function acctStore(){
     else localStorage.removeItem(KEY_ACCT);
   }catch(e){}
 }
-function signedIn(){return !!(API_URL&&acct&&acct.token);}
+function signedIn(){return !!(CLOUD_ON&&acct&&acct.sess);}
 function dirty(){return (S.updatedAt||0)!==(acct.syncedAt||0);}
 function hasRecords(){return !!(S.weights.length||S.sessions.length||Object.keys(S.nutrition||{}).length);}
 function fmtWhen(t){return new Date(t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
-
-// One POST for everything. text/plain keeps it a "simple" request,
-// so the browser does not send a CORS preflight first.
-async function api(op,payload){
-  let r;
-  try{
-    r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},
-      body:JSON.stringify({op,...payload}),cache:'no-store'});
-  }catch(e){throw {net:true,message:'Нет связи с сервером'};}
-  let j=null;
-  try{j=await r.json();}catch(e){}
-  if(!r.ok||!j) throw {...(j||{}),status:r.status,message:(j&&j.message)||'Ошибка сервера '+r.status};
-  return j;
-}
 function acctOut(){
-  const t=acct&&acct.token;
+  const sess=acct&&acct.sess;
   acct=null; acctStore();
   clearTimeout(syncTimer); syncTimer=null;
-  if(t) api('logout',{token:t}).catch(()=>{});
+  if(sess&&cloud) cloud.logout(sess).catch(()=>{});
 }
 
 function scheduleSync(delay=SYNC_DELAY){
@@ -3652,7 +3782,7 @@ async function syncNow(manual,force){
   const sentAt=S.updatedAt||0;
   let conflict=null, ok=false;
   try{
-    const res=await api('put',{token:acct.token,data:S,baseRev:acct.rev});
+    const res=await cloud.put(acct.sess,S,acct.rev);
     acct.rev=res.rev; acct.syncedAt=sentAt; acct.lastSync=Date.now(); acct.lastError='';
     acctStore(); ok=true;
     if(manual) toast('Сохранено в аккаунте ✓','ok');
@@ -3669,7 +3799,7 @@ async function pullSync(manual){
   if(!navigator.onLine){ if(manual) toast('Нет сети','err'); return; }
   syncBusy=true; renderAcct('Проверяю…');
   let remote=null;
-  try{ remote=await api('get',{token:acct.token}); }
+  try{ remote=await cloud.get(acct.sess); }
   catch(e){ syncFail(e,manual); }
   finally{ syncBusy=false; renderAcct(); }
   if(remote) return resolveRemote(remote,manual);
@@ -3684,7 +3814,13 @@ function syncedOk(rev,manual){
 async function resolveRemote(remote,manual){
   if(!signedIn()) return;
   const rd=remote.data&&typeof remote.data==='object'&&!Array.isArray(remote.data)?remote.data:null;
-  if(!rd){ acct.rev=remote.rev||0; acctStore(); return syncNow(manual,true); }  // empty account: ours goes up
+  if(!rd){   // empty account: ours goes up
+    if(acct.rev&&cloud.check){   // it had data before: was it deleted on another device?
+      try{ await cloud.check(acct.sess); }catch(e){ return syncFail(e,manual); }
+      if(!signedIn()) return;
+    }
+    acct.rev=remote.rev||0; acctStore(); return syncNow(manual,true);
+  }
   if(remote.rev===acct.rev) return dirty()?syncNow(manual):syncedOk(remote.rev,manual);
   if((rd.updatedAt||0)===(S.updatedAt||0)) return syncedOk(remote.rev,manual);   // the same copy
   if(acct.rev!=null){
@@ -3760,7 +3896,7 @@ function adoptRemote(remote){
 }
 
 /* ---------- sign in / out ---------- */
-let acctMode='reg', acctBusyText='';
+let acctMode='reg', acctBusyText='', acctDel=false, acctMsg='';
 function acctCreds(){
   const e=$('acEmail'), p=$('acPass');
   const email=(e.value||'').trim().toLowerCase(), password=p.value||'';
@@ -3778,8 +3914,8 @@ async function acctRegister(){
   let ok=false;
   try{
     const sentAt=S.updatedAt||0;
-    const r=await api('register',{...c,data:S});
-    acct={email:r.email,token:r.token,rev:r.rev,syncedAt:r.rev?sentAt:0,lastSync:Date.now(),lastError:''};
+    const r=await cloud.register(c.email,c.password,S);
+    acct={provider:CLOUD.provider,email:r.email,sess:r.sess,rev:r.rev,syncedAt:r.rev?sentAt:0,lastSync:Date.now(),lastError:''};
     acctStore(); ok=true;
   }catch(e){
     toast(e.message||'Не получилось','err');
@@ -3794,8 +3930,8 @@ async function acctLogin(){
   acctBusy=true; acctBtns(true);
   let ok=false;
   try{
-    const r=await api('login',c);
-    acct={email:r.email,token:r.token,rev:null,syncedAt:0,lastError:''};
+    const r=await cloud.login(c.email,c.password);
+    acct={provider:CLOUD.provider,email:r.email,sess:r.sess,rev:null,syncedAt:0,lastError:''};
     acctStore(); ok=true;
   }catch(e){ toast(e.message||'Не получилось войти','err'); }
   finally{ acctBusy=false; acctBtns(false); renderAcct(); renderNudge(); }
@@ -3808,15 +3944,35 @@ async function acctLogout(){
   acctOut(); acctClose(); renderAcct(); renderNudge();
   toast('Выход выполнен');
 }
-async function acctDelete(){
-  if(!signedIn()) return;
-  const ok=await showConfirm('Удалить аккаунт и копию данных в облаке? Это нельзя отменить. Данные на этом телефоне останутся.','Удалить');
+// Deleting asks for the password again: Google only lets a fresh
+// sign-in delete an account, and it guards against a borrowed phone.
+function acctDelete(){acctDel=true;renderAcctSheet();setTimeout(()=>{const i=$('acDelPass');if(i)i.focus();},50);}
+function acctDelCancel(){acctDel=false;renderAcctSheet();}
+async function acctDeleteGo(){
+  if(!signedIn()||acctBusy) return;
+  const pw=$('acDelPass').value||'';
+  if(!pw){toast('Введи пароль','err');$('acDelPass').focus();return;}
+  acctBusy=true; acctBtns(true);
+  let ok=false;
+  try{
+    const r=await cloud.login(acct.email,pw);
+    await cloud.remove(r.sess);
+    ok=true;
+  }catch(e){ toast(e.error==='bad'?'Неверный пароль':e.message||'Не получилось','err'); }
+  finally{ acctBusy=false; acctBtns(false); }
   if(!ok) return;
-  try{ await api('delete',{token:acct.token}); }
-  catch(e){ if(e.status!==401){ toast(e.message||'Не получилось','err'); return; } }
-  acct=null; acctStore(); clearTimeout(syncTimer); syncTimer=null;
+  acct=null; acctDel=false; acctStore(); clearTimeout(syncTimer); syncTimer=null;
   acctClose(); renderAcct(); renderNudge();
   toast('Аккаунт удалён');
+}
+async function acctForgot(){
+  const e=$('acEmail'), email=(e.value||'').trim().toLowerCase();
+  if(!EMAIL_RE.test(email)){toast('Сначала впиши свою почту','err');e.focus();return;}
+  if(acctBusy) return;
+  acctBusy=true; acctBtns(true);
+  try{ await cloud.reset(email); acctMsg=`Письмо для нового пароля отправлено на ${email}. Если его нет, проверь «Спам».`; }
+  catch(er){ toast(er.message||'Не получилось','err'); }
+  finally{ acctBusy=false; acctBtns(false); renderAcctSheet(); }
 }
 
 /* ---------- UI ----------
@@ -3831,8 +3987,9 @@ function acctStatus(){
   return {t:acct.lastSync?'Всё сохранено · '+fmtWhen(acct.lastSync):'Сохраняется в облаке',c:'ok',i:'i-cloud-ok'};
 }
 function acctOpen(mode){
-  if(!API_URL) return;
+  if(!CLOUD_ON) return;
   acctMode=mode||(acct&&acct.expired||!hasRecords()?'login':'reg');
+  acctDel=false; acctMsg='';
   renderAcctSheet(true);
   $('acctModal').classList.add('active');
   document.body.style.overflow='hidden';
@@ -3842,14 +3999,14 @@ function acctClose(){
   m.classList.remove('active');
   if(!$('obBg').classList.contains('active')) document.body.style.overflow='';
 }
-function acctSetMode(m){acctMode=m;renderAcctSheet();}
+function acctSetMode(m){acctMode=m;acctMsg='';renderAcctSheet();}
 function acctPwToggle(b){
   const i=$('acPass'), show=i.type==='password';
   i.type=show?'text':'password'; b.textContent=show?'Скрыть':'Показать';
 }
 function renderAcct(text){
   acctBusyText=text||'';
-  const on=!!API_URL, si=signedIn();
+  const on=!!CLOUD_ON, si=signedIn();
   const alert=on&&(si?!!acct.lastError:!!(acct&&acct.expired));
   document.querySelectorAll('.more-btn').forEach(b=>b.classList.toggle('has-alert',alert));
   const btn=$('acctBtn');
@@ -3875,6 +4032,21 @@ function renderAcct(text){
 }
 function renderAcctSheet(fresh){
   const el=$('acctBody'); if(!el) return;
+  if(signedIn()&&acctDel){
+    el.innerHTML=`<div class="acct-hero">
+        <div class="acct-orb del">${svgI('i-alert')}</div>
+        <div class="modal-title">Удалить аккаунт?</div>
+        <p class="sub">Копия данных в облаке удалится навсегда. На этом телефоне всё останется. Введи пароль, чтобы подтвердить.</p>
+      </div>
+      <form onsubmit="acctDeleteGo();return false">
+        <div class="field"><input type="password" id="acDelPass" autocomplete="current-password" placeholder="Пароль" aria-label="Пароль"></div>
+        <div class="row" style="gap:8px">
+          <button type="button" class="btn ghost sm" style="flex:1" onclick="acctDelCancel()">Отмена</button>
+          <button type="submit" class="btn sm acct-go acct-danger" style="flex:1">Удалить</button>
+        </div>
+      </form>`;
+    return;
+  }
   if(signedIn()){
     const st=acctStatus();
     el.innerHTML=`<div class="acct-hero">
@@ -3904,6 +4076,7 @@ function renderAcctSheet(fresh){
       <div class="modal-title">${title}</div>
       <p class="sub">${sub}</p>
     </div>
+    ${acctMsg?`<div class="acct-msg">${svgI('i-check')}<span>${esc(acctMsg)}</span></div>`:''}
     ${login?'':`<ul class="acct-perks">${perk('Данные не пропадут, даже если сменишь телефон')}${perk('Один аккаунт на телефоне и планшете')}${perk('Сохраняется само, без файлов и кнопок')}</ul>`}
     <div class="seg">
       <button type="button" class="${login?'':'on'}" onclick="acctSetMode('reg')">Регистрация</button>
@@ -3912,6 +4085,7 @@ function renderAcctSheet(fresh){
     <form onsubmit="acctSubmit();return false" autocomplete="on">
       <div class="field"><input type="email" id="acEmail" name="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Почта" aria-label="Почта"></div>
       <div class="field acct-pw"><input type="password" id="acPass" name="password" autocomplete="${login?'current-password':'new-password'}" placeholder="${login?'Пароль':'Пароль, от 8 символов'}" aria-label="Пароль"><button type="button" onclick="acctPwToggle(this)">Показать</button></div>
+      ${login&&cloud&&cloud.reset?`<button type="button" class="acct-forgot" onclick="acctForgot()">Забыли пароль?</button>`:''}
       <button type="submit" class="btn acct-go">${login?'Войти':'Создать аккаунт'}</button>
     </form>
     <p class="acct-note">${svgI('i-lock')}Здоровье и фото остаются только на телефоне</p>`;
@@ -3921,7 +4095,7 @@ function renderNudge(){
   const el=$('acctNudge'); if(!el) return;
   let off=false; try{off=!!localStorage.getItem(KEY_NUDGE);}catch(e){}
   const exp=!!(acct&&acct.expired);
-  if(!API_URL||signedIn()||off||!S.profile.onboarded||(!exp&&!hasRecords())){el.innerHTML='';return;}
+  if(!CLOUD_ON||signedIn()||off||!S.profile.onboarded||(!exp&&!hasRecords())){el.innerHTML='';return;}
   el.innerHTML=`<div class="acct-strip">
     <button class="acct-strip-main" onclick="acctOpen('${exp?'login':'reg'}')">
       <span class="acct-strip-ic">${svgI('i-cloud')}</span>
@@ -4539,7 +4713,7 @@ function obRender(){
       <h1 class="ob-h">Какая у тебя цель?</h1>
       <p class="ob-sub">Под неё посчитаем калории, белок и подскажем, на что смотреть.</p>
       <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.ic||x.em,x.name,x.desc)).join('')}</div>
-      ${ob.mode==='new'?`${API_URL?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="acctOpen('login')">У меня уже есть аккаунт — войти</button>`:''}
+      ${ob.mode==='new'?`${CLOUD_ON?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="acctOpen('login')">У меня уже есть аккаунт — войти</button>`:''}
       <button class="acct-del" onclick="movePaste(true)">Переезжаешь со старой иконки? Вставить код</button>
       <div id="obMoveBox" style="display:none;margin-top:10px"><textarea class="food-in" id="obMoveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
       <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('obMoveIn').value)">Перенести данные</button></div>`:''}`;
