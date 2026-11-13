@@ -1080,12 +1080,6 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
         <button class="btn ghost sm" style="flex:1" onclick="exportData()">↑ Скачать файл</button>
         <button class="btn ghost sm" style="flex:1" onclick="importData()">↓ Загрузить файл</button>
       </div>
-      <p class="sub" style="margin:14px 0 8px">Переезжаешь со старой иконки трекера? Там нажми «Скопировать код», а здесь вставь его.</p>
-      <button class="btn ghost sm" style="width:100%" onclick="movePaste()">⎘ Вставить код переноса</button>
-      <div id="moveBox" style="display:none;margin-top:10px">
-        <textarea class="food-in" id="moveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
-        <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('moveIn').value)">Перенести данные</button>
-      </div>
     </div>
   </details>
 
@@ -3531,40 +3525,6 @@ function importData(){
 }
 
 /* ============================================================
-   MOVE CODE
-   The old *.github.io copy of the app is stuck on its own cache and
-   can only hand out a code with S and the health answers. Pasting it
-   here brings that data over. Accounts do this job for everyone else.
-   ============================================================ */
-const MOVE_PREFIX='TREKER1:';
-function unb64utf8(b64){
-  const bin=atob(b64.replace(/\s/g,''));
-  const bytes=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-async function movePaste(fromOb){
-  let txt='';
-  try{txt=await navigator.clipboard.readText();}catch(e){}
-  if(txt&&txt.trim().startsWith(MOVE_PREFIX)) return moveApply(txt);
-  const box=$(fromOb?'obMoveBox':'moveBox');
-  if(box){box.style.display='';const i=$(fromOb?'obMoveIn':'moveIn');if(i){i.value='';i.focus();}}
-}
-async function moveApply(txt){
-  txt=(txt||'').trim();
-  if(!txt.startsWith(MOVE_PREFIX)){toast('Это не код переноса','err');return;}
-  let d;
-  try{d=JSON.parse(unb64utf8(txt.slice(MOVE_PREFIX.length)));}catch(e){toast('Код повреждён, скопируй ещё раз','err');return;}
-  if(!d||!d.S){toast('Код повреждён, скопируй ещё раз','err');return;}
-  const ok=await showConfirm('Перенести данные? Текущие данные на этом устройстве будут заменены.','Перенести');
-  if(!ok)return;
-  S=d.S;normalizeState();save();
-  H=d.H||null;hStore();
-  wip={};obClose();renderAll();
-  toast('Данные перенесены ✓','ok');
-}
-
-/* ============================================================
    ACCOUNT & CLOUD COPY
    Local-first, as before: S lives in localStorage and the app works
    offline. When signed in, changes go to the account shortly after
@@ -4388,7 +4348,7 @@ const QZ_DEF={
     ['none','Нет','',{x:1}],['vegetarian','Вегетарианство','Без мяса и рыбы, яйца и молочное — да'],['pescatarian','Без мяса, но ем рыбу'],
     ['vegan','Веганство','Без продуктов животного происхождения'],['halal','Халяль'],['kosher','Кошер'],['orthodox_fast','Соблюдаю православные посты']]},
   allergy:{eb:'Питание',t:'Чего тебе нельзя есть?',sub:'Такие продукты не будем предлагать.',multi:1,opts:[
-    ['none','Ничего такого','',{x:1}],['milk','Молочное','Аллергия на белок молока'],['lactose','Лактоза','Подскажем, что обычно переносится легче'],['egg','Яйца'],
+    ['none','Ничего такого','',{x:1}],['milk','Молоко и всё молочное','Аллергия на молоко: уберём всё молочное'],['lactose','Непереносимость лактозы','Лактоза — молочный сахар. Безлактозное молоко, кефир и твёрдый сыр оставим'],['egg','Яйца'],
     ['peanut','Арахис'],['tree_nuts','Орехи'],['fish','Рыба'],['shellfish','Морепродукты'],['soy','Соя'],['gluten','Глютен','Целиакия или назначение врача'],['sesame','Кунжут']]},
   appetite:{eb:'Питание',t:'Какой у тебя аппетит?',skip:'normal',opts:[
     ['small','Маленький','Быстро наедаюсь, могу забыть поесть'],['normal','Обычный'],['big','Большой','Часто хочется есть, трудно остановиться']]},
@@ -4713,10 +4673,7 @@ function obRender(){
       <h1 class="ob-h">Какая у тебя цель?</h1>
       <p class="ob-sub">Под неё посчитаем калории, белок и подскажем, на что смотреть.</p>
       <div class="ob-opts">${Object.entries(GOALS).map(([k,x])=>obOpt('goal',k,x.ic||x.em,x.name,x.desc)).join('')}</div>
-      ${ob.mode==='new'?`${CLOUD_ON?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="acctOpen('login')">У меня уже есть аккаунт — войти</button>`:''}
-      <button class="acct-del" onclick="movePaste(true)">Переезжаешь со старой иконки? Вставить код</button>
-      <div id="obMoveBox" style="display:none;margin-top:10px"><textarea class="food-in" id="obMoveIn" rows="3" placeholder="Вставь сюда код переноса"></textarea>
-      <button class="btn sm" style="width:100%;margin-top:8px" onclick="moveApply($('obMoveIn').value)">Перенести данные</button></div>`:''}`;
+      ${ob.mode==='new'&&CLOUD_ON?`<button class="btn ghost sm" style="width:100%;margin-top:14px" onclick="acctOpen('login')">У меня уже есть аккаунт — войти</button>`:''}`;
   } else if(k==='about'){
     body=`<div class="ob-step">О себе</div>
       <h1 class="ob-h">Немного о тебе</h1>
