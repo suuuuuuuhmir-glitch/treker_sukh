@@ -184,6 +184,24 @@ button{font-family:inherit;cursor:pointer}
 .tile-v{font-family:var(--f-num);font-weight:800;font-size:28px;line-height:1;letter-spacing:-.8px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile-v small{font-size:14px;color:var(--muted);font-weight:700;letter-spacing:0;margin-left:3px}
 .tile-l{font-size:12px;color:var(--muted);margin-top:5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Water card */
+.wtr .wtr-v{font-family:var(--f-num);font-weight:800;font-size:28px;letter-spacing:-.8px;font-variant-numeric:tabular-nums;line-height:1}
+.wtr .wtr-v small,.wtr-big small{font-size:14px;color:var(--muted);font-weight:700;letter-spacing:0;margin-left:5px}
+.wtr-big{font-family:var(--f-num);font-weight:800;font-size:34px;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1;margin-bottom:12px}
+.pbar-fill.b{background:linear-gradient(90deg,#2F9BFF,#5CE1FF);box-shadow:0 0 12px rgba(60,180,255,.5)}
+.wtr-dots{display:flex;gap:5px;flex-wrap:wrap;margin-top:11px}
+.wtr-dot{width:11px;height:15px;border-radius:4px 4px 6px 6px;background:rgba(255,255,255,.07);border:1px solid var(--line2);transition:.25s}
+.wtr-dot.on{background:linear-gradient(180deg,#5CE1FF,#2F9BFF);border-color:transparent;box-shadow:0 0 8px rgba(60,180,255,.5)}
+.wtr-l{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:9px}
+.wtr.done .wtr-l{color:var(--good)}
+.wtr-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.wtr-undo{background:none;border:none;color:var(--muted);font-weight:700;font-size:12.5px;font-family:inherit;padding:4px 0 4px 10px;white-space:nowrap;cursor:pointer}
+.wtr-btns .chip{flex:1;justify-content:center;padding:10px 6px}
+.wtr-why{background:none;border:none;color:var(--accent-light);font-weight:700;font-size:12.5px;font-family:inherit;padding:4px 0;white-space:nowrap;cursor:pointer}
+.wtr-part{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.wtr-part:last-child{border-bottom:none}
+.wtr-part b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.wtr-part .muted{font-size:12.5px;display:block;margin-top:2px}
 .tile .pbar{height:5px;margin-top:11px}
 .tile-plus{position:absolute;top:12px;right:12px;width:26px;height:26px;border-radius:99px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 4px 12px rgba(123,77,255,.45)}
 .tile-plus .i{width:14px;height:14px;stroke-width:2.6}
@@ -712,6 +730,8 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
   <symbol id="i-food" viewBox="0 0 24 24"><path d="M7 3v7a2.2 2.2 0 0 0 4.4 0V3M9.2 3v18M17.4 3c-1.6 1-2.6 3.1-2.6 5.6s1 4.4 2.6 4.6V21"/></symbol>
   <symbol id="i-pill" viewBox="0 0 24 24"><rect x="2.6" y="8.4" width="18.8" height="7.2" rx="3.6" transform="rotate(-45 12 12)"/><path d="M9.4 9.4l5.2 5.2"/></symbol>
   <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.2s-6.3 7-6.3 11.3a6.3 6.3 0 0 0 12.6 0C18.3 10.2 12 3.2 12 3.2z"/><path d="M9 14.6a3 3 0 0 0 2.2 3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></symbol>
   <symbol id="i-barbell" viewBox="0 0 24 24"><path d="M2 12h20M5.5 8v8M8.5 6v12M15.5 6v12M18.5 8v8"/></symbol>
   <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4.5 8h2.8l1.9-2.5h5.6L16.7 8h2.8a1.5 1.5 0 0 1 1.5 1.5v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18V9.5A1.5 1.5 0 0 1 4.5 8z"/><circle cx="12" cy="13.2" r="3.4"/></symbol>
@@ -841,6 +861,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
       </button>
     </div>
   </div>
+  <div id="todayWater"></div>
 
   <div class="today-grid">
   <div class="card" id="weightCard">
@@ -931,6 +952,7 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
     <div class="muted" id="nLeft" style="font-size:12.5px;margin-top:10px"></div>
     <div class="muted" id="nMacros" style="font-size:12.5px;margin-top:4px"></div>
   </div>
+  <div id="nutrWater"></div>
 
   <div class="card">
     <div class="card-head">
@@ -1170,6 +1192,18 @@ input.bad{border-color:var(--danger);background:var(--danger-dim)}
       </div>
       <button class="btn" onclick="addExercise()">+ Добавить</button>
     </div>
+  </div>
+</div>
+
+<!-- ==================== WATER MODAL ==================== -->
+<div class="modal-bg" id="waterModal" onclick="if(event.target===this)waterInfoClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="row between" style="margin-bottom:14px">
+      <h3 class="modal-title" style="margin-bottom:0">Вода</h3>
+      <button class="btn ghost sm" onclick="waterInfoClose()">Закрыть</button>
+    </div>
+    <div id="waterModalBody"></div>
   </div>
 </div>
 
@@ -1787,6 +1821,7 @@ function renderToday(){
   $('todayWeekN').innerHTML=ww+'<small>/ '+wp+'</small>';
   $('todayWeekL').textContent=ww>=wp?'неделя закрыта ✓':plural(wp,'тренировка','тренировки','тренировок');
   $('todayTon').innerHTML=fmtInt(calcWeekTonnage())+'<small>кг</small>';
+  $('todayWater').innerHTML=waterCardHtml(todayKey());
 
   // Weight history (last 3)
   const wh=$('wHistory');
@@ -2114,8 +2149,133 @@ function renderNutrition(){
   $('nutrWhy').innerHTML='<b style="color:var(--text)">Почему так.</b> '+esc(g.why);
   const gain=goalKey()==='gain';
   $('nutrGainerTip').style.display=gain?'':'none';
+  $('nutrWater').innerHTML=waterCardHtml(nutritionDate);
   renderFoodLog();
 }
+/* ============================================================
+   WATER
+   S.nutrition[date].w = [ml, ...] drinks of the day, .hot = 1 on a hot day.
+   The daily norm is rule-based from the profile: weight and age set the
+   base (ml per kg), then the usual day, steps, training, other sport,
+   the goal, pregnancy or breastfeeding and heat add to it. Capped at 4.5 l.
+   ============================================================ */
+const WATER_QUICK=[200,300,500], WATER_GLASS=250, WATER_CAP=4500;
+let waterD=null;
+function waterLog(d){const n=S.nutrition[d]||{};return Array.isArray(n.w)?n.w:[];}
+function waterTotal(d){return waterLog(d).reduce((a,b)=>a+(+b||0),0);}
+function waterTrainedOn(d){return S.sessions.some(s=>s.date===d);}
+function waterPlannedOn(d){const dow=new Date(d+'T12:00:00').getDay();return (S.profile.schedule||[1,3,5]).includes(dow);}
+function fmtMl(ml){return ml>=1000?(Math.round(ml/50)*50/1000).toLocaleString('ru-RU',{maximumFractionDigits:2})+' л':fmtInt(ml)+' мл';}
+function waterNorm(d){
+  d=d||todayKey();
+  const x=pzX(), q=x.q, s=pzSafety(x), n=S.nutrition[d]||{}, parts=[];
+  // Base: ml per kg of body weight, less with age (EFSA / ACSM ranges)
+  const perKg=x.age<18?40:x.age<=55?35:30;
+  const base=Math.round(Math.min(4000,Math.max(x.sex==='f'?1500:1800,x.w*perKg))/50)*50;
+  parts.push({k:'base',n:'Вес '+Math.round(x.w)+' кг',d:perKg+' мл на каждый кг'+(x.age<18?', в юности больше':x.age>55?', после 55 чуть меньше':''),ml:base});
+  // The usual day
+  const wkKey=PZ_WORK[q.work]?q.work:'sitting', wk=PZ_WORK[wkKey];
+  const wkAdd={sitting:0,standing:200,physical:500}[wkKey];
+  if(wkAdd) parts.push({k:'work',n:wk.n,d:'Днём теряешь больше воды',ml:wkAdd});
+  // Steps above what the day already includes
+  const steps=pzSteps(q), stepAdd=Math.min(500,Math.round(Math.max(0,steps-wk.base)/2000)*100);
+  if(stepAdd) parts.push({k:'steps',n:'~'+(Math.round(steps/500)*500).toLocaleString('ru-RU')+' шагов',d:'+100 мл на каждые 2000 шагов сверх обычного',ml:stepAdd});
+  // Training: the day's session, or the planned day for today and later
+  const trained=waterTrainedOn(d), planned=!trained&&d>=todayKey()&&waterPlannedOn(d)&&!!S.profile.programSet;
+  if(trained||planned){
+    const ml=Math.round(Math.min(1000,Math.max(300,500*x.min/60))/50)*50;
+    parts.push({k:'train',n:trained?'Тренировка сегодня':'День тренировки',d:'~500 мл на час силовой',ml});
+  }
+  // Other sport, averaged over the week
+  if(q.sport&&PZ_MET[q.sport]&&+q.sportHours){
+    const ml=Math.round(600*(+q.sportHours)/7/50)*50;
+    if(ml) parts.push({k:'sport',n:'Другой спорт',d:(+q.sportHours)+' ч в неделю, в среднем на день',ml});
+  }
+  // Goal: a deficit and a very big surplus both ask for a little more
+  if(x.goal==='cut'&&!s.noDeficit) parts.push({k:'cut',n:'Сушка',d:'На дефиците вода помогает с голодом',ml:250});
+  else if(x.goal==='gain'&&!pzNoNum()&&kcalTarget()>=3000) parts.push({k:'gain',n:'Много еды и белка',d:'Белок и клетчатка требуют воды',ml:250});
+  if(s.pregnant) parts.push({k:'preg',n:'Беременность',d:'Рекомендация EFSA',ml:300});
+  if(s.bf) parts.push({k:'bf',n:'Кормление грудью',d:'Рекомендация EFSA',ml:700});
+  if(n.hot) parts.push({k:'hot',n:'Жарко или душно',d:'Отметка на сегодня',ml:500});
+  let total=parts.reduce((a,p)=>a+p.ml,0);
+  const capped=total>WATER_CAP; if(capped) total=WATER_CAP;
+  return {ml:Math.round(total/50)*50,parts,capped,trained,planned};
+}
+function waterCardHtml(d){
+  const nr=waterNorm(d), got=waterTotal(d), pct=Math.min(100,got/nr.ml*100), left=Math.max(0,nr.ml-got);
+  const glasses=Math.round(nr.ml/WATER_GLASS), full=Math.min(glasses,Math.floor(got/WATER_GLASS+0.2));
+  const dots=Array.from({length:glasses},(_,i)=>`<span class="wtr-dot${i<full?' on':''}"></span>`).join('');
+  const done=got>=nr.ml, gl=Math.ceil(left/WATER_GLASS), dj=JSON.stringify(d);
+  const hint=done?'Норма на сегодня выпита ✓':`ещё ${fmtMl(left)} · ${gl} ${plural(gl,'стакан','стакана','стаканов')}`+(nr.trained?' · после тренировки норма выше':nr.planned?' · с учётом тренировки':'');
+  return `<div class="card wtr${done?' done':''}">
+    <div class="card-head" style="margin-bottom:10px">
+      <h3 class="card-title"><span class="ico o"><svg class="i" viewBox="0 0 24 24"><use href="#i-drop"/></svg></span>Вода</h3>
+      <button class="wtr-why" onclick='waterInfoOpen(${dj})'>Почему ${fmtMl(nr.ml)}?</button>
+    </div>
+    <div class="wtr-v">${fmtInt(got)}<small>/ ${fmtInt(nr.ml)} мл</small></div>
+    <div class="pbar" style="margin-top:9px"><div class="pbar-fill b" style="width:${pct}%"></div></div>
+    <div class="wtr-dots" aria-hidden="true">${dots}</div>
+    <div class="wtr-l row between"><span>${hint}</span>${waterLog(d).length?`<button class="wtr-undo" onclick='waterUndo(${dj})'>↶ отменить</button>`:''}</div>
+    <div class="wtr-btns">${WATER_QUICK.map(ml=>`<button class="chip" onclick='waterAdd(${dj},${ml})'>+${ml}</button>`).join('')}<button class="chip" onclick='waterInfoOpen(${dj},true)'>Своё</button></div>
+  </div>`;
+}
+function waterRefresh(d){
+  save();
+  const t=$('todayWater'); if(t&&d===todayKey()) t.innerHTML=waterCardHtml(d);
+  const nw=$('nutrWater'); if(nw&&d===nutritionDate) nw.innerHTML=waterCardHtml(d);
+  if($('waterModal').classList.contains('active')) waterInfoRender();
+}
+function waterAdd(d,ml){
+  ml=Math.round(+ml||0); if(ml<=0||ml>3000) return;
+  S.nutrition[d]=S.nutrition[d]||{}; const n=S.nutrition[d]; n.w=Array.isArray(n.w)?n.w:[];
+  const before=waterTotal(d), norm=waterNorm(d).ml;
+  n.w.push(ml);
+  waterRefresh(d);
+  if(before<norm&&before+ml>=norm) toast('Норма воды на сегодня выпита 💧','ok');
+}
+function waterUndo(d){
+  const n=S.nutrition[d]; if(!n||!Array.isArray(n.w)||!n.w.length) return;
+  n.w.pop(); if(!n.w.length) delete n.w;
+  waterRefresh(d);
+}
+function waterHot(d){
+  S.nutrition[d]=S.nutrition[d]||{}; const n=S.nutrition[d];
+  if(n.hot) delete n.hot; else n.hot=1;
+  waterRefresh(d);
+}
+function waterAddCustom(){
+  const inp=$('waterCustomMl'), ml=parseInt(inp.value,10);
+  if(!ml||ml<=0){inp.focus();return;}
+  waterAdd(waterD,ml); inp.value='';
+}
+function waterInfoOpen(d,focus){
+  waterD=d; waterInfoRender();
+  $('waterModal').classList.add('active');
+  if(focus) setTimeout(()=>{const i=$('waterCustomMl'); if(i) i.focus();},250);
+}
+function waterInfoClose(){$('waterModal').classList.remove('active');}
+function waterInfoRender(){
+  const d=waterD, nr=waterNorm(d), n=S.nutrition[d]||{}, got=waterTotal(d), dj=JSON.stringify(d);
+  const gl=Math.round(nr.ml/WATER_GLASS), log=waterLog(d);
+  $('waterModalBody').innerHTML=`
+    <div class="wtr-big">${fmtInt(nr.ml)}<small>мл в день · ${gl} ${plural(gl,'стакан','стакана','стаканов')} по 250</small></div>
+    <p class="sub">Норма собрана из твоих ответов: вес, возраст, обычный день, шаги, тренировки и спорт. Меняются данные, меняется и норма.</p>
+    <div class="section-lbl">Из чего складывается</div>
+    <div style="margin-bottom:14px">${nr.parts.map(p=>`<div class="wtr-part"><span>${esc(p.n)}<span class="muted">${esc(p.d)}</span></span><b>+${fmtInt(p.ml)} мл</b></div>`).join('')}</div>
+    ${nr.capped?`<div class="info" style="margin-bottom:14px">Сумма вышла больше 4,5 л, поэтому мы остановились на этом: пить больше за день без надобности не стоит.</div>`:''}
+    <div class="section-lbl">Сегодня</div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <button class="chip${n.hot?' on':''}" onclick='waterHot(${dj})'><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><use href="#i-sun"/></svg>Жарко или душно · +500 мл</button>
+    </div>
+    <div class="section-lbl">Добавить своё</div>
+    <div class="row" style="margin-bottom:8px">
+      <input type="number" id="waterCustomMl" inputmode="numeric" min="50" max="3000" placeholder="мл, например 330" style="flex:1" onkeydown="if(event.key==='Enter')waterAddCustom()">
+      <button class="btn sm" onclick="waterAddCustom()" style="white-space:nowrap">Добавить</button>
+    </div>
+    <div class="muted" style="font-size:12.5px;margin-bottom:14px">Выпито ${fmtInt(got)} мл${log.length?': '+log.map(v=>'+'+v).join(', '):''}.</div>
+    <p class="sub" style="margin-bottom:0">Считай воду, чай и кофе без сахара, минералку. Это ориентир, а не закон: пей по жажде, а в жару и после тренировки чуть больше. Светло-жёлтая моча — значит, воды хватает.</p>`;
+}
+
 /* ============================================================
    FOOD LOG
    S.nutrition[date].log = [{id,t,text,items:[{n,g,k,p,unk?}],k,p,src}]
