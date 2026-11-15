@@ -353,6 +353,8 @@ textarea.food-in:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 
 .food-res .br{color:var(--muted);font-weight:500;font-size:12.5px}
 .food-res .kp{font-family:var(--f-num);font-weight:800;font-size:13.5px;white-space:nowrap;text-align:right;color:var(--accent-light)}
 .food-res .kp small{display:block;color:var(--muted);font-size:11px;font-family:inherit;font-weight:600}
+.food-photo-btn{width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.food-photo-btn .i{width:18px;height:18px}
 .food-text-toggle{background:none;border:none;color:var(--muted);font-family:inherit;font-weight:600;font-size:13px;padding:12px 0 4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .food-entry{cursor:pointer}
 .food-entry .tm .i{width:17px;height:17px;color:var(--accent);margin-top:1px}
@@ -1136,6 +1138,8 @@ nav button.on svg{animation:navPop .5s cubic-bezier(.2,1.6,.4,1)}
       <button class="fs-scan" onclick="foodScanOpen()" aria-label="Сканировать штрихкод"><svg class="i" viewBox="0 0 24 24"><use href="#i-barcode"/></svg></button>
     </div>
     <div id="foodResults"></div>
+    <button class="btn ghost food-photo-btn" id="foodPhotoBtn" style="display:none" onclick="foodPhotoPick()"><svg class="i" viewBox="0 0 24 24"><use href="#i-camera"/></svg>Посчитать по фото</button>
+    <input type="file" id="foodPhotoInput" accept="image/*" style="display:none" onchange="foodPhotoChosen(this)">
     <button class="food-text-toggle" id="foodTextToggle" onclick="foodTextToggle()">✍️ Написать списком: «гречка 200, 3 яйца»</button>
     <div id="foodTextBox" style="display:none">
       <textarea class="food-in" id="foodInput" rows="2" placeholder="гречка 200, курица 150, 3 яйца"></textarea>
@@ -2802,6 +2806,7 @@ function renderFoodLog(){
   $('nMacros').textContent='Клетчатка — от '+mc.fibre+' г в день: овощи, крупы, бобовые, фрукты.';
   if(pzNoNum()) $('nHands').innerHTML='<div class="card-head"><h3 class="card-title"><span class="ico g">'+icoSvg('i-hand')+'</span>Порции без цифр</h3></div>'+pzHandHtml(S.profile.sex==='f'?'f':'m')+'<p class="muted" style="font-size:12.5px;margin:0">Белок в каждом приёме, овощи хотя бы дважды в день. Еду можно записывать, цифры показывать не будем.</p>';
   renderFoodSearch();
+  $('foodPhotoBtn').style.display=foodAiOn()?'':'none';
   const rows=log.map(e=>`<div class="food-entry" onclick="foodEdit('${e.id}')">
       <div class="tm">${esc(e.t||'')}</div>
       <div class="bd"><div class="tx">${esc(e.text)}${e.src==='ai'?' <span class="muted" style="font-weight:400;font-size:11px">ИИ</span>':''}</div>
@@ -3781,6 +3786,62 @@ function foodTextToggle(){
   if(foodTextOpen) $('foodInput').focus();
 }
 
+/* ---------- Calories from a food photo (server/food-ai) ----------
+   The AI key lives only in the cloud function; the tracker sends a
+   small JPEG plus the signed-in account's token. Empty FOOD_AI hides
+   the button. */
+const FOOD_AI=window.MF_FOOD_AI||'';
+function foodAiOn(){return !!FOOD_AI;}
+function foodPhotoPick(){
+  if(!signedIn()||!cloud.idToken){toast('Фото считается для тех, кто вошёл в аккаунт: Настройки → Аккаунт','err');return;}
+  $('foodPhotoInput').click();
+}
+function foodPhotoChosen(inp){
+  const f=inp.files&&inp.files[0]; inp.value='';
+  if(!f)return;
+  const img=new Image(), url=URL.createObjectURL(f);
+  img.onload=()=>{
+    const max=1024, sc=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);
+    foodAiRun(c.toDataURL('image/jpeg',0.8).split(',')[1]);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);toast('Не удалось открыть фото','err');};
+  img.src=url;
+}
+let foodAiBusy=false;
+async function foodAiRun(b64){
+  if(foodAiBusy)return;
+  if(!foodTextOpen) foodTextToggle();
+  const text=$('foodInput').value.trim(), box=$('foodPreviewBox');
+  foodAiBusy=true; foodDraft=null;
+  box.innerHTML='<div class="food-prev muted" style="font-size:13px">📷 Смотрю на фото…</div>';
+  try{
+    const send=async()=>{
+      const t=await cloud.idToken(acct.sess);
+      let r;
+      try{r=await fetch(FOOD_AI,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},
+        body:JSON.stringify({image:b64,text,goal:goal().ai})});}
+      catch(e){throw new Error('Нет связи. Проверь интернет');}
+      const j=await r.json().catch(()=>({}));
+      return {r,j};
+    };
+    let {r,j}=await send();
+    if(r.status===401){acct.sess.exp=0;({r,j}=await send());}   // token died early: refresh once
+    if(!r.ok) throw new Error(j.error||('Ошибка '+r.status));
+    const items=(j.items||[]).map(x=>({n:cap(x.name),g:Math.round(x.grams)||null,k:Math.round(x.kcal)||0,
+      p:round1(x.protein||0),f:round1(x.fat||0),c:round1(x.carbs||0)}));
+    if(!items.length){box.innerHTML='';toast(j.note||'Не вижу на фото еды','err');return;}
+    foodDraft={text:text||'Фото еды',items,note:j.note||'',src:'ai'};
+    renderFoodPreview();
+  }catch(e){
+    box.innerHTML='';
+    toast(e.message||'Не получилось посчитать','err');
+  }finally{foodAiBusy=false;}
+}
+
 /* ============================================================
    PROGRESS TAB
    ============================================================ */
@@ -4284,7 +4345,7 @@ function firebaseBackend(c){
     }
   }
   return {
-    get, put,
+    get, put, idToken:sess=>token(sess),
     async register(email,password,data){
       const j=await post(`${AUTH}/accounts:signUp${key}`,{email,password,returnSecureToken:true});
       const sess=sessFrom(j);
