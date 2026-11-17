@@ -1540,23 +1540,10 @@ const GOALS = {
             why:'Задача — есть примерно столько, сколько тратишь, и регулярно тренироваться. Колебания веса ±1 кг — это нормально.',
             ai:'для поддержания формы', aiNote:'чем можно сделать приём пищи полезнее'},
 };
-const ACTIVITY = {
-  low: {name:'Почти весь день сижу', desc:'учёба, офис, мало хожу', k:1.35},
-  mid: {name:'Часто на ногах', desc:'много хожу пешком', k:1.5},
-  high:{name:'Тяжёлая физическая работа', desc:'стройка, склад, спорт каждый день', k:1.7},
-};
 function goal(){return GOALS[(S&&S.profile&&S.profile.goal)]||GOALS.gain;}
 function goalKey(){return GOALS[S.profile.goal]?S.profile.goal:'gain';}
 function round50(x){return Math.round(x/50)*50;}
 function round5(x){return Math.round(x/5)*5;}
-// Mifflin–St Jeor × activity (incl. ~3 workouts a week) × goal
-function calcTargets(p){
-  const g=GOALS[p.goal]||GOALS.gain;
-  const bmr=10*p.weight+6.25*p.height-5*p.age+(p.sex==='f'?-161:5);
-  const kcal=Math.max(p.sex==='f'?1200:1500,round50(bmr*(ACTIVITY[p.activity]||ACTIVITY.mid).k*g.kcal));
-  const base=p.goal==='cut'&&p.target>0?Math.min(p.weight,p.target):p.weight;
-  return {kcal,prot:round5(base*g.prot)};
-}
 
 /* ============================================================
    STATE
@@ -1619,27 +1606,32 @@ function latestWeight(){
 /* ============================================================
    STREAK
    ============================================================ */
+// Workouts in a row without a long break. The allowed break comes from
+// the plan (2 a week: up to 5 days, 3: 4, 4 and more: 3), not from fixed
+// weekdays, so training on "your own" days does not reset the series.
+function streakGap(){return Math.ceil(7/Math.max(1,weekPlan()))+1;}
 function calcStreak(){
   if(!S.sessions.length) return 0;
-  const dates=new Set(S.sessions.map(s=>s.date));
-  const sched=S.profile.schedule||[1,3,5];
-  let streak=0;
-  const d=new Date(); d.setHours(0,0,0,0);
-  const dk=()=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  for(let i=0;i<180;i++){
-    const dow=d.getDay();
-    if(sched.includes(dow)){
-      const key=dk();
-      const prev=new Date(d); prev.setDate(d.getDate()-1);
-      const prevKey=prev.getFullYear()+'-'+String(prev.getMonth()+1).padStart(2,'0')+'-'+String(prev.getDate()).padStart(2,'0');
-      if(key===todayKey()&&!dates.has(key)){d.setDate(d.getDate()-1);continue;}
-      if(dates.has(key)||dates.has(prevKey)) streak++;
-      else break;
-    }
-    d.setDate(d.getDate()-1);
-  }
+  const days=[...new Set(S.sessions.map(s=>s.date))].sort(), gap=streakGap();
+  let i=days.length-1;
+  if(dayDiff(days[i],todayKey())>gap) return 0;
+  let streak=1;
+  for(;i>0;i--){ if(dayDiff(days[i-1],days[i])>gap) break; streak++; }
   return streak;
 }
+// Weekdays (0 = Sunday) the person really trains on: learned from the
+// last 6 weeks of sessions, else the program's default days
+function trainDows(){
+  const k=weekPlan(), from=shiftKey(todayKey(),-42), cnt=[0,0,0,0,0,0,0], seen=new Set();
+  S.sessions.forEach(s=>{ if(s.date>from&&!seen.has(s.date)){seen.add(s.date);cnt[new Date(s.date+'T12:00:00').getDay()]++;} });
+  if(seen.size>=4){
+    const top=cnt.map((c,i)=>[c,i]).filter(a=>a[0]>=2).sort((a,b)=>b[0]-a[0]||a[1]-b[1]).slice(0,k).map(a=>a[1]);
+    if(top.length) return top;
+  }
+  return S.profile.schedule||[1,3,5];
+}
+// Monday of the current week
+function weekStart(){const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-(d.getDay()+6)%7); return d;}
 
 /* ============================================================
    TONNAGE
@@ -1664,15 +1656,13 @@ function calcWipTonnage(){
   return Math.round(t);
 }
 function calcWeekTonnage(){
-  const now=new Date(); now.setHours(0,0,0,0);
-  const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
+  const ws=weekStart();
   return S.sessions
     .filter(s=>new Date(s.date+'T12:00:00')>=ws)
     .reduce((sum,s)=>sum+(s.volume||calcTonnage(s)),0);
 }
 function weekWorkouts(){
-  const now=new Date(); now.setHours(0,0,0,0);
-  const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
+  const ws=weekStart();
   return S.sessions.filter(s=>new Date(s.date+'T12:00:00')>=ws).length;
 }
 
@@ -2313,51 +2303,62 @@ function renderNutrition(){
 /* ============================================================
    WATER
    S.nutrition[date].w = [ml, ...] drinks of the day, .hot = 1 on a hot day.
-   The daily norm is rule-based from the profile: weight and age set the
-   base (ml per kg), then the usual day, steps, training, other sport,
-   the goal, pregnancy or breastfeeding and heat add to it. Capped at 4.5 l.
+   The daily norm is how much to DRINK (water and other drinks), built
+   from the profile. Base: 30 ml per kg (35 under 18), which for an
+   average adult lands on the EFSA adequate intake (2.0 l women, 2.5 l
+   men of total water, about 80 % of it from drinks). Above BMI 25 the
+   extra kilos count at 40 %, because fat tissue holds little water.
+   Ordinary walking and a day on the feet are already inside the base;
+   only real sweat adds: a physical job, a lot of steps, the workout of
+   the day (~500 ml an hour), other sport averaged over the week,
+   pregnancy / breastfeeding (EFSA +300 / +700) and heat. Capped at 4 l.
    ============================================================ */
-const WATER_QUICK=[200,300,500], WATER_GLASS=250, WATER_CAP=4500;
+const WATER_QUICK=[200,300,500], WATER_GLASS=250, WATER_CAP=4000;
 let waterD=null;
 function waterLog(d){const n=S.nutrition[d]||{};return Array.isArray(n.w)?n.w:[];}
 function waterTotal(d){return waterLog(d).reduce((a,b)=>a+(+b||0),0);}
 function waterTrainedOn(d){return S.sessions.some(s=>s.date===d);}
-function waterPlannedOn(d){const dow=new Date(d+'T12:00:00').getDay();return (S.profile.schedule||[1,3,5]).includes(dow);}
+function waterPlannedOn(d){return trainDows().includes(new Date(d+'T12:00:00').getDay());}
+// A training day: a logged session, the person's own mark for the day, or a usual training weekday (today and later)
+function waterTrainDay(d){
+  if(waterTrainedOn(d)) return 'done';
+  const t=(S.nutrition[d]||{}).tr;
+  if(t===1) return 'mark';
+  if(t===0) return '';
+  return d>=todayKey()&&S.profile.programSet&&waterPlannedOn(d)?'plan':'';
+}
 function fmtMl(ml){return ml>=1000?(Math.round(ml/50)*50/1000).toLocaleString('ru-RU',{maximumFractionDigits:2})+' л':fmtInt(ml)+' мл';}
+// Weight the norm is counted from: above BMI 25 the extra kilos count at 40 %
+function waterRefW(x){const w25=25*Math.pow(x.h/100,2);return x.w>w25?w25+0.4*(x.w-w25):x.w;}
+function waterTrainMl(x){return round50(Math.min(750,Math.max(250,500*x.min/60)));}
 function waterNorm(d){
   d=d||todayKey();
   const x=pzX(), q=x.q, s=pzSafety(x), n=S.nutrition[d]||{}, parts=[];
-  // Base: ml per kg of body weight, less with age (EFSA / ACSM ranges)
-  const perKg=x.age<18?40:x.age<=55?35:30;
-  const base=Math.round(Math.min(4000,Math.max(x.sex==='f'?1500:1800,x.w*perKg))/50)*50;
-  parts.push({k:'base',n:'Вес '+Math.round(x.w)+' кг',d:perKg+' мл на каждый кг'+(x.age<18?', в юности больше':x.age>55?', после 55 чуть меньше':''),ml:base});
-  // The usual day
+  // Base: an ordinary day without sport
+  const perKg=x.age<18?35:30, refW=waterRefW(x), min=x.sex==='f'?1500:1800, raw=refW*perKg;
+  const base=round50(Math.min(3000,Math.max(min,raw)));
+  parts.push({k:'base',n:'Вес '+Math.round(x.w)+' кг',ml:base,
+    d:raw<min?'Меньше '+fmtMl(min)+' в день не ставим':perKg+' мл на кг в обычный день'+(refW<x.w-0.5?', лишний вес считаем частично':'')});
+  // A physical job; sitting and standing days are inside the base
   const wkKey=PZ_WORK[q.work]?q.work:'sitting', wk=PZ_WORK[wkKey];
-  const wkAdd={sitting:0,standing:200,physical:500}[wkKey];
-  if(wkAdd) parts.push({k:'work',n:wk.n,d:'Днём теряешь больше воды',ml:wkAdd});
-  // Steps above what the day already includes
-  const steps=pzSteps(q), stepAdd=Math.min(500,Math.round(Math.max(0,steps-wk.base)/2000)*100);
-  if(stepAdd) parts.push({k:'steps',n:'~'+(Math.round(steps/500)*500).toLocaleString('ru-RU')+' шагов',d:'+100 мл на каждые 2000 шагов сверх обычного',ml:stepAdd});
-  // Training: the day's session, or the planned day for today and later
-  const trained=waterTrainedOn(d), planned=!trained&&d>=todayKey()&&waterPlannedOn(d)&&!!S.profile.programSet;
-  if(trained||planned){
-    const ml=Math.round(Math.min(1000,Math.max(300,500*x.min/60))/50)*50;
-    parts.push({k:'train',n:trained?'Тренировка сегодня':'День тренировки',d:'~500 мл на час силовой',ml});
-  }
+  if(wkKey==='physical') parts.push({k:'work',n:wk.n,d:'За смену теряешь больше воды',ml:400});
+  // Only a lot of walking adds: ordinary steps are inside the base
+  const steps=pzSteps(q), stepFrom=Math.max(6000,wk.base), stepAdd=Math.min(300,Math.floor(Math.max(0,steps-stepFrom)/3000)*100);
+  if(stepAdd) parts.push({k:'steps',n:'~'+(Math.round(steps/500)*500).toLocaleString('ru-RU')+' шагов',d:'+100 мл на каждые 3000 шагов сверх '+stepFrom.toLocaleString('ru-RU'),ml:stepAdd});
+  // The workout of the day
+  const td=waterTrainDay(d), trained=td==='done', planned=td==='plan'||td==='mark';
+  if(td) parts.push({k:'train',n:trained?'Тренировка сегодня':'День тренировки',d:'~500 мл на час: до, во время и после',ml:waterTrainMl(x)});
   // Other sport, averaged over the week
   if(q.sport&&PZ_MET[q.sport]&&+q.sportHours){
-    const ml=Math.round(600*(+q.sportHours)/7/50)*50;
-    if(ml) parts.push({k:'sport',n:'Другой спорт',d:(+q.sportHours)+' ч в неделю, в среднем на день',ml});
+    const ml=round50(500*(+q.sportHours)/7);
+    if(ml) parts.push({k:'sport',n:'Другой спорт',d:String(+q.sportHours).replace('.',',')+' ч в неделю, в среднем на день',ml});
   }
-  // Goal: a deficit and a very big surplus both ask for a little more
-  if(x.goal==='cut'&&!s.noDeficit) parts.push({k:'cut',n:'Сушка',d:'На дефиците вода помогает с голодом',ml:250});
-  else if(x.goal==='gain'&&!pzNoNum()&&kcalTarget()>=3000) parts.push({k:'gain',n:'Много еды и белка',d:'Белок и клетчатка требуют воды',ml:250});
   if(s.pregnant) parts.push({k:'preg',n:'Беременность',d:'Рекомендация EFSA',ml:300});
   if(s.bf) parts.push({k:'bf',n:'Кормление грудью',d:'Рекомендация EFSA',ml:700});
   if(n.hot) parts.push({k:'hot',n:'Жарко или душно',d:'Отметка на сегодня',ml:500});
   let total=parts.reduce((a,p)=>a+p.ml,0);
   const capped=total>WATER_CAP; if(capped) total=WATER_CAP;
-  return {ml:Math.round(total/50)*50,parts,capped,trained,planned};
+  return {ml:round50(total),parts,capped,trained,planned,td,doctor:(x.health||[]).some(h=>h==='heart'||h==='chronic')};
 }
 function waterCardHtml(d){
   const nr=waterNorm(d), got=waterTotal(d), pct=Math.min(100,got/nr.ml*100), left=Math.max(0,nr.ml-got);
@@ -2401,6 +2402,12 @@ function waterHot(d){
   if(n.hot) delete n.hot; else n.hot=1;
   waterRefresh(d);
 }
+// The person's own mark: today is (or is not) a training day
+function waterTrain(d){
+  S.nutrition[d]=S.nutrition[d]||{}; const n=S.nutrition[d];
+  n.tr=waterTrainDay(d)?0:1;
+  waterRefresh(d);
+}
 function waterAddCustom(){
   const inp=$('waterCustomMl'), ml=parseInt(inp.value,10);
   if(!ml||ml<=0){inp.focus();return;}
@@ -2417,12 +2424,14 @@ function waterInfoRender(){
   const gl=Math.round(nr.ml/WATER_GLASS), log=waterLog(d);
   $('waterModalBody').innerHTML=`
     <div class="wtr-big">${fmtInt(nr.ml)}<small>мл в день · ${gl} ${plural(gl,'стакан','стакана','стаканов')} по 250</small></div>
-    <p class="sub">Норма собрана из твоих ответов: вес, возраст, обычный день, шаги, тренировки и спорт. Меняются данные, меняется и норма.</p>
+    <p class="sub">Столько стоит выпить за день: вода и другие напитки. Основа считается от веса, а добавляет только то, от чего правда потеешь: тренировка, спорт, физическая работа, жара.</p>
     <div class="section-lbl">Из чего складывается</div>
     <div style="margin-bottom:14px">${nr.parts.map(p=>`<div class="wtr-part"><span>${esc(p.n)}<span class="muted">${esc(p.d)}</span></span><b>+${fmtInt(p.ml)} мл</b></div>`).join('')}</div>
-    ${nr.capped?`<div class="info" style="margin-bottom:14px">Сумма вышла больше 4,5 л, поэтому мы остановились на этом: пить больше за день без надобности не стоит.</div>`:''}
+    ${nr.capped?`<div class="info" style="margin-bottom:14px">Сумма вышла больше 4 л, поэтому мы остановились на этом: пить больше за день без надобности не стоит.</div>`:''}
+    ${nr.doctor?`<div class="info" style="margin-bottom:14px">Если врач ограничил тебе жидкость (сердце, почки, давление), ориентируйся на его цифру, а не на эту.</div>`:''}
     <div class="section-lbl">Сегодня</div>
     <div class="row" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      ${nr.trained?'':`<button class="chip${nr.td?' on':''}" onclick='waterTrain(${dj})'><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><use href="#i-dumbbell"/></svg>Тренировка · +${waterTrainMl(pzX())} мл</button>`}
       <button class="chip${n.hot?' on':''}" onclick='waterHot(${dj})'><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><use href="#i-sun"/></svg>Жарко или душно · +500 мл</button>
     </div>
     <div class="section-lbl">Добавить своё</div>
@@ -2431,7 +2440,7 @@ function waterInfoRender(){
       <button class="btn sm" onclick="waterAddCustom()" style="white-space:nowrap">Добавить</button>
     </div>
     <div class="muted" style="font-size:12.5px;margin-bottom:14px">Выпито ${fmtInt(got)} мл${log.length?': '+log.map(v=>'+'+v).join(', '):''}.</div>
-    <p class="sub" style="margin-bottom:0">Считай воду, чай и кофе без сахара, минералку. Это ориентир, а не закон: пей по жажде, а в жару и после тренировки чуть больше. Светло-жёлтая моча — значит, воды хватает.</p>`;
+    <p class="sub" style="margin-bottom:0">Считай воду, чай, кофе, минералку, компот и суп. Это ориентир, а не закон: пей по жажде и равномерно в течение дня, не больше литра за час. Светло-жёлтая моча — значит, воды хватает.</p>`;
 }
 
 /* ============================================================
@@ -4153,8 +4162,9 @@ function saveSettings(){
     // S-06: not below the floor; repeated tries feed the S-10 check
     const tries=(S.profile.floorTries||[]).filter(d=>d>=shiftKey(todayKey(),-30)&&d!==todayKey());
     S.profile.floorTries=[...tries,todayKey()];   // one per day
+    if(S.profile.kcalTarget!==floor) S.profile.kcalAt=todayKey();
     S.profile.kcalTarget=floor; floored=true;
-  } else if(kt>=1000&&kt<=6000){if(kt!==S.profile.kcalTarget)S.profile.kcalSrc='user';S.profile.kcalTarget=kt;}
+  } else if(kt>=1000&&kt<=6000){if(kt!==S.profile.kcalTarget){S.profile.kcalSrc='user';S.profile.kcalAt=todayKey();}S.profile.kcalTarget=kt;}
   if(pt>=30&&pt<=400) S.profile.proteinTarget=pt;
   save(); renderToday(); renderProgress(); renderNutrition();
   if(floored){$('setKcal').value=floor;toast('Ниже '+floor+' ккал не ставим','err');}
@@ -4746,7 +4756,7 @@ async function requestNotifications(){
 }
 function checkWorkoutNotification(){
   if(!S.settings.notifications||Notification.permission!=='granted') return;
-  const sched=S.profile.schedule||[1,3,5];
+  const sched=trainDows();
   const dow=new Date().getDay();
   if(!sched.includes(dow)) return;
   const hasToday=S.sessions.some(s=>s.date===todayKey());
@@ -4771,11 +4781,20 @@ function hStore(){try{if(H)localStorage.setItem(KEY_HEALTH,JSON.stringify(H));el
 function hList(){return (H&&H.health)||[];}
 function hHas(x){return hList().includes(x);}
 
-/* ---------- Energy (NU-01, NU-02) ---------- */
+/* ---------- Energy (NU-01, NU-02) ----------
+   Expenditure = BMR × the usual day + steps above what that day already
+   holds + strength sessions + other sport (net of rest).
+   b is the activity level of the day itself, without sport, at `base`
+   steps. A sitting day is 1.40: the lower edge of a sedentary lifestyle
+   in FAO/WHO/UNU 2004 (1.40–1.69) and what doubly-labelled-water data
+   show for inactive adults (DRI 2023: "inactive" reaches 1.53). The
+   earlier 1.25 / 1.35 / 1.55 put a person who lifts three times a week
+   at 1.3–1.4, which is 10–18 % under measured expenditure. */
+const PZ_MODEL=2;   // bump when the numbers below change: plans made by the old model are recounted once
 const PZ_WORK={
-  sitting: {b:1.25,base:3000,unk:4500,n:'В основном сижу',d:'Учёба, офис, за компьютером'},
-  standing:{b:1.35,base:6000,unk:8000,n:'Много на ногах',d:'Продавец, официант, бариста, учитель'},
-  physical:{b:1.55,base:9000,unk:11000,n:'Физическая работа',d:'Склад, стройка, грузчик, курьер пешком'}};
+  sitting: {b:1.40,base:3000,unk:4500,n:'В основном сижу',d:'Учёба, офис, за компьютером'},
+  standing:{b:1.55,base:6000,unk:8000,n:'Много на ногах',d:'Продавец, официант, бариста, учитель'},
+  physical:{b:1.75,base:9000,unk:11000,n:'Физическая работа',d:'Склад, стройка, грузчик, курьер пешком'}};
 const PZ_STEPS={lt3:2500,'3to6':4500,'6to9':7500,'9to12':10500,gt12:13500};
 const PZ_MET={team:7,endurance:7.5,combat:8,other:5};
 const PZ_ACT_MAP={low:['sitting',4500],mid:['standing',8000],high:['physical',11000]};   // QZ-12: old «activity» answer
@@ -4805,7 +4824,8 @@ function pzX(d){
   return x;
 }
 function pzBmrFormula(x){
-  if(x.age<18) return 239*(x.sex==='f'?0.0433*x.w+2.57*x.h/100-1.180:0.0600*x.w+1.31*x.h/100+0.473);   // Henry 2005, 10–18
+  // Henry 2005 (Oxford), 10–18 years, weight + height, MJ/day × 239. The 18–30 line was used here before and gave teens 90–180 kcal too little.
+  if(x.age<18) return 239*(x.sex==='f'?0.0393*x.w+1.04*x.h/100+1.93:0.0651*x.w+1.11*x.h/100+1.25);
   return 10*x.w+6.25*x.h-5*x.age+(x.sex==='f'?-161:5);                                                // Mifflin–St Jeor
 }
 function pzSteps(q){return q.stepsAvg||PZ_STEPS[q.steps]||q.stepsN||(PZ_WORK[q.work]||PZ_WORK.sitting).unk;}   // QZ-06, QZ-07
@@ -4816,7 +4836,7 @@ function pzEnergy(x,bmr){
   const stepKcal=Math.max(0,steps-wk.base)*x.h/100*(x.sex==='f'?0.413:0.415)/1000*x.w*0.5;
   const trainKcal=(3.5-1)*x.w*x.min/60*x.days/7;
   const sportKcal=q.sport&&PZ_MET[q.sport]?(PZ_MET[q.sport]-1)*x.w*(+q.sportHours||1)/7:0;
-  const tdee=bmr*wk.b+stepKcal+trainKcal+sportKcal;
+  const tdee=Math.min(bmr*wk.b+stepKcal+trainKcal+sportKcal,2.4*bmr);   // 2.4 × BMR: the most a person keeps up for long (FAO/WHO/UNU 2004)
   return {bmr,bmrF,tdee,pal:tdee/bmr,steps,stepKcal,trainKcal,sportKcal,work:PZ_WORK[q.work]?q.work:'sitting'};
 }
 
@@ -4898,6 +4918,8 @@ function pzPlan(x){
   const floor=Math.max(pzFloor(x,s,e,src==='bc'?e.bmr:0),Math.ceil(e.bmr/50)*50);   // S-06: never below BMR
   let floored=false;
   if(kcal<floor){kcal=floor;floored=true;}
+  // The planned rate is the one these calories give, so the plan shown and the weekly check-in agree
+  if(src!=='bc') rate=x.goal==='maintain'?0:Math.round((kcal-e.tdee)/(x.w*PZ_KCAL_KG)*100*20)/20;
   // Protein (NU-10, NU-31)
   let prot;
   if(src==='bc') prot=bcProtein(bcm.ffm,x.w,bcProtK(bcm));
@@ -5299,6 +5321,7 @@ function obFinish(keepNums){
   const kt=parseInt(ob.kcal,10), pt=parseInt(ob.prot,10), nonum=pzNoNum()||pl.s.ed||pl.s.under16;
   if(!keepNums){
     const kcal=nonum?pl.kcal:(kt>=1000&&kt<=6000?Math.max(kt,pl.floor):pl.kcal), prot=nonum?pl.prot:(pt>=30&&pt<=400?pt:pl.prot);
+    if(kcal!==p.kcalTarget||mode==='new') p.kcalAt=todayKey();
     p.kcalTarget=kcal; p.proteinTarget=prot;
     p.kcalSrc=kcal===pl.kcal&&prot===pl.prot?'pz':'user';
     // The planned rate feeds the weekly check-in; a rate from a body-composition decision wins (conflictPriority 5 > 7)
@@ -5895,7 +5918,7 @@ function applyProgram(o,silent){
   const p=S.profile;
   if(p.kcalSrc==='pz'&&!S.checkins.length&&(!prev||prev.days!==o.days||prev.time!==o.time)&&p.q&&p.q.at){
     const pl=pzPlan(pzX());
-    if(Math.abs(pl.kcal-p.kcalTarget)>=50){p.kcalTarget=pl.kcal;p.proteinTarget=pl.prot;if(!silent)setTimeout(()=>toast('Калории пересчитаны под программу: '+pl.kcal+' ккал'),1800);}
+    if(Math.abs(pl.kcal-p.kcalTarget)>=50){p.kcalTarget=pl.kcal;p.proteinTarget=pl.prot;p.kcalAt=todayKey();if(pl.src!=='bc'&&p.rate&&p.rate.src==='pz'&&p.rate.goal===pl.x.goal)p.rate.pct=pl.rate;if(!silent)setTimeout(()=>toast('Калории пересчитаны под программу: '+pl.kcal+' ккал'),1800);}
   }
   return b;
 }
@@ -6036,18 +6059,23 @@ function pqRender(){
 
 /* ============================================================
    SMART CALORIES + WEEKLY CHECK-IN
-   Daily weight jumps ±1 kg from water and salt, so we follow a
-   smoothed trend. Once a week the trend rate is compared with the
-   goal's planned rate and a calorie change is suggested (max ±200).
-   With food logged most days the real expenditure is computed:
-   avg intake − trend change × 7700 kcal/kg.
+   Daily weight jumps by 0.3–0.6 kg from water, salt and food in the
+   gut, so a weekly rate is only as sure as the number and the spread
+   of the weigh-ins behind it. The rate is the slope of a straight
+   line through the weigh-ins made since the current calories took
+   effect (at most 4 weeks back) and it comes with its error. Calories
+   change only when the gap between the rate and the plan is bigger
+   than that error, by at most ±200 kcal a step.
+   With food logged in full on most days the real expenditure is
+   computed instead: average intake − rate × 7700 kcal/kg.
    ============================================================ */
 const KCAL_PER_KG=7700;
 // Planned weekly change as a share of body weight
 const GOAL_RATE={gain:0.0035,cut:-0.0075,recomp:0,maintain:0};
 function dayDiff(a,b){return Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/86400000);}
 function shiftKey(k,n){const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-// Exponential moving average per day; days without a weigh-in keep the previous value
+// Exponential moving average per day; days without a weigh-in keep the previous value.
+// Good for "the usual weight"; it lags behind a steady change, so rates come from weightSlope().
 function weightTrend(){
   const ws=S.weights.slice().sort((a,b)=>a.date<b.date?-1:1);
   if(!ws.length) return [];
@@ -6060,34 +6088,65 @@ function weightTrend(){
   return out;
 }
 function trendAt(tr,key){for(let i=tr.length-1;i>=0;i--) if(tr[i].date<=key) return tr[i].t; return null;}
+// Least-squares line through the weigh-ins of [from, to]: kg a week, its standard error, the fitted weight at `to`
+function weightSlope(from,to){
+  const ws=S.weights.filter(w=>w.date>=from&&w.date<=to&&+w.kg>0), n=ws.length;
+  if(n<2) return null;
+  const t=ws.map(w=>dayDiff(from,w.date)), y=ws.map(w=>+w.kg);
+  const mt=t.reduce((a,b)=>a+b,0)/n, my=y.reduce((a,b)=>a+b,0)/n;
+  let sxx=0,sxy=0;
+  for(let i=0;i<n;i++){sxx+=(t[i]-mt)*(t[i]-mt);sxy+=(t[i]-mt)*(y[i]-my);}
+  if(!sxx) return null;
+  const k=sxy/sxx, c=my-k*mt;
+  let sse=0;
+  for(let i=0;i<n;i++){const e=y[i]-c-k*t[i];sse+=e*e;}
+  const sd=Math.max(0.3,n>2?Math.sqrt(sse/(n-2)):0.3);   // day-to-day noise; never taken below 0.3 kg
+  return {rate:k*7,se:sd/Math.sqrt(sxx)*7,n,span:Math.max(...t)-Math.min(...t),now:c+k*dayDiff(from,to),sd};
+}
+// The day the current calories (or the goal) took effect
+function kcalSince(){
+  const p=S.profile, ch=S.checkins.filter(c=>c.kcalTo!==c.kcalFrom).slice(-1)[0];
+  return [p.kcalAt,ch&&ch.date,p.goalSince].filter(Boolean).sort().pop()||'';
+}
+// A day whose food looks logged in full: several entries and at least half of the target
+function foodDayFull(d,t,kt){return (((S.nutrition[d]||{}).log)||[]).length>=2&&t.k>=Math.max(800,0.5*kt);}
 function weekReview(){
-  const tr=weightTrend(); if(!tr.length) return null;
-  const today=todayKey(), from=shiftKey(today,-14);
-  const recent=S.weights.filter(w=>w.date>from);
-  if(dayDiff(tr[0].date,today)<14||recent.length<4) return {notReady:true,need:Math.max(0,4-recent.length)};
-  const now=trendAt(tr,today), then=trendAt(tr,from);
-  const rate=(now-then)/2;                       // kg per week
+  if(!S.weights.length) return null;
+  const today=todayKey(), since=kcalSince();
+  // The first 3 days after a change are water and food in the gut, not tissue
+  const from=[shiftKey(today,-28),since?shiftKey(since,3):''].sort().pop();
+  const sl=from<today?weightSlope(from,today):null;
+  if((since&&dayDiff(since,today)<14)||!sl||sl.n<5||sl.span<10) return {notReady:true};
+  const rate=sl.rate, now=sl.now;                // kg per week, weight by the line
   const g=goalKey(), plan=goalRate()*now;        // kg per week
-  const kt=kcalTarget();
-  let logged=0,kSum=0,pSum=0;
-  for(let i=1;i<=14;i++){const t=foodTotals(shiftKey(today,-i));if(t.k>0){logged++;kSum+=t.k;pSum+=t.p;}}
-  let target;
-  if(logged>=10){
-    const tdee=kSum/logged-rate*KCAL_PER_KG/7;
-    target=tdee+plan*KCAL_PER_KG/7;
-  } else target=kt+(plan-rate)*KCAL_PER_KG/7;
-  let delta=round50(target-kt);
-  delta=Math.max(-200,Math.min(200,delta));
+  const kt=kcalTarget(), nDays=dayDiff(from,today);
+  let logged=0,kSum=0,pSum=0,full=0,fSum=0;
+  for(let i=1;i<=nDays;i++){
+    const d=shiftKey(today,-i), t=foodTotals(d);
+    if(t.k>0){logged++;kSum+=t.k;pSum+=t.p; if(foodDayFull(d,t,kt)){full++;fSum+=t.k;}}
+  }
+  // How far the calories are from the ones the plan needs
+  let raw, mode='weight';
+  if(full>=Math.ceil(0.7*nDays)){
+    const tdee=fSum/full-rate*KCAL_PER_KG/7, en=bcEnergy()||pzEnergy(pzX());
+    // a result far from any formula means the diary is not the whole story
+    if(tdee>0.65*en.tdee&&tdee<1.35*en.tdee){raw=tdee+plan*KCAL_PER_KG/7-kt;mode='balance';}
+  }
+  if(raw===undefined) raw=(plan-rate)*KCAL_PER_KG/7;
+  const band=1.645*sl.se, pct=rate/now*100, bp=band/now*100;   // the rate is known to about ±band kg a week (90 %)
+  // Maintain and recomp: a small drift is the plan; act only when the rate is surely outside it
+  const drift=g==='maintain'?Math.abs(pct)-bp<=0.15:g==='recomp'?pct+bp>=-0.5&&pct-bp<=0.1:false;
+  const sure=Math.abs(raw)>band*KCAL_PER_KG/7;
+  let delta=drift||!sure?0:Math.max(-200,Math.min(200,round50(raw))), held=false;
   const minK=kcalFloor();
-  if(kt+delta<minK) delta=Math.max(0,minK-kt);
+  if(kt+delta<minK){delta=Math.max(delta,round50(minK-kt));held=true;}
   // No deeper deficit when it isn't safe (S-03, S-05, S-08, S-10)
-  if(delta<0){const s=bcSafety(bcLast());if(s.noDeficit||s.ed) delta=0;}
-  // Recomp/maintain: a small drift is fine
-  if(Math.abs(delta)<100||(!GOAL_RATE[g]&&Math.abs(rate)<0.15)) delta=0;
+  if(delta<0){const s=bcSafety(bcLast());if(s.noDeficit||s.ed){delta=0;held=true;}}
+  if(Math.abs(delta)<100) delta=0;
   const ws=shiftKey(today,-6);
   const workouts=S.sessions.filter(s=>s.date>=ws).length;
-  const planned=(S.planDays||DAYS).length;
-  return {now,rate,plan,delta,kt,logged,avgK:logged?Math.round(kSum/logged):0,avgP:logged?Math.round(pSum/logged):0,workouts,planned};
+  return {now,rate,se:sl.se,band,plan,delta,kt,logged,full,days:nDays,n:sl.n,mode,sure,drift,held:held&&!delta,
+    near:Math.abs(plan-rate)*KCAL_PER_KG/7<100,avgK:logged?Math.round(kSum/logged):0,avgP:logged?Math.round(pSum/logged):0,workouts,planned:weekPlan()};
 }
 function checkinDue(){
   // D-60: a plan change from a body-composition measurement gets a week to work
@@ -6105,22 +6164,24 @@ function renderWeekCard(){
   if(r.delta&&Math.sign(r.delta)!==Math.sign(r.plan-r.rate)) advice=`В среднем ты ел <b>${r.avgK} ккал</b> при норме ${r.kt}. По весу и записям еды для твоего плана нужно около <b>${r.kt+r.delta} ккал</b>: поставим такую норму?`;
   else if(r.delta>0) advice=`Вес ${goalKey()==='gain'?'растёт медленнее плана':'падает быстрее, чем нужно'}. Добавим <b>${r.delta} ккал</b> в день: будет ${r.kt+r.delta}.`;
   else if(r.delta<0) advice=`Вес ${goalKey()==='cut'?'уходит медленнее плана':'растёт быстрее плана, лишнее уйдёт в жир'}. Уберём <b>${-r.delta} ккал</b> в день: будет ${r.kt+r.delta}.`;
-  else advice='Всё идёт по плану, ничего не меняем 👍';
+  else if(r.near||r.drift) advice='Всё идёт по плану, ничего не меняем 👍';
+  else if(r.held) advice='От плана есть отклонение, но ниже нынешних калорий опускаться не стоит. Оставляем как есть.';
+  else advice='Отклонение от плана пока меньше обычных скачков веса от воды и еды, поэтому калории не трогаем. Взвешивайся по утрам почаще, и вывод станет точнее.';
   el.innerHTML=`<div class="card">
     <div class="card-head"><h3 class="card-title"><span class="ico o">${icoSvg('i-chart')}</span>Итог недели</h3><span class="muted" style="font-size:12.5px">${esc(g.name)}</span></div>
     <div class="macro-mini"><span>Вес по тренду</span><b>${r.now.toFixed(1)} кг</b></div>
-    <div class="macro-mini"><span>За неделю</span><b>${fmtKg(r.rate)}</b></div>
+    <div class="macro-mini"><span>В неделю, по ${r.n} ${plural(r.n,'взвешиванию','взвешиваниям','взвешиваниям')}</span><b>${fmtKg(r.rate)}</b></div>
     <div class="macro-mini"><span>План</span><b>${r.plan?fmtKg(r.plan):'держим вес'}</b></div>
     <div class="macro-mini"><span>Тренировок за 7 дней</span><b>${r.workouts} из ${r.planned}</b></div>
     ${r.logged?`<div class="macro-mini"><span>В среднем ел</span><b>${r.avgK} ккал · ${r.avgP} г белка</b></div>`:''}
-    <p class="sub" style="margin:10px 0 12px">${advice}${r.logged<10?' <span class="muted">Записывай еду почти каждый день, и подсказка станет точнее.</span>':''}</p>
+    <p class="sub" style="margin:10px 0 12px">${advice}${r.mode!=='balance'?' <span class="muted">Записывай всю еду почти каждый день, и подсказка станет точнее.</span>':''}</p>
     <div class="row" style="gap:8px">${r.delta?`<button class="btn sm" style="flex:1" onclick="checkinDone(true)">Принять</button><button class="btn ghost sm" style="flex:1" onclick="checkinDone(false)">Оставить как есть</button>`:`<button class="btn ghost sm" style="flex:1" onclick="checkinDone(false)">Понятно</button>`}</div>
   </div>`;
 }
 function checkinDone(accept){
   const r=weekReview(); if(!r||r.notReady) return;
   const from=kcalTarget();
-  if(accept&&r.delta) S.profile.kcalTarget=from+r.delta;
+  if(accept&&r.delta){S.profile.kcalTarget=from+r.delta;S.profile.kcalAt=todayKey();}
   S.checkins.push({date:todayKey(),trend:+r.now.toFixed(2),rate:+r.rate.toFixed(3),kcalFrom:from,kcalTo:kcalTarget()});
   save(); renderAll();
   toast(accept&&r.delta?'Норма: '+kcalTarget()+' ккал ✓':'Увидимся через неделю 👋','ok');
@@ -6248,11 +6309,9 @@ function bcQuality(m,p){
 
 /* ---------- Safety (S-01…S-11) ---------- */
 function bcTrendPct(back){
-  const tr=weightTrend(); if(tr.length<back+1) return null;
-  const now=trendAt(tr,todayKey()), then=trendAt(tr,shiftKey(todayKey(),-back));
-  const recent=S.weights.filter(w=>w.date>shiftKey(todayKey(),-back)).length;
-  if(!now||!then||recent<4) return null;
-  return (now-then)/(back/7)/now*100;   // % of weight per week
+  const sl=weightSlope(shiftKey(todayKey(),-back),todayKey());
+  if(!sl||sl.n<4||sl.span<0.6*back) return null;
+  return sl.rate/sl.now*100;   // % of weight per week
 }
 // S-10: signs of restriction that numbers could make worse
 function bcEdSigns(bmi){
@@ -6495,6 +6554,7 @@ function bcAccept(yes){
   const r=bcPlan(m);
   if(yes&&r.prop){
     const g=goalKey(), p=r.prop;
+    if(p.kcal!==S.profile.kcalTarget) S.profile.kcalAt=todayKey();
     S.profile.kcalTarget=p.kcal; S.profile.proteinTarget=p.prot;
     S.profile.rate={goal:g,pct:p.rate};
     if(p.protK) S.profile.protK={goal:g,k:p.protK};
