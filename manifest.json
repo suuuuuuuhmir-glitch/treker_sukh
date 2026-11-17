@@ -5,8 +5,8 @@
   "start_url": "tracker.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0B0B10",
-  "theme_color": "#0B0B10",
+  "background_color": "#07070B",
+  "theme_color": "#07070B",
   "orientation": "portrait-primary",
   "icons": [
     {
