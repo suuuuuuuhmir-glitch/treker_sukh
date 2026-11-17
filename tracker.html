@@ -1676,17 +1676,102 @@ function getLastSetsForEx(exId){
   }
   return null;
 }
+// Next weight for an exercise (rules PR-01…PR-16 in personalization.json): double progression with a step that
+// fits the equipment, reps first when that step is big, a step back after two heavy sessions, lighter after a break.
+let PZ_EX_BY=null;
+function pzExById(id){
+  if(!PZ_EX_BY){PZ_EX_BY={};PZ_EX.forEach(e=>{PZ_EX_BY[e.id]=e;Object.values(e.old||{}).forEach(o=>{if(!PZ_EX_BY[o])PZ_EX_BY[o]=e;});});}
+  return PZ_EX_BY[id]||null;
+}
+// b band, bl barbell lower body, bu barbell upper, bw bodyweight, c cable, db dumbbell, kb kettlebell, m machine, t cardio
+function exLoadType(ex){
+  if(ex.lt) return ex.lt;
+  const e=pzExById(ex.id); if(e&&e.lt) return e.lt;
+  const n=String(ex.name||'').toLowerCase();
+  if(/штанг|смит/.test(n)) return /присед|станов|румын|выпад|ягодичн|мост|ног/.test(n)?'bl':'bu';
+  if(/гантел/.test(n)) return 'db';
+  if(/гир/.test(n)) return 'kb';
+  if(/блок|кроссовер|канат/.test(n)) return 'c';
+  if(/тренаж|машин|хаммер|гакк|платформ|жим ног|сгибани.*ног|разгибани.*ног|бабочк|пек-дек/.test(n)) return 'm';
+  if(/подтяг|отжим|планк|скручив|брус|вес тела|берпи|подъ[её]м ног/.test(n)) return 'bw';
+  return '';
+}
+function exStep(lt,w){
+  switch(lt){
+    case 'bl': return w<40?2.5:5;
+    case 'bu': return 2.5;
+    case 'db': return w<10?1:w<30?2:2.5;   // the next dumbbell on the rack
+    case 'm': return w<30?2.5:5;
+    case 'c': return 2.5;
+    case 'kb': return 4;
+    case 'bw': return w>0?2.5:0;            // extra weight on a belt or in a backpack
+    case 'b': case 't': return 0;
+    default: return 2.5;
+  }
+}
+function exStepFloor(w,st){return st?Math.floor(w/st+1e-9)*st:w;}
+// The sets that were really done: ticked ones; in old records without ticks, every set with numbers
+function exWorkSets(sets){
+  const arr=(sets||[]).filter(s=>s&&(s.w||s.r));
+  return arr.some(s=>s.done)?arr.filter(s=>s.done):arr;
+}
+function exHistory(exId,n){
+  const out=[];
+  for(let i=S.sessions.length-1;i>=0&&out.length<n;i--){
+    const ss=S.sessions[i], ws=exWorkSets(ss.ex&&ss.ex[exId]);
+    if(ws.length) out.push({date:ss.date,sets:ws});
+  }
+  return out;
+}
 function getSuggestion(exId,day){
-  const lastSets=getLastSetsForEx(exId);
-  if(!lastSets||!lastSets.length) return null;
-  const plan=S.plan[day]||DEFAULT_PLAN[day];
+  const plan=S.plan[day]||DEFAULT_PLAN[day]||[];
   const ex=plan.find(e=>e.id===exId);
   if(!ex) return null;
-  const lastW=Math.max(...lastSets.map(s=>parseFloat(s.w)||0));
-  if(!lastW) return null;
-  const allHit=lastSets.every(s=>(parseInt(s.r)||0)>=ex.repsMax&&parseFloat(s.w)>0);
-  return {weight:allHit?lastW+2.5:lastW,prog:allHit};
+  const lt=exLoadType(ex);
+  if(lt==='t') return null;
+  const hist=exHistory(exId,2);
+  if(!hist.length) return lt==='bw'||lt==='b'?null:{prog:false,text:'Первый раз: подбери вес, с которым остаётся запас 3 повтора'};
+  const last=hist[0], sets=last.sets;
+  const top=Math.max(...sets.map(s=>parseFloat(s.w)||0));
+  const reps=s=>parseInt(s.r)||0;
+  const atTop=sets.filter(s=>Math.abs((parseFloat(s.w)||0)-top)<0.01);
+  const full=atTop.length>=ex.sets;                       // every planned set at the working weight
+  const hi=ex.repsMax, lo=ex.repsMin;
+  // after a break of two weeks or more, start lighter (tables.returnFromBreak)
+  const today=todayKey();
+  const lastAny=[...S.sessions].reverse().find(ss=>ss.date<today);
+  const off=lastAny?Math.round((new Date(today+'T12:00:00')-new Date(lastAny.date+'T12:00:00'))/864e5):0;
+  if(top>0&&off>=14){
+    const f=off>=60?0.7:off>=28?0.8:0.9, st=exStep(lt,top)||0.5, w=Math.max(st,exStepFloor(top*f,st));
+    if(w<top) return {weight:w,prog:true,kind:'break',text:`После перерыва в ${off} ${plural(off,'день','дня','дней')} начни с ${kgTxt(w)} кг, дальше вернёшься к ${kgTxt(top)}`};
+  }
+  if(top>0){
+    const st=exStep(lt,top);
+    // two sessions in a row with half of the sets short of the range at the same weight: one step back
+    const short=h=>{const a=h.sets.filter(s=>Math.abs((parseFloat(s.w)||0)-top)<0.01);return a.length&&a.filter(s=>reps(s)<lo).length>=Math.ceil(ex.sets/2);};
+    if(st&&hist.length>1&&short(hist[0])&&short(hist[1])){
+      const w=exStepFloor(top*0.925,st);
+      if(w>0&&w<top) return {weight:w,prog:true,kind:'down',text:`Вес пока тяжеловат: возьми ${kgTxt(w)} кг и снова набери ${lo}–${hi} повторов`};
+    }
+    if(!st||!full||!atTop.every(s=>reps(s)>=hi)) return null;
+    const big=st/top>0.10;   // PR-03; it also keeps teenagers within +10 % at a time (PR-14)
+    if(big&&!atTop.every(s=>reps(s)>=hi+3))
+      return {prog:false,kind:'reps',text:`Следующий вес на ${kgTxt(st)} кг тяжелее, это большой шаг. Сначала доведи все подходы до ${hi+3} повторов`};
+    const w=Math.round((top+st)*100)/100;
+    return {weight:w,prog:true,kind:'up',text:`🔥 Добавь ${kgTxt(st)} кг: ${kgTxt(w)} кг. В прошлый раз все подходы по ${hi} и больше`+(big?`. Начать можно с ${Math.max(1,lo-2)} повторов`:'')};
+  }
+  // bodyweight: two sessions in a row at the top of the range, so make it harder (PR-04)
+  if(lt==='bw'||lt==='b'||!lt){
+    const easy=h=>h.sets.length>=ex.sets&&h.sets.every(s=>reps(s)>=hi);
+    if(hist.length>1&&easy(hist[0])&&easy(hist[1])){
+      const e=pzExById(ex.id), hd=e&&e.hd&&pzExById(e.hd);
+      const harder=lt==='b'?'возьми резинку потуже':hd?`переходи на «${hd.n.charAt(0).toLowerCase()+hd.n.slice(1)}»`:'опускайся медленнее, за 3 секунды, или добавь рюкзак';
+      return {prog:false,kind:'harder',text:`Стало легко: ${harder}`};
+    }
+  }
+  return null;
 }
+function kgTxt(w){return String(Math.round(w*100)/100).replace('.',',');}
 
 /* ============================================================
    STORAGE
@@ -1697,9 +1782,15 @@ function stateJson(){const {updatedAt,...rest}=S;return JSON.stringify(rest);}
 function save(){
   const j=stateJson();
   if(j!==_savedJson){S.updatedAt=Date.now();_savedJson=j;}
-  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){console.error(e);}
+  try{localStorage.setItem(KEY,JSON.stringify(S));saveWarned=false;}
+  catch(e){
+    console.error(e);
+    // Usually the browser's storage is full. Say it once instead of losing changes silently.
+    if(!saveWarned){saveWarned=true;setTimeout(()=>toast(signedIn()?'Память полна: сохраняю только в аккаунт':'Память заполнена, данные не сохранились','err'),0);}
+  }
   scheduleSync();
 }
+let saveWarned=false;
 function saveWip(){
   try{localStorage.setItem(KEY_WIP,JSON.stringify({day:curDay,data:wip}));}catch(e){}
 }
@@ -1726,18 +1817,26 @@ function load(){
     }
     _savedJson=stateJson();
   }catch(e){
+    console.error(e);
+    // The saved data could not be read. Keep an untouched copy before the app starts over,
+    // so the next save cannot wipe the person's records.
+    try{
+      const raw=localStorage.getItem(KEY);
+      if(raw&&localStorage.getItem(KEY+'_rescue')!==raw) localStorage.setItem(KEY+'_rescue',raw);
+      if(raw) loadRescued=true;
+    }catch(_){}
     S={profile:{startDate:tomorrowKey(),startWeight:70,targetWeight:75,schedule:SPLIT_SCHEDULE.slice(),goal:'gain',onboarded:false},weights:[],sessions:[],plan:JSON.parse(JSON.stringify(DEFAULT_PLAN)),planVersion:PLAN_VERSION,planSince:todayKey(),nutrition:{},settings:{restTimer:90,notifications:false}};
     normalizeState();
   }
 }
+let loadRescued=false;
 function normalizeState(){
   S.profile=S.profile||{};
   S.profile.startDate=S.profile.startDate||tomorrowKey();
-  S.profile.startWeight=S.profile.startWeight??54;
-  S.profile.targetWeight=S.profile.targetWeight??63.5;
+  // Missing numbers get neutral values, never one person's own; real ones come from the questionnaire
+  S.profile.startWeight=S.profile.startWeight??70;
+  S.profile.targetWeight=S.profile.targetWeight??S.profile.startWeight;
   S.profile.schedule=S.profile.schedule||[1,3,5];
-  S.profile.kcalTarget=S.profile.kcalTarget||2600;
-  S.profile.proteinTarget=S.profile.proteinTarget||110;
   // Data from before goals existed is a weight-gain profile that is already set up
   if(!GOALS[S.profile.goal]) S.profile.goal='gain';
   if(S.profile.onboarded===undefined){S.profile.onboarded=true;S.profile.programSet=true;}
@@ -1760,6 +1859,13 @@ function normalizeState(){
   S.checkins=S.checkins||[];
   S.bodycomp=S.bodycomp||[];
   S.settings=S.settings||{restTimer:90,notifications:false};
+  if(!S.profile.kcalTarget||!S.profile.proteinTarget){
+    let k=2000,pr=Math.round(1.6*S.profile.startWeight);
+    try{ if(S.profile.onboarded&&S.profile.age&&S.profile.height){const pl=pzPlan(pzX());k=pl.kcal;pr=pl.prot;} }catch(e){}
+    S.profile.kcalTarget=S.profile.kcalTarget||k;
+    S.profile.proteinTarget=S.profile.proteinTarget||pr;
+  }
+  pzUpgrade();
 }
 function migrateV1(){
   try{
@@ -1783,7 +1889,11 @@ function migrateV1(){
 /* ============================================================
    HISTORY DATA REPAIR
    ============================================================ */
+// A one-time repair of records saved by an old version without numbers. It used to run on every start and
+// made up reps (10) for any set saved without them, so it now runs once and is then switched off.
 function repairHistoryData(){
+  if(S.histFixed) return 0;
+  S.histFixed=1;
   let fixed=0;
 
   function findInSessions(sessions,sessIdx,exId,si,field,searchNext){
@@ -2078,7 +2188,7 @@ function renderWorkout(){
       </div>`;
     }
 
-    const cuesHtml=ex.cues.map(c=>`<li>${c}</li>`).join('');
+    const cuesHtml=(ex.cues||[]).map(c=>`<li>${esc(c)}</li>`).join('');
     const ytUrl=`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.yt||ex.name)}`;
     const lastHintText=lastSets?'В прошлый раз: '+lastSets.map((s,i)=>`${i+1}: ${s.w||'?'}×${s.r||'?'}`).join(', '):'';
 
@@ -2088,12 +2198,12 @@ function renderWorkout(){
     div.innerHTML=`
       <div class="ex-head" onclick="this.parentNode.classList.toggle('open')">
         <div class="ex-idx">${i+1}</div>
-        <div class="ex-name"><b>${ex.name}</b><small>${ex.ss?'<span class="ex-tag">⇄ пара</span> · ':''}${ex.caution?'⚠️ ':''}${ex.muscles}</small></div>
+        <div class="ex-name"><b>${esc(ex.name)}</b><small>${ex.ss?'<span class="ex-tag">⇄ пара</span> · ':''}${ex.caution?'⚠️ ':''}${esc(ex.muscles||'')}</small></div>
         <div class="ex-badge">${ex.sets}×${ex.repsMin}${ex.repsMin!==ex.repsMax?'–'+ex.repsMax:''}</div>
         <svg class="ex-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </div>
       <div class="ex-body">
-        ${sug&&sug.prog?`<div class="prog-hint">🔥 Рекомендую +2.5 кг → ${sug.weight} кг (прошлый раз все подходы в цели)</div>`:''}
+        ${sug&&sug.text?`<div class="prog-hint">${sug.text}</div>`:''}
         ${lastHintText?`<div class="last-hint">${lastHintText}</div>`:''}
         ${pzExInfo(ex,lastSets,plan)}
         <ul class="cues">${cuesHtml}</ul>
@@ -2176,29 +2286,31 @@ function updateWkTonnage(){
   }
 }
 function finishWorkout(){
-  // Collect all input values from DOM (use placeholder as fallback)
+  // Typed values count as they are. Grey hints (last time, the suggested weight) are taken only for sets
+  // ticked as done: an exercise that was skipped is not written down as if it was done, and its weight
+  // does not creep up on its own.
   document.querySelectorAll('#exList input').forEach(inp=>{
     const {ex,si,f}=inp.dataset;
     if(!wip[ex])wip[ex]=[];
     if(!wip[ex][si])wip[ex][si]={w:'',r:'',done:false};
-    if(inp.value){
-      wip[ex][si][f]=inp.value;
-    } else if(inp.placeholder){
-      if(f==='r'&&inp.placeholder!=='повт') wip[ex][si][f]=inp.placeholder;
-      if(f==='w'&&inp.placeholder!=='вес'){
-        const wRaw=inp.placeholder.replace(/^→\s*/,'');
-        if(wRaw) wip[ex][si][f]=wRaw;
-      }
+    const set=wip[ex][si];
+    if(inp.value) set[f]=inp.value;
+    else if(set.done&&!set[f]&&inp.placeholder){
+      if(f==='r'&&inp.placeholder!=='повт') set[f]=inp.placeholder;
+      if(f==='w'&&inp.placeholder!=='вес'){const wRaw=inp.placeholder.replace(/^→\s*/,'');if(wRaw)set[f]=wRaw;}
     }
   });
-
-  const hasAny=Object.values(wip).some(sets=>sets.some(s=>s.w||s.r));
-  if(!hasAny){toast('Запиши хотя бы один подход','err');return;}
+  const ex={};
+  Object.entries(wip).forEach(([id,sets])=>{
+    const kept=(sets||[]).filter(s=>s&&(s.w||s.r));
+    if(kept.length) ex[id]=kept;
+  });
+  if(!Object.keys(ex).length){toast('Отметь хотя бы один подход','err');return;}
 
   const vol=calcWipTonnage();
   const session={
     id:todayKey()+'-'+curDay+'-'+Math.random().toString(36).slice(2,6),
-    date:todayKey(),day:curDay,ex:JSON.parse(JSON.stringify(wip)),volume:vol,
+    date:todayKey(),day:curDay,ex:JSON.parse(JSON.stringify(ex)),volume:vol,
   };
   S.sessions.push(session);
   save();
@@ -2661,8 +2773,8 @@ const FOOD_DB = [
 
 let foodDraft=null;   // {text, items, src}
 
-function kcalTarget(){return (S.profile&&S.profile.kcalTarget)||2600;}
-function protTarget(){return (S.profile&&S.profile.proteinTarget)||110;}
+function kcalTarget(){return (S.profile&&S.profile.kcalTarget)||2000;}
+function protTarget(){return (S.profile&&S.profile.proteinTarget)||100;}
 function esc(str){return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function foodNorm(str){return ' '+String(str).toLowerCase().replace(/ё/g,'е')+' ';}
 function round1(x){return Math.round(x*10)/10;}
@@ -2690,7 +2802,7 @@ function foodTotals(d){
 
 // "гречка 200, курица 150 и 3 яйца" → [{n,g,k,p}] ; unknown pieces get unk:true
 function parseFood(text){
-  const pieces=foodNorm(text)
+  const pieces=foodNorm(text).replace(/(\d),(\d)/g,'$1.$2')   // "1,5 кг" is one number, not two pieces
     .split(/[,;\n+]|\s(?:и|с|со|plus)\s/)
     .map(x=>x.trim()).filter(Boolean);
   return pieces.map(parseFoodPiece).filter(Boolean);
@@ -2701,17 +2813,35 @@ function parseFoodPiece(raw){
   // explicit numbers: "450ккал", "20б" / "20 г белка"
   const mk=t.match(/(\d+(?:[.,]\d+)?)\s*(?:ккал|kcal|кал)/);
   const mp=t.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(?:б'+NB+'|г\\s*белк|белк)'));
+  // A stem of several words matches in any order («гречка сухая» = «сухая гречка»); short words such as «на»
+  // must stand alone. A product scores by how much of the text its stems cover, so «куриная грудка» is chicken
+  // (two of its stems) and not a dish that shares one word with it.
+  const stemIn=st=>t.includes(st)||(st.includes(' ')&&st.split(' ').every(w=>w.length<3?t.includes(' '+w+' '):t.includes(w)));
   let best=null,bestLen=0;
-  FOOD_DB.forEach(f=>f.s.forEach(st=>{
-    if(t.includes(st)&&st.length>bestLen){best=f;bestLen=st.length;}
-  }));
-  // The big base: every stem of the product has to be in the text, or one long stem;
-  // it wins over the built-in base only with a longer match («биг мак» over «мак»)
+  FOOD_DB.forEach(f=>{
+    const hit=f.s.filter(stemIn);
+    let len=hit.filter(x=>!hit.some(y=>y!==x&&y.includes(x))).reduce((a,x)=>a+x.length,0);
+    const nm=f.nn||(f.nn=foodNorm(f.n.replace(/\s*\/.*$/,'')).trim());   // the product's own name typed in full
+    if(nm.length>len&&stemIn(nm)) len=nm.length;
+    if(len>bestLen){best=f;bestLen=len;}
+  });
+  // The big base: every stem of the product has to be in the text, and it wins over the built-in base only with
+  // a longer match («биг мак» over «мак»). A product that matches by one long stem only is a last resort: «тарелка борща» is borscht, not
+  // «шаурма на тарелке», and «куриная грудка» is chicken, not «колбаса куриная».
+  let full=null,fullLen=0,part=null,partLen=0,part2=null,part2Len=0;
   FOOD_BIG.forEach(f=>{
     const ss=f.s||[]; if(!ss.length)return;
-    const hit=ss.filter(st=>t.includes(st)), len=hit.reduce((a,x)=>a+x.length,0);
-    if((hit.length===ss.length||hit.some(x=>x.length>=6))&&len>bestLen){best=f;bestLen=len;}
+    const hit=ss.filter(st=>t.includes(st)); if(!hit.length)return;
+    const len=hit.filter(x=>!hit.some(y=>y!==x&&y.includes(x))).reduce((a,x)=>a+x.length,0);
+    if(hit.length===ss.length){if(len>fullLen){full=f;fullLen=len;}}
+    else{
+      if(hit.length>=2&&len>part2Len){part2=f;part2Len=len;}   // «макароны … сухих»: two words of the product
+      if(hit.some(x=>x.length>=6)&&len>partLen){part=f;partLen=len;}
+    }
   });
+  if(full&&fullLen>bestLen){best=full;bestLen=fullLen;}
+  if(part2&&part2Len>bestLen){best=part2;bestLen=part2Len;}
+  else if(!best&&part){best=part;bestLen=partLen;}
   if(mk){
     const name=t.replace(new RegExp('\\d+(?:[.,]\\d+)?\\s*(?:ккал|kcal|кал|б'+NB+'|г\\s*белк\\S*|белк\\S*|г'+NB+'|гр'+NB+')','g'),' ').replace(/\s+/g,' ').trim();
     return {n:cap(name||'Продукт'),g:null,k:Math.round(parseFloat(mk[1].replace(',','.'))),p:mp?round1(parseFloat(mp[1].replace(',','.'))):0};
@@ -3980,9 +4110,9 @@ function renderHistory(){
       const setsHtml=sets.map((st,si)=>{
         const w=st.w||'?'; const r=st.r||'?';
         const done=!!st.done;
-        return `<span class="hist-set${done?' done':''}">${si+1}. ${w}кг × ${r}</span>`;
+        return `<span class="hist-set${done?' done':''}">${si+1}. ${esc(w)}кг × ${esc(r)}</span>`;
       }).join('');
-      detailHtml+=`<div class="hist-ex"><div class="hist-ex-nm">${nm}</div><div>${setsHtml}</div></div>`;
+      detailHtml+=`<div class="hist-ex"><div class="hist-ex-nm">${esc(nm)}</div><div>${setsHtml}</div></div>`;
     });
 
     return `<div class="hist" id="hist-${i}">
@@ -4093,7 +4223,7 @@ function drawStrengthChart(exId){
     if(maxW>0) points.push({y:maxW,label:fmtDate(sess.date)});
   });
   const ex=allPlanEx().find(e=>e.id===exId);
-  drawSvgChart($('strengthChart'),points,null,`Пока нет данных по упражнению «${ex?ex.name:exId}». Заверши тренировку — появится.`);
+  drawSvgChart($('strengthChart'),points,null,`Пока нет данных по упражнению «${esc(ex?ex.name:exId)}». Заверши тренировку — появится.`);
 }
 
 /* ============================================================
@@ -4118,8 +4248,8 @@ function renderProgEditor(){
   $('progExList').innerHTML=plan.length?plan.map(ex=>`
     <div class="prog-ex-row">
       <div class="prog-ex-info">
-        <div class="prog-ex-nm">${ex.name}</div>
-        <div class="prog-ex-det">${ex.muscles} · ${ex.sets}×${ex.repsMin}${ex.repsMin!==ex.repsMax?'–'+ex.repsMax:''}</div>
+        <div class="prog-ex-nm">${esc(ex.name)}</div>
+        <div class="prog-ex-det">${esc(ex.muscles||'')} · ${ex.sets}×${ex.repsMin}${ex.repsMin!==ex.repsMax?'–'+ex.repsMax:''}</div>
       </div>
       <button class="prog-del" onclick="deleteExercise('${ex.id}','${progEditorDay}')">✕</button>
     </div>`).join('')
@@ -4266,21 +4396,34 @@ function firebaseBackend(c){
     try{return await go(await token(sess));}
     catch(e){ if(e.status!==401) throw e; sess.exp=0; return go(await token(sess)); }   // token died early: refresh once
   }
-  const out=j=>{
+  const out=async j=>{
     if(!j||!j.fields) return {rev:0,savedAt:0,data:null};
-    let data=null; try{data=JSON.parse(j.fields.data.stringValue);}catch(e){}
+    let raw=(j.fields.data||{}).stringValue||'', data=null;
+    if(raw.startsWith(GZ)){
+      // A packed copy that this browser cannot unpack must not look like an empty account: that would overwrite it
+      try{raw=await gzUnpack(raw);}catch(e){throw {status:415,message:'Обнови браузер, чтобы открыть данные'};}
+    }
+    try{data=JSON.parse(raw);}catch(e){}
     return {rev:j.updateTime,savedAt:+((j.fields.savedAt||{}).integerValue||0),data};
   };
   async function get(sess){
-    try{return out(await fs(sess,docUrl(sess.uid)));}
+    try{return await out(await fs(sess,docUrl(sess.uid)));}
     catch(e){ if(e.status===404) return {rev:0,savedAt:0,data:null}; throw e; }
   }
   // The whole state is one JSON string field, so Firestore's rules on
   // nested arrays and field names never get in the way. updateTime is
   // the version: the write only lands if nobody saved in between.
+  // A Firestore document holds up to 1 MiB, counted in UTF-8 bytes (a Cyrillic letter is two). About a year of
+  // detailed food logging reaches that, so a big copy is stored gzip-packed (about ten times smaller).
+  // Copies that old versions of the app could still write themselves stay plain.
   async function put(sess,data,baseRev){
-    const savedAt=Date.now(), json=JSON.stringify(data);
-    if(json.length>900000) throw {status:413,message:'Слишком много данных для облака'};   // Firestore: 1 MB per document
+    const savedAt=Date.now();
+    let json=JSON.stringify(data);
+    if(json.length>900000||u8len(json)>1000000){
+      if(typeof CompressionStream!=='function') throw {status:413,message:'Слишком много данных для облака'};
+      json=await gzPack(json);
+    }
+    if(u8len(json)>1000000) throw {status:413,message:'Слишком много данных для облака'};
     const pre=baseRev?'currentDocument.updateTime='+encodeURIComponent(baseRev):'currentDocument.exists=false';
     try{
       const j=await fs(sess,docUrl(sess.uid)+'?'+pre,{method:'PATCH',headers:{'Content-Type':'application/json'},
@@ -4320,6 +4463,18 @@ function firebaseBackend(c){
         body:JSON.stringify({requestType:'PASSWORD_RESET',email})});
     },
   };
+}
+const GZ='gz1:';
+function u8len(str){return new TextEncoder().encode(str).length;}
+async function gzPack(str){
+  const buf=new Uint8Array(await new Response(new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+  let bin=''; for(let i=0;i<buf.length;i+=0x8000) bin+=String.fromCharCode.apply(null,buf.subarray(i,i+0x8000));
+  return GZ+btoa(bin);
+}
+async function gzUnpack(str){
+  const bin=atob(str.slice(GZ.length)), buf=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+  return await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
 }
 // server/index.js on Yandex Cloud. One POST for everything; text/plain
 // keeps it a "simple" request, so there is no CORS preflight.
@@ -4460,6 +4615,7 @@ async function resolveRemote(remote,manual){
     acct.rev=remote.rev; acctStore();
     renderAll();
     if($('tab-progress').classList.contains('active')) renderProgress();
+    pzUpgradeNote();
     return syncNow(manual,true);
   }
   // just signed in on this device: ask if both sides have records
@@ -4490,7 +4646,7 @@ function mergeStates(a,b){
   uni('weights',x=>x.date);
   uni('sessions',x=>x.id||x.date+'|'+x.day);
   uni('checkins',x=>x.date);
-  uni('bodycomp',x=>x.date+'|'+x.src+'|'+x.pbf);
+  uni('bodycomp',x=>x.id||x.date+'|'+x.source+'|'+x.pbf);
   uni('myFoods',x=>x.id||x.n);
   uni('supps',x=>x.id);
   ['weights','sessions','checkins','bodycomp'].forEach(byDate);
@@ -4520,6 +4676,7 @@ function adoptRemote(remote){
   renderAll();
   if(S.profile.onboarded) obClose();
   if($('tab-progress').classList.contains('active')) renderProgress();
+  pzUpgradeNote();
 }
 
 /* ---------- sign in / out ---------- */
@@ -4947,6 +5104,41 @@ function pzPlan(x){
   if(floored) notes.push(['','Ниже '+floor+' ккал не опускаем: на меньшем трудно получить всё нужное.']);
   return {x,s,e,src,rate,rateB:rr.b,kcal,floor,...mac,notes};
 }
+// Plans counted by an older energy model are recounted once (PZ_MODEL), and only where the calories are still the
+// questionnaire's own: not typed in by the person, not moved by a weekly check-in or a body-composition plan.
+let pzUpgraded=null;
+function pzUpgrade(){
+  const p=S.profile;
+  if(!p.onboarded||(p.pzModel||1)>=PZ_MODEL) return;
+  // Health answers live on one device. Where they are missing the safety rules would be skipped, so that device does the recount.
+  if(p.q&&p.q.hAt&&!H) return;
+  const own=p.kcalSrc==='pz'&&!S.checkins.some(c=>c.kcalTo!==c.kcalFrom)&&(!p.rate||p.rate.src==='pz');
+  if(own){
+    try{
+      const pl=pzPlan(pzX());
+      if(pl.src!=='bc'&&!pl.s.under16&&pl.kcal>p.kcalTarget){   // the new model only ever asks for more
+        pzUpgraded={from:p.kcalTarget,to:pl.kcal,prot:p.proteinTarget,rate:p.rate?p.rate.pct:null,at:p.kcalAt||null};
+        p.kcalTarget=pl.kcal; p.proteinTarget=pl.prot; p.kcalAt=todayKey();
+        if(p.rate&&p.rate.goal===pl.x.goal) p.rate.pct=pl.rate;
+      }
+    }catch(e){ console.error(e); return; }   // never let a recount stop the app from opening the person's data
+  }
+  p.pzModel=PZ_MODEL;
+}
+// Tell the person once, and let them keep the old number
+async function pzUpgradeNote(){
+  const u=pzUpgraded; if(!u) return;
+  pzUpgraded=null;
+  _savedJson=''; save();   // the recount is a real change: it goes to the account too
+  if(pzNoNum()) return;
+  const ok=await showConfirm(`Мы уточнили расчёт расхода калорий: раньше он выходил заниженным. Твоя норма теперь ${u.to} ккал вместо ${u.from}.`,'Хорошо','Оставить '+u.from,true);
+  if(ok) return;
+  const p=S.profile;
+  p.kcalTarget=u.from; p.proteinTarget=u.prot; p.kcalSrc='user';
+  if(u.at) p.kcalAt=u.at; else delete p.kcalAt;
+  if(p.rate&&u.rate!=null) p.rate.pct=u.rate;
+  save(); renderAll();
+}
 // NU-32: a starting point from BMI, silhouette and experience; the goal stays the user's choice
 const PZ_PROFILES=[
   {id:'build',name:'Строим базу',goal:'gain',hint:'Больше всего выиграешь от набора с тренировками на всё тело.',when:x=>(x.bmi<22||['s1','s2'].includes(x.sil))&&x.exp!=='reg'},
@@ -5328,7 +5520,7 @@ function obFinish(keepNums){
     if(!(p.rate&&p.rate.goal===ob.goal&&p.rate.src!=='pz')) p.rate={goal:ob.goal,pct:pl.rate,src:'pz'};
   }
   if((pl.s.ed||pl.s.under16)&&!S.settings.noNumbers) S.settings.noNumbers='auto';
-  p.onboarded=true;
+  p.onboarded=true; if(!keepNums) p.pzModel=PZ_MODEL;
   const rebuild=mode==='core'&&ob.rebuild&&p.programSet&&p.program;
   if(rebuild) applyProgram(p.program,true);
   save(); obClose(); renderAll();
@@ -5721,7 +5913,7 @@ function pzInst(e,c){
     const sub=(e.sb||[]).map(i=>PZ_EX.find(z=>z.id===i)).find(z=>z&&pzFits(z,c));
     if(sub) cues.push('Занято → '+sub.n.charAt(0).toLowerCase()+sub.n.slice(1));
   }
-  return {id,name:old?old.name:e.n,muscles:old?old.muscles:pzMusStr(e.p),cues,yt:(old&&old.yt)||e.n+' техника',pat:e.p};
+  return {id,name:old?old.name:e.n,muscles:old?old.muscles:pzMusStr(e.p),cues,yt:(old&&old.yt)||e.n+' техника',pat:e.p,lt:e.lt};
 }
 function pzVolTargets(o,c){
   const tab=PZ_VOL[c.s.light||c.s.pregnant?'new':o.exp]||PZ_VOL.new;                     // TR-25: lightMode uses the novice table
@@ -7242,6 +7434,8 @@ function init(){
   try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   renderAll();
   if(planMigrated){planMigrated=false;save();}
+  pzUpgradeNote();
+  if(loadRescued) setTimeout(()=>toast('Данные не прочитались, копия сохранена','err'),600);
   renderAcct();
   try{localStorage.removeItem('gymtracker_ai_v1');}catch(e){}   // the AI food counter was removed
   setTimeout(foodDataLoad,1500);   // the big base and the dishes, so search and the menu are ready offline
