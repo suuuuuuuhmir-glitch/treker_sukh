@@ -589,19 +589,6 @@ details.fold .fold-body>p.sub:first-child{margin-top:0}
 .acct-strip-t small{display:block;font-size:12.5px;color:var(--muted);font-weight:500;margin-top:1px}
 .acct-strip .chev{margin-right:6px}
 .acct-strip-x{width:34px;height:34px;flex:0 0 34px;border:none;background:none;color:var(--muted2);font-size:20px;line-height:1;border-radius:99px}
-/* Claude link */
-.cl-steps{margin:0 0 16px;padding-left:22px;display:grid;gap:8px;font-size:14px;line-height:1.45;color:var(--muted)}
-.cl-steps b{color:var(--text);font-weight:600}
-.cl-steps a{color:var(--accent-light);font-weight:600;text-underline-offset:3px}
-.cl-pack{background:var(--fill);border-radius:18px;padding:13px 14px;margin:0 0 12px}
-.cl-pack b.t{display:block;font-size:15px;font-weight:650;margin-bottom:4px}
-.cl-pack .sub{margin:0 0 6px}
-.cl-lines{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:9px}
-.cl-lines li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;font-weight:500}
-.cl-lines li>span{width:22px;height:22px;flex:0 0 22px;border-radius:99px;display:grid;place-items:center;background:var(--good-dim);color:var(--good);margin-top:-1px}
-.cl-lines li>span .i{width:12px;height:12px;stroke-width:2.6}
-.cl-lines li>div{min-width:0;overflow-wrap:anywhere}
-.cl-lines small{display:block;color:var(--muted);font-size:12.5px;font-weight:450;margin-top:2px}
 
 /* ===================== REST TIMER ===================== */
 .rest-overlay{
@@ -1365,9 +1352,6 @@ body.nonum .food-entry .kc{display:none}
     <div class="card" id="notifSetting"></div>
   </div>
 
-  <div class="fold-group">Помощник</div>
-  <div id="clCard"></div>
-
   <div class="fold-group">Другое</div>
   <details class="fold">
     <summary><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-alert"/></svg></span>Сброс<span class="s-sub"></span></summary>
@@ -1492,14 +1476,6 @@ body.nonum .food-entry .kc{display:none}
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div id="acctBody"></div>
-  </div>
-</div>
-
-<!-- ==================== CLAUDE LINK ==================== -->
-<div class="modal-bg" id="clModal" onclick="if(event.target===this)clClose()">
-  <div class="modal-sheet">
-    <div class="modal-handle"></div>
-    <div id="clBody"></div>
   </div>
 </div>
 
@@ -1888,7 +1864,6 @@ function save(){
     if(!saveWarned){saveWarned=true;setTimeout(()=>toast(signedIn()?'Память полна: сохраняю только в аккаунт':'Память заполнена, данные не сохранились','err'),0);}
   }
   scheduleSync();
-  clSchedule();
 }
 let saveWarned=false;
 function saveWip(){
@@ -4184,7 +4159,6 @@ function renderSettings(){
   $('setNumsSum').textContent=S.profile.startWeight+' → '+S.profile.targetWeight+' кг';
   renderNotifSetting();
   renderHealthSettings();
-  clRender();
 }
 function renderHistory(){
   const h=$('histList');
@@ -4415,12 +4389,10 @@ async function resetData(){
   const ok=await showConfirm(inAcct?'Сбросить все данные на этом телефоне? Ты выйдешь из аккаунта, а копия в облаке останется.':'Сбросить ВСЕ данные? Это нельзя отменить.','Сбросить');
   if(!ok)return;
   if(inAcct) acctOut();
-  clearTimeout(clTimer); clearTimeout(clPollTimer); cl=null;   // the Claude link goes too: an empty plan must not replace its copy
   localStorage.removeItem(KEY);
   localStorage.removeItem(KEY_WIP);
   localStorage.removeItem(KEY_HEALTH);
-  localStorage.removeItem(KEY_CL);
-  load(); wip={}; renderAll(); renderAcct(); clRender();
+  load(); wip={}; renderAll(); renderAcct();
   toast('Данные сброшены');
 }
 
@@ -4997,601 +4969,6 @@ window.addEventListener('online',()=>scheduleSync(1000));
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){ if(syncTimer) syncNow(false); }
   else if(signedIn()&&!syncTimer) pullSync(false);
-});
-
-/* ============================================================
-   CLAUDE LINK
-   Optional, for people who plan with Claude. Their own private
-   GitHub repo is the mailbox. With a fine-grained token (that one
-   repo, Contents: read and write) the tracker:
-   - keeps gymtracker.json there: the same data as the account copy
-     (no health answers, no photos), sent 20 s after the last change
-     or when the app is hidden, so Claude sees fresh numbers;
-   - reads claude-inbox.json from the default branch and from
-     claude/* branches, and applies the packages Claude left there:
-     calories and protein, weight, a body-composition measurement,
-     training days, the program, supplements. A package applies once,
-     on or after its date, never while a workout is being filled in,
-     and the last batch can be undone.
-   The token stays on this device, in its own key, never in S.
-   Inbox (v1):
-     {"packages":[{"id":"…","title":"…","note":"…","from":"YYYY-MM-DD","until":"YYYY-MM-DD",
-       "changes":[{"op":"targets","kcal":2800,"protein":110},{"op":"weight","date":"…","kg":52.6},…]}]}
-   Ops: targets {kcal, protein, rate}, weight {date, kg}, bodycomp {date, weight, pbf, bfm, smm,
-   ffm, bmrDevice, vfl, ecwTbw, seg, cond, decided}, schedule {days}, plan {days:{A:[{id, sets,
-   repsMin, repsMax, …}]}, meta}, supp {id, n, dose, unit, …} or {id, remove}, goal {targetWeight}.
-   ============================================================ */
-const KEY_CL='gymtracker_claude_v1';
-const CL_FILE='gymtracker.json', CL_INBOX='claude-inbox.json';
-const CL_DELAY=20000, CL_RETRY=60000, CL_POLL=120000;
-const CL_DOW=['вс','пн','вт','ср','чт','пт','сб'];
-const CL_ID=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/, CL_DATE=/^\d{4}-\d{2}-\d{2}$/;
-// var, not let: save() may run before this part of the script has
-var cl=null, clTimer=null, clPollTimer=null, clBusy=false, clAgain=false, clChecking=false;
-var clBusyText='', clView='', clShow={ok:[],bad:[]};
-
-function clLoad(){try{cl=JSON.parse(localStorage.getItem(KEY_CL))||null;}catch(e){cl=null;}}
-function clStore(){
-  try{ if(cl) localStorage.setItem(KEY_CL,JSON.stringify(cl)); else localStorage.removeItem(KEY_CL); }catch(e){}
-}
-function clOn(){return !!(cl&&cl.token&&cl.owner&&cl.repo);}
-function clBranch(){return (cl&&cl.branch)||'main';}
-function b64utf8(str){
-  const bytes=new TextEncoder().encode(str); let bin='';
-  for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));
-  return btoa(bin);
-}
-function unb64utf8(b64){
-  const bin=atob(String(b64||'').replace(/\s/g,'')), bytes=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-// One call to the repo's REST API -> {status, ok, j}; throws {net:true} without a connection
-async function clApi(path,opt={}){
-  let r, j=null;
-  try{
-    r=await fetch('https://api.github.com/repos/'+encodeURIComponent(cl.owner)+'/'+encodeURIComponent(cl.repo)+path,{cache:'no-store',...opt,
-      headers:{'Authorization':'Bearer '+cl.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(opt.headers||{})}});
-  }catch(e){throw {net:true};}
-  try{j=await r.json();}catch(e){}
-  return {status:r.status,ok:r.ok,j};
-}
-function clFailText(e){
-  if(!e||e.net) return 'Нет связи с GitHub';
-  if(e instanceof Error) return 'Не получилось: '+e.message;
-  const st=e.status, msg=String((e.j&&e.j.message)||'');
-  if(st===401) return 'Токен не подходит или истёк: создай новый';
-  if((st===403||st===429)&&/rate limit/i.test(msg)) return 'GitHub просит подождать, попробую позже';
-  if(st===403) return 'Токену не хватает прав: нужно Contents — Read and write';
-  if(st===404) return 'Репозиторий не найден, или токен не даёт к нему доступ';
-  if(st>=500) return 'GitHub не отвечает, попробую позже';
-  return 'Ошибка GitHub '+st;
-}
-
-/* ---------- The copy for Claude ---------- */
-function clDirty(){return (S.updatedAt||0)!==(cl.pushedAt||0);}
-function clSchedule(delay=CL_DELAY){
-  if(!clOn()) return;
-  clearTimeout(clTimer); clTimer=setTimeout(()=>clPush(false),delay);
-}
-// A fresh phone has nothing to show yet: it must not replace the copy with an empty plan
-function clHasData(){return !!(S.profile.onboarded||hasRecords());}
-// -> true when the copy is up to date, false on an error, null when a send is already running
-async function clPush(manual){
-  if(!clOn()) return false;
-  clearTimeout(clTimer); clTimer=null;
-  if(clBusy){clAgain=true;return null;}
-  if(!clHasData()||(!manual&&!clDirty())) return true;
-  if(!navigator.onLine){cl.lastError='Нет сети, отправлю, когда появится';clStore();clRender();return false;}
-  clBusy=true; clRender('Отправляю…');
-  const sentAt=S.updatedAt||0, json=JSON.stringify(S,null,2);
-  let ok=false;
-  try{
-    for(let i=0;i<2&&!ok;i++){
-      if(cl.sha===undefined||i){
-        // the file's version from the folder listing: the file itself is not downloaded
-        const d=await clApi('/contents?ref='+encodeURIComponent(clBranch()));
-        if(!d.ok) throw d;
-        const f=Array.isArray(d.j)&&d.j.find(x=>x&&x.name===CL_FILE&&x.type==='file');
-        cl.sha=f?f.sha:null;
-      }
-      const body={message:'Трекер: обновление '+todayKey(),content:b64utf8(json),branch:clBranch()};
-      if(cl.sha) body.sha=cl.sha;
-      const r=await clApi('/contents/'+CL_FILE,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(r.ok){cl.sha=(r.j&&r.j.content&&r.j.content.sha)||null;ok=true;}
-      else if(!(i===0&&(r.status===409||r.status===422))) throw r;   // written from elsewhere since: take its version, once
-    }
-    cl.pushedAt=sentAt; cl.lastPush=Date.now(); cl.lastError='';
-  }catch(e){
-    cl.lastError=clFailText(e);
-    if(e&&(e.net||e.status>=500)) clTimer=setTimeout(()=>clPush(false),CL_RETRY);
-  }finally{ clBusy=false; clStore(); clRender(); }
-  if(ok&&(clAgain||clDirty())) clSchedule(1000);
-  clAgain=false;
-  return ok;
-}
-
-/* ---------- Packages from Claude ---------- */
-function clStr(v,max){return typeof v==='string'?v.trim().slice(0,max):'';}
-function clPackages(box){
-  const list=box&&typeof box==='object'&&Array.isArray(box.packages)?box.packages:[];
-  return list.slice(0,40)
-    .filter(p=>p&&typeof p==='object'&&typeof p.id==='string'&&CL_ID.test(p.id)&&Array.isArray(p.changes)&&p.changes.length&&p.changes.length<=40)
-    .map(p=>({id:p.id,title:clStr(p.title,80)||'Изменения от Claude',note:clStr(p.note,800),
-      from:CL_DATE.test(p.from||'')?p.from:'',until:CL_DATE.test(p.until||'')?p.until:'',changes:p.changes}));
-}
-function clDoneSet(){return new Set([...((cl&&cl.done)||[]),...((S.claude&&S.claude.done)||[])]);}
-async function clCheck(manual){
-  if(!clOn()||clChecking) return;
-  clearTimeout(clPollTimer);
-  if(!navigator.onLine){ if(manual) toast('Нет сети','err'); return; }
-  clChecking=true; if(manual) clRender('Проверяю…');
-  let res=null;
-  try{
-    const r=await clApi('/git/matching-refs/heads');
-    if(!r.ok) throw r;
-    const refs=(Array.isArray(r.j)?r.j:[]).map(x=>({name:String(x&&x.ref||'').replace(/^refs\/heads\//,''),sha:x&&x.object&&x.object.sha}))
-      .filter(x=>x.sha&&(x.name===clBranch()||x.name.startsWith('claude/')));
-    const names=new Set(refs.map(x=>x.name));
-    cl.seen=cl.seen||{};
-    Object.keys(cl.seen).forEach(k=>{if(!names.has(k))delete cl.seen[k];});
-    cl.pending=(cl.pending||[]).filter(p=>names.has(p.src));   // a deleted branch takes its waiting packages with it
-    for(const ref of refs){
-      if(cl.seen[ref.name]===ref.sha) continue;
-      const f=await clApi('/contents/'+CL_INBOX+'?ref='+encodeURIComponent(ref.sha));
-      if(!f.ok&&f.status!==404) throw f;
-      let pk=[];
-      if(f.ok){ let box=null; try{box=JSON.parse(unb64utf8(f.j&&f.j.content));}catch(e){} pk=clPackages(box); }
-      cl.pending=cl.pending.filter(p=>p.src!==ref.name).concat(pk.map(p=>({...p,src:ref.name})));
-      cl.seen[ref.name]=ref.sha;
-    }
-    cl.lastCheck=Date.now(); cl.checkError='';
-    res=clApplyDue();
-  }catch(e){
-    console.warn('Claude link:',e);
-    cl.checkError=clFailText(e);
-    if(manual) toast(cl.checkError,'err');
-  }finally{ clChecking=false; clStore(); clRender(); }
-  if(manual&&res&&!res.ok.length&&!res.bad.length) toast(res.wait?'Изменения от Claude применю после тренировки':'Новых изменений от Claude нет','ok');
-  clPoll();
-}
-function clPoll(){
-  clearTimeout(clPollTimer);
-  if(clOn()&&document.visibilityState==='visible') clPollTimer=setTimeout(()=>clCheck(false),CL_POLL);
-}
-// A workout being filled in right now is not redrawn under the person's fingers
-function clWipBusy(){
-  const t=$('tab-workout');
-  return !!(t&&t.classList.contains('active'))&&Object.values(wip||{}).some(s=>Array.isArray(s)&&s.some(x=>x&&(x.w||x.r||x.done)));
-}
-function clMark(p,st,err){
-  cl.done=[...(cl.done||[]).filter(x=>x!==p.id),p.id].slice(-300);
-  S.claude=S.claude||{};
-  S.claude.done=[...(S.claude.done||[]).filter(x=>x!==p.id),p.id].slice(-300);   // other devices skip it too
-  cl.log=[{id:p.id,title:p.title,at:Date.now(),st,err:err||''},...(cl.log||[])].slice(0,20);
-}
-function clApplyDue(){
-  const today=todayKey(), done=clDoneSet(), ok=[], bad=[], took=new Set();
-  const due=(cl.pending||[]).filter(p=>!done.has(p.id)&&!(p.from&&p.from>today)).sort((a,b)=>(a.from||'').localeCompare(b.from||''));
-  if(due.length&&clWipBusy()) return {ok,bad,wait:true};
-  due.forEach(p=>{
-    if(took.has(p.id)) return;   // the same package on two branches
-    took.add(p.id);
-    if(p.until&&p.until<today){clMark(p,'skip');return;}
-    try{ ok.push(clApply(p)); clMark(p,'ok'); }
-    catch(e){ const err=String((e&&e.message)||e); console.warn('Claude package',p.id,e); bad.push({id:p.id,title:p.title,err}); clMark(p,'err',err); }
-  });
-  const now=clDoneSet();
-  cl.pending=(cl.pending||[]).filter(p=>!now.has(p.id));
-  if(ok.length) S.claude.last={at:Date.now(),items:ok};
-  if(took.size) save();
-  if(ok.length||bad.length){
-    clShow={ok,bad};
-    setSegs(curDay); renderAll(); renderSettings();
-    if($('tab-progress').classList.contains('active')) renderProgress();
-    clOpen('done');
-  }
-  return {ok,bad};
-}
-// All changes of a package or none
-function clApply(p){
-  const backup=JSON.stringify(S), day0=curDay, lines=[], undo=[];
-  try{
-    p.changes.forEach(c=>{
-      const op=c&&typeof c==='object'?c.op:null;
-      if(typeof op!=='string'||!Object.prototype.hasOwnProperty.call(CL_OPS,op)) throw new Error('незнакомое изменение «'+clStr(String(op),30)+'»');
-      CL_OPS[op](c,lines,undo);
-    });
-  }catch(e){ S=JSON.parse(backup); curDay=day0; throw e; }
-  return {id:p.id,title:p.title,note:p.note,lines,undo};
-}
-function clNum(v,lo,hi,nm){
-  const x=typeof v==='number'?v:parseFloat(String(v).replace(',','.'));
-  if(!isFinite(x)||x<lo||x>hi) throw new Error(nm+': нужно число от '+lo+' до '+hi);
-  return Math.round(x*1000)/1000;
-}
-function clInt(v,lo,hi,nm){return Math.round(clNum(v,lo,hi,nm));}
-function clDay(v,nm){
-  if(typeof v!=='string'||!CL_DATE.test(v)||isNaN(new Date(v+'T12:00:00'))) throw new Error(nm+': нужна дата ГГГГ-ММ-ДД');
-  return v;
-}
-function clSnapProf(keys){
-  const v={}, del=[];
-  keys.forEach(k=>{ if(S.profile[k]===undefined) del.push(k); else v[k]=JSON.parse(JSON.stringify(S.profile[k])); });
-  return {k:'prof',v,del};
-}
-const CL_ROLE_DEF={B:{r:[6,10],rir:[1,3],rest:150},A:{r:[8,12],rir:[1,2],rest:120},F:{r:[8,12],rir:[1,2],rest:120},I:{r:[10,15],rir:[0,2],rest:75}};
-const CL_COMPOUND=['squat','hinge','legpress','lunge','hpush','ipush','vpush','hpull','vpull','dip'];
-// The same exercise keeps its id (history, last weights), cues and video; a new one comes from the exercise base
-function clExBase(id){
-  for(const d of Object.keys(S.plan||{})){ const e=(S.plan[d]||[]).find(x=>x&&x.id===id); if(e) return JSON.parse(JSON.stringify(e)); }
-  const old=Object.values(S.planOld||{}).flat().find(x=>x&&x.id===id);
-  if(old) return JSON.parse(JSON.stringify(old));
-  const e=pzExById(id); if(!e) return null;
-  let inst=null;
-  try{ inst=pzInst(e,pzCtx({place:'gym',...(S.profile.program||{})})); }catch(err){}
-  return inst||{id:e.id,name:e.n,muscles:pzMusStr(e.p),cues:(e.c||[]).slice(),yt:e.n+' техника',pat:e.p,lt:e.lt};
-}
-function clExLine(e){return e.name+' '+e.sets+'×'+e.repsMin+(e.repsMax!==e.repsMin?'–'+e.repsMax:'');}
-const CL_OPS={
-  // Calories, protein and the pace of the goal in % of weight per week
-  targets(c,L,U){
-    const k=c.kcal!=null?clInt(c.kcal,1000,6000,'Калории'):null, pr=c.protein!=null?clInt(c.protein,30,400,'Белок'):null;
-    const rate=c.rate!=null?clNum(c.rate,-1.5,1.5,'Темп'):null;
-    if(k==null&&pr==null&&rate==null) throw new Error('цели без чисел');
-    if(k!=null){ let fl=0; try{fl=kcalFloor();}catch(e){} if(k<fl) throw new Error('калорий меньше безопасного минимума ('+fl+')'); }
-    const p=S.profile, n0=L.length;
-    U.push(clSnapProf(['kcalTarget','proteinTarget','kcalSrc','kcalAt','rate','bcFreezeUntil']));
-    if(k!=null){ if(k!==p.kcalTarget){L.push({t:'Калории: '+fmtInt(p.kcalTarget)+' → '+fmtInt(k)+' ккал в день'});p.kcalAt=todayKey();} p.kcalTarget=k; }
-    if(pr!=null){ if(pr!==p.proteinTarget) L.push({t:'Белок: '+p.proteinTarget+' → '+pr+' г в день'}); p.proteinTarget=pr; }
-    if(rate!=null){
-      p.rate={goal:goalKey(),pct:rate,src:'claude'};
-      L.push({t:'Темп: '+String(rate).replace('.',',')+'% веса в неделю',d:'около '+fmtKg(rate/100*latestWeight()).replace(/^[+−]/,'')+' в неделю'});
-    }
-    p.kcalSrc='claude';                            // the questionnaire's recounts leave it alone
-    p.bcFreezeUntil=shiftKey(todayKey(),7);        // and the weekly check-in waits a week, as after an accepted plan
-    if(L.length===n0) L.push({t:'Калории и белок: без изменений'});
-  },
-  weight(c,L,U){
-    const d=clDay(c.date||todayKey(),'Дата веса');
-    if(d>todayKey()) throw new Error('вес на будущую дату');
-    const kg=clNum(c.kg,20,300,'Вес'), i=S.weights.findIndex(w=>w.date===d), old=i>=0?S.weights[i].kg:null;
-    U.push({k:'weight',date:d,kg:old});
-    if(i>=0) S.weights[i].kg=kg;
-    else{ S.weights.push({date:d,kg}); S.weights.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0); }
-    L.push({t:'Вес '+fmtDate(d)+': '+kgTxt(kg)+' кг'+(old!=null&&old!==kg?' (было '+kgTxt(old)+')':'')});
-  },
-  // A measurement from a body-composition scanner, the same fields as the form
-  bodycomp(c,L,U){
-    const src=c.source||'inbody';
-    if(!['inbody','bia8','bia4'].includes(src)) throw new Error('замер: неизвестный прибор');
-    const d=clDay(c.date,'Дата замера');
-    if(d>todayKey()) throw new Error('замер на будущую дату');
-    const n=(k,req)=>{
-      if(c[k]==null){ if(req) throw new Error('в замере нет '+k); return null; }
-      return clNum(c[k],BC_F[k].min,BC_F[k].max,BC_F[k].l);
-    };
-    const m={id:'bc'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),t:Date.now(),date:d,source:src,model:clStr(c.model,40),weight:n('weight',true),by:'claude'};
-    const q=c.cond&&typeof c.cond==='object'?c.cond:{}, hr=q.hour!=null?parseInt(q.hour,10):NaN;
-    m.cond={hour:hr>=0&&hr<=23?hr:null,fasted:['3+','2-3','lt2'].includes(q.fasted)?q.fasted:null,train:['24+','12-24','lt12'].includes(q.train)?q.train:null,
-      water:q.water===true,alc:q.alc===true,creatine:['no','long','new'].includes(q.creatine)?q.creatine:null};
-    m.pbf=n('pbf');
-    if(src==='inbody'){
-      ['bfm','smm','ffm',...BC_EXTRA].forEach(k=>{const v=n(k);if(v!=null)m[k]=v;});
-      if(c.seg&&typeof c.seg==='object'){
-        const seg={};
-        BC_SEG.forEach(([k,nm,lo,hi])=>{
-          const s=c.seg[k]; if(!s||typeof s!=='object') return;
-          const kg=s.kg!=null?clNum(s.kg,lo,hi,nm+', кг'):null, pct=s.pct!=null?clNum(s.pct,40,200,nm+', %'):null;
-          if(kg!=null||pct!=null) seg[k]={kg,pct};
-        });
-        if(Object.keys(seg).length) m.seg=seg;
-      }
-    }
-    bcDerive(m);
-    if(m.pbf==null||m.pbf<2||m.pbf>70) throw new Error('в замере не получается процент жира');
-    if(c.decided==='accepted'||c.decided==='kept') m.decided=c.decided;   // the plan from it is already set
-    const nm=src==='inbody'?'InBody':'Замер';
-    if(S.bodycomp.some(x=>x.date===d&&x.source===src&&Math.abs((x.weight||0)-m.weight)<0.05)){L.push({t:nm+' '+fmtDate(d)+': уже был записан'});return;}
-    S.bodycomp.push(m); U.push({k:'bc',id:m.id});
-    L.push({t:nm+' '+fmtDate(d)+' записан',d:'вес '+kgTxt(m.weight)+' кг · жир '+String(m.pbf).replace('.',',')+'%'+(m.smm!=null?' · мышцы '+kgTxt(m.smm)+' кг':'')});
-  },
-  // Weekdays, 0 = Sunday
-  schedule(c,L,U){
-    if(!Array.isArray(c.days)||!c.days.length||c.days.length>7) throw new Error('дни тренировок: нужен список от 1 до 7 дней');
-    const ds=[...new Set(c.days.map(x=>parseInt(x,10)))];
-    if(ds.some(x=>!(x>=0&&x<=6))) throw new Error('дни тренировок: числа от 0 (вс) до 6 (сб)');
-    ds.sort((a,b)=>(a+6)%7-(b+6)%7);   // Monday first, as on screen
-    U.push(clSnapProf(['schedule']));
-    S.profile.schedule=ds;
-    L.push({t:'Дни тренировок: '+ds.map(x=>CL_DOW[x]).join(', ')});
-  },
-  // The whole program: days A–E with their exercises in order
-  plan(c,L,U){
-    const src=c.days;
-    if(!src||typeof src!=='object'||Array.isArray(src)) throw new Error('в программе нет дней');
-    const keys=Object.keys(src);
-    if(!keys.length||keys.length>5||keys.some(k=>!/^[A-E]$/.test(k))) throw new Error('дни программы называются буквами A–E');
-    const plan={}, idMap={};
-    keys.forEach(Lt=>{
-      const list=src[Lt];
-      if(!Array.isArray(list)||!list.length||list.length>14) throw new Error('в дне '+Lt+' нужно от 1 до 14 упражнений');
-      const ids=new Set();
-      plan[Lt]=list.map(it=>{
-        if(!it||typeof it!=='object') throw new Error('пустое упражнение в дне '+Lt);
-        const rid=it.id!=null?String(it.id):null;
-        if(rid!=null&&!/^[A-Za-z0-9_-]{1,40}$/.test(rid)) throw new Error('странный id упражнения');
-        let ex=rid?clExBase(rid):null;
-        const nm=clStr(it.name,80);
-        if(!ex){
-          if(!nm) throw new Error('упражнение «'+(rid||'?')+'» не найдено');
-          ex={id:rid||('cl'+Lt.toLowerCase()+Math.random().toString(36).slice(2,8)),name:nm,muscles:'',cues:[],yt:nm+' техника'};
-        }
-        delete ex.ss; delete ex.ssFirst;
-        if(nm) ex.name=nm;
-        if(it.muscles!=null) ex.muscles=clStr(it.muscles,80);
-        if(Array.isArray(it.cues)) ex.cues=it.cues.filter(x=>typeof x==='string').slice(0,6).map(x=>x.trim().slice(0,160));
-        if(it.role!=null){ if(!CL_ROLE_DEF[it.role]) throw new Error('роль упражнения: B, A, F или I'); ex.role=it.role; }
-        if(!ex.role) ex.role=CL_COMPOUND.includes(ex.pat)?'A':'I';
-        const df=CL_ROLE_DEF[ex.role];
-        ex.sets=it.sets!=null?clInt(it.sets,1,10,'Подходы'):(ex.sets||3);
-        const r0=it.repsMin!=null?clInt(it.repsMin,1,100,'Повторы'):null, r1=it.repsMax!=null?clInt(it.repsMax,1,100,'Повторы'):null;
-        ex.repsMin=r0!=null?r0:r1!=null?Math.min(r1,ex.repsMin||df.r[0]):(ex.repsMin||df.r[0]);
-        ex.repsMax=Math.max(ex.repsMin,r1!=null?r1:r0!=null?Math.max(r0,ex.repsMax||0):(ex.repsMax||df.r[1]));
-        if(it.rest!=null) ex.rest=clInt(it.rest,15,600,'Отдых'); else if(!ex.rest) ex.rest=df.rest;
-        if(Array.isArray(it.rir)&&it.rir.length===2){ const a=clInt(it.rir[0],0,5,'Запас'), b=clInt(it.rir[1],0,5,'Запас'); ex.rir=[Math.min(a,b),Math.max(a,b)]; }
-        else if(!ex.rir) ex.rir=df.rir.slice();
-        if(it.warm!=null) ex.warm=clInt(it.warm,0,5,'Разминка');
-        if(!ex.warm) delete ex.warm;
-        ex.isBase=ex.role==='B'&&ex.lt!=='bw'&&ex.lt!=='b';
-        if(ids.has(ex.id)) throw new Error('«'+ex.name+'» дважды в дне '+Lt);
-        ids.add(ex.id);
-        if(rid) idMap[rid]=ex.id;
-        return ex;
-      });
-    });
-    // pairs ⇄: both get ss, the first one ssFirst, the second one rests after the pair
-    keys.forEach(Lt=>{
-      const list=plan[Lt];
-      src[Lt].forEach((it,i)=>{
-        if(it.ss==null) return;
-        const pid=idMap[String(it.ss)]||String(it.ss), j=list.findIndex(e=>e.id===pid);
-        if(j<0||Math.abs(j-i)!==1) throw new Error('пара для «'+list[i].name+'» должна идти сразу рядом в том же дне');
-        const a=list[Math.min(i,j)], b=list[Math.max(i,j)];
-        if((a.ss&&a.ss!==b.id)||(b.ss&&b.ss!==a.id)) throw new Error('упражнение в двух парах сразу');
-        a.ss=b.id; a.ssFirst=1; b.ss=a.id; delete b.ssFirst; b.rest=Math.max(a.rest||0,b.rest||0);
-      });
-    });
-    const keep=x=>x===undefined?null:JSON.parse(JSON.stringify(x));
-    U.push({k:'plan',v:{plan:keep(S.plan),planDays:keep(S.planDays),planMeta:keep(S.planMeta),planSince:keep(S.planSince),program:keep(S.profile.program),programSet:keep(S.profile.programSet)}});
-    S.planPrev={plan:S.plan,planDays:S.planDays||null,planMeta:S.planMeta||null,program:S.profile.program||null,schedule:S.profile.schedule,planSince:S.planSince};
-    const old=allPlanEx(), seen=new Set();   // old exercises stay, so history still finds their names
-    S.planOld={prev:old.filter(e=>e&&!seen.has(e.id)&&seen.add(e.id))};
-    const sameDays=JSON.stringify(days())===JSON.stringify(keys), cm=c.meta&&typeof c.meta==='object'?c.meta:{}, meta={};
-    keys.forEach(Lt=>{
-      const m0=(S.planDays&&S.planMeta&&S.planMeta[Lt])||{}, m1=cm[Lt]&&typeof cm[Lt]==='object'?cm[Lt]:{};
-      const label=clStr(m1.label,40)||m0.label||'День '+Lt;
-      meta[Lt]={label,short:clStr(m1.short,20)||(m1.label?label:m0.short)||label,desc:m1.desc!=null?clStr(m1.desc,80):(m0.desc||''),
-        hint:m0.hint||'Жми на упражнение, чтобы увидеть технику и замену, если тренажёр занят.'};
-    });
-    S.plan=plan; S.planDays=keys; S.planMeta=meta;
-    if(!sameDays||!S.planSince) S.planSince=todayKey();
-    S.profile.programSet=true;
-    // Claude sets the volume itself: no «two weeks of technique are over» rebuild from the questionnaire
-    S.profile.program={...(S.profile.program||{}),src:'claude'};
-    delete S.profile.program.phase; delete S.profile.program.phaseUntil;
-    delete S.profile.bcEmphasis;
-    if(!keys.includes(curDay)) curDay=keys[0];
-    keys.forEach(Lt=>L.push({t:meta[Lt].label+': '+plan[Lt].length+' '+plural(plan[Lt].length,'упражнение','упражнения','упражнений'),
-      d:plan[Lt].map(e=>(e.ss&&!e.ssFirst?'⇄ ':'')+clExLine(e)).join(' · ')}));
-  },
-  // Add or change a supplement in the list; {id, remove:true} takes it out
-  supp(c,L,U){
-    const id=String(c.id||'');
-    if(!/^[a-z0-9_]{1,30}$/.test(id)) throw new Error('добавка: нужен id из латиницы');
-    const i=S.supps.findIndex(s=>s.id===id), old=i>=0?S.supps[i]:null;
-    if(c.remove===true){
-      if(i<0) return;
-      U.push({k:'supp',id,v:JSON.parse(JSON.stringify(old)),i});
-      S.supps.splice(i,1); L.push({t:'Убрана добавка: '+old.n}); return;
-    }
-    const b={...(SUPP_PRESETS.find(s=>s.id===id)||{}),...(old||{})};
-    const e={id,n:clStr(c.n,40)||b.n,dose:c.dose!=null?clNum(c.dose,0.01,5000,'Доза'):b.dose,unit:c.unit!=null?c.unit:b.unit,
-      base:c.base!=null?c.base:(b.base||'dose'),ds:c.ds!=null?clStr(c.ds,80):(b.ds||'')};
-    ['k','p','c','f'].forEach(x=>{e[x]=c[x]!=null?clNum(c[x],0,2000,'Добавка'):(b[x]||0);});
-    if(!e.n||!e.dose) throw new Error('добавка «'+id+'»: нужны название и доза');
-    if(!SUPP_UNITS[e.unit]) throw new Error('добавка: единица '+Object.keys(SUPP_UNITS).join(', '));
-    if(e.base!=='dose'&&e.base!=='100') throw new Error('добавка: base — dose или 100');
-    if(!e.ds) delete e.ds;
-    U.push({k:'supp',id,v:old?JSON.parse(JSON.stringify(old)):null,i});
-    if(i>=0) S.supps[i]=e; else S.supps.push(e);
-    L.push({t:(old?'Добавка обновлена: ':'Добавка: ')+e.n+', '+suppDoseTxt(e.dose,e.unit)+(e.ds?', '+e.ds:'')});
-  },
-  goal(c,L,U){
-    const t=clNum(c.targetWeight,30,250,'Цель');
-    U.push(clSnapProf(['targetWeight']));
-    S.profile.targetWeight=t;
-    L.push({t:'Цель: '+kgTxt(t)+' кг'});
-  },
-};
-function clUndoOne(u){
-  if(u.k==='prof'){ Object.assign(S.profile,JSON.parse(JSON.stringify(u.v))); u.del.forEach(k=>delete S.profile[k]); }
-  else if(u.k==='weight'){
-    const i=S.weights.findIndex(w=>w.date===u.date);
-    if(u.kg==null){ if(i>=0) S.weights.splice(i,1); }
-    else if(i>=0) S.weights[i].kg=u.kg;
-    else{ S.weights.push({date:u.date,kg:u.kg}); S.weights.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0); }
-  }
-  else if(u.k==='bc') S.bodycomp=S.bodycomp.filter(m=>m.id!==u.id);
-  else if(u.k==='supp'){
-    const i=S.supps.findIndex(s=>s.id===u.id);
-    if(u.v){ if(i>=0) S.supps[i]=u.v; else S.supps.splice(Math.min(u.i<0?S.supps.length:u.i,S.supps.length),0,u.v); }
-    else if(i>=0) S.supps.splice(i,1);
-  }
-  else if(u.k==='plan'){
-    const v=JSON.parse(JSON.stringify(u.v));
-    // «Вернуть прошлую программу» then brings Claude's one back
-    S.planPrev={plan:S.plan,planDays:S.planDays||null,planMeta:S.planMeta||null,program:S.profile.program||null,schedule:S.profile.schedule,planSince:S.planSince};
-    S.plan=v.plan||JSON.parse(JSON.stringify(DEFAULT_PLAN));
-    if(v.planDays){S.planDays=v.planDays;S.planMeta=v.planMeta;} else {delete S.planDays;delete S.planMeta;}
-    if(v.planSince) S.planSince=v.planSince; else delete S.planSince;
-    if(v.program) S.profile.program=v.program; else delete S.profile.program;
-    if(v.programSet!=null) S.profile.programSet=v.programSet;
-    if(!days().includes(curDay)) curDay=suggestedDay();
-  }
-}
-async function clUndo(){
-  const L=S.claude&&S.claude.last; if(!L||L.undone) return;
-  const ok=await showConfirm('Отменить изменения от Claude? Вернётся то, что было до них.','Отменить','Оставить',true);
-  if(!ok) return;
-  L.items.slice().reverse().forEach(it=>(it.undo||[]).slice().reverse().forEach(clUndoOne));
-  L.undone=true;
-  save(); setSegs(curDay); renderAll(); renderSettings();
-  if($('tab-progress').classList.contains('active')) renderProgress();
-  if(clView==='done') clClose(); else if(clView) renderClSheet();
-  toast('Изменения от Claude отменены','ok');
-}
-
-/* ---------- Settings row and sheet ---------- */
-function clStatus(){
-  if(clBusyText) return {t:clBusyText,c:'busy',i:'i-sync'};
-  if(cl.lastError) return {t:cl.lastError,c:'err',i:'i-alert'};
-  if(cl.checkError) return {t:cl.checkError,c:'err',i:'i-alert'};
-  return {t:cl.lastPush?'Данные у Claude · '+fmtWhen(cl.lastPush):'Подключено',c:'ok',i:'i-cloud-ok'};
-}
-function clRender(text){
-  clBusyText=text||'';
-  const row=$('clCard');
-  if(row){
-    const on=clOn(), st=on?clStatus():null;
-    row.innerHTML=`<button class="acct-row" onclick="clOpen()"><span class="acct-av${on?'':' off'}">${svgI('i-spark')}</span>
-      <span class="acct-row-t"><b>Связь с Claude</b><small class="${on&&st.c!=='busy'?st.c:''}">${on?esc(st.t):'Чтобы Claude сам вносил изменения в план'}</small></span><span class="chev"></span></button>`;
-  }
-  const m=$('clModal');
-  if(m&&m.classList.contains('active')&&clView!=='done') renderClSheet();
-}
-function clOpen(view){
-  clView=view||(clOn()?'main':'setup');
-  renderClSheet(true);
-  $('clModal').classList.add('active');
-  document.body.style.overflow='hidden';
-}
-function clClose(){
-  const m=$('clModal'); if(!m||!m.classList.contains('active')) return;
-  m.classList.remove('active'); clView='';
-  if(!$('obBg').classList.contains('active')&&!document.querySelector('.modal-bg.active')) document.body.style.overflow='';
-}
-function clTokToggle(b){
-  const i=$('clToken'), show=i.type==='password';
-  i.type=show?'text':'password'; b.textContent=show?'Скрыть':'Показать';
-}
-function clLinesHtml(lines,ico){
-  return `<ul class="cl-lines">${lines.map(l=>`<li><span>${svgI(ico||'i-check')}</span><div>${esc(l.t)}${l.d?`<small>${esc(l.d)}</small>`:''}</div></li>`).join('')}</ul>`;
-}
-function renderClSheet(fresh){
-  const el=$('clBody'); if(!el) return;
-  const orb=`<div class="acct-orb">${svgI('i-spark')}</div>`;
-  if(clView==='done'){
-    const {ok,bad}=clShow, L=S.claude&&S.claude.last, canUndo=ok.length&&L&&!L.undone&&L.items===ok;
-    el.innerHTML=`<div class="acct-hero">${orb}
-        <div class="modal-title">${ok.length?'Claude обновил трекер':'Изменения не применились'}</div>
-        <p class="sub">${ok.length?'Всё уже на своих местах. Если что-то не так, можно отменить.':'В изменениях от Claude ошибка, ничего не поменялось. Покажи этот текст Claude.'}</p></div>
-      ${ok.map(it=>`<div class="cl-pack"><b class="t">${esc(it.title)}</b>${it.note?`<p class="sub">${esc(it.note)}</p>`:''}${clLinesHtml(it.lines)}</div>`).join('')}
-      ${bad.map(b=>`<div class="bc-note warn" style="margin:0 0 12px"><b>${esc(b.title)}</b><br>${esc(b.err)}</div>`).join('')}
-      <div class="row" style="gap:8px;margin-top:4px">
-        ${canUndo?`<button class="btn ghost sm" style="flex:1" onclick="clUndo()">Отменить</button>`:''}
-        <button class="btn sm" style="flex:1" onclick="clClose()">Понятно</button>
-      </div>`;
-    return;
-  }
-  if(clOn()&&clView!=='setup'){
-    const st=clStatus(), L=S.claude&&S.claude.last, today=todayKey(), done=clDoneSet();
-    const wait=(cl.pending||[]).filter(p=>p.from&&p.from>today&&!done.has(p.id)).sort((a,b)=>a.from.localeCompare(b.from));
-    el.innerHTML=`<div class="acct-hero">${orb}
-        <div class="modal-title">Связь с Claude</div>
-        <div class="acct-pill ${st.c}">${svgI(st.i)}${esc(st.t)}</div>
-        <p class="sub">Claude видит тренировки, питание и вес в репозитории ${esc(cl.owner+'/'+cl.repo)} и сам вносит изменения: калории, программу, замеры. Здоровье и фото туда не попадают.</p></div>
-      ${L?`<div class="cl-pack"><b class="t">${L.undone?'Отменённые изменения':'Последние изменения'} · ${esc(fmtWhen(L.at))}</b>
-        ${clLinesHtml(L.items.map(it=>({t:it.title,d:it.lines.map(l=>l.t).join(' · ')})))}
-        ${L.undone?'':`<button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="clUndo()">Отменить эти изменения</button>`}</div>`:''}
-      ${wait.length?`<div class="cl-pack"><b class="t">Запланировано</b>${clLinesHtml(wait.map(p=>({t:p.title,d:'с '+fmtDate(p.from,{day:'numeric',month:'long'})})),'i-calendar')}</div>`:''}
-      <div class="row" style="gap:8px">
-        <button class="btn ghost sm" style="flex:1" onclick="clSyncNow()"${clBusyText?' disabled':''}>Проверить сейчас</button>
-        <button class="btn ghost sm" style="flex:1" onclick="clDisconnect()">Отключить</button>
-      </div>`;
-    return;
-  }
-  // keep what was typed when the sheet is drawn again
-  const rp=!fresh&&$('clRepo')?$('clRepo').value:(cl&&cl.owner?cl.owner+'/'+cl.repo:'');
-  const tk=!fresh&&$('clToken')?$('clToken').value:'';
-  el.innerHTML=`<div class="acct-hero">${orb}
-      <div class="modal-title">Связь с Claude</div>
-      <p class="sub">Claude будет видеть твой прогресс и сам вносить изменения в план: калории, программу, замеры. Нужен свой приватный репозиторий на GitHub.</p></div>
-    <ol class="cl-steps">
-      <li>Открой <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">новый токен на GitHub</a></li>
-      <li><b>Repository access</b> → Only select repositories → репозиторий для данных</li>
-      <li><b>Permissions</b> → Contents → Read and write</li>
-      <li><b>Generate token</b>, скопируй и вставь ниже</li>
-    </ol>
-    <form onsubmit="clConnect();return false" autocomplete="off">
-      <div class="field"><input type="text" id="clRepo" placeholder="Репозиторий: ник/название" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Репозиторий"></div>
-      <div class="field acct-pw"><input type="password" id="clToken" placeholder="Токен github_pat_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Токен"><button type="button" onclick="clTokToggle(this)">Показать</button></div>
-      <button type="submit" class="btn acct-go"${clBusyText?' disabled':''}>${clBusyText?esc(clBusyText):'Подключить'}</button>
-    </form>
-    <p class="acct-note">${svgI('i-lock')}Токен хранится только на этом телефоне</p>`;
-  $('clRepo').value=rp; $('clToken').value=tk;
-}
-async function clConnect(){
-  if(clBusyText) return;
-  const rv=$('clRepo').value.replace(/\s+/g,'').replace(/^(https?:\/\/)?(www\.)?github\.com\//i,'').replace(/\.git$/i,'').replace(/\/+$/,'');
-  const m=rv.match(/^([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100})$/);
-  if(!m){toast('Впиши репозиторий так: ник/название','err');return;}
-  // tokens are [A-Za-z0-9_] only; iOS paste likes to add spaces, and a token pasted over an old one keeps the last
-  let token=$('clToken').value.replace(/[^A-Za-z0-9_]/g,'');
-  const pats=token.match(/github_pat_[A-Za-z0-9_]+?(?=github_pat_|$)/g); if(pats) token=pats[pats.length-1];
-  if(!/^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(token)){toast('Токен вставлен не целиком: он начинается с github_pat_','err');return;}
-  const prev=cl||{}, same=prev.owner===m[1]&&prev.repo===m[2];
-  const keep={done:prev.done||[],log:prev.log||[]};
-  cl={...keep,token,owner:m[1],repo:m[2],seen:same?prev.seen||{}:{},pending:same?prev.pending||[]:[]};
-  const fail=msg=>{cl=keep;clStore();clRender();renderClSheet();toast(msg,'err');};
-  clRender('Проверяю доступ…');
-  let r;
-  try{ r=await clApi(''); }catch(e){ return fail('Нет связи с GitHub'); }
-  if(!r.ok) return fail(clFailText(r));
-  if(!r.j||r.j.private!==true) return fail('Репозиторий открыт всем: подключи приватный, чтобы данные не увидели посторонние');
-  cl.branch=r.j.default_branch||'main';
-  clStore();
-  const ok=await clPush(true);
-  if(ok===false&&!/сети|связи|GitHub не отвечает|подождать/.test(cl.lastError||'')) return fail(cl.lastError||'Не получилось отправить данные');
-  clView='main'; clRender(); renderClSheet();
-  toast('Подключено ✓ Claude видит данные','ok');
-  clCheck(false);
-}
-async function clDisconnect(){
-  const ok=await showConfirm('Отключить связь с Claude и удалить токен с этого телефона? Данные в репозитории останутся.','Отключить');
-  if(!ok) return;
-  clearTimeout(clTimer); clearTimeout(clPollTimer); clTimer=null;
-  cl={done:(cl&&cl.done)||[],log:(cl&&cl.log)||[]}; clStore();
-  clView='setup'; clRender(); renderClSheet(true);
-  toast('Связь с Claude отключена');
-}
-async function clSyncNow(){
-  if(!clOn()||clBusyText) return;
-  const ok=await clPush(true);
-  if(ok===false) toast(cl.lastError||'Не получилось отправить','err');
-  await clCheck(true);
-}
-function clStart(){
-  clRender();
-  if(!clOn()) return;
-  if(clDirty()) clSchedule(5000);
-  setTimeout(()=>clCheck(false),4000);   // after the account copy has had its say
-}
-window.addEventListener('online',()=>{ if(clOn()){ clSchedule(2000); clCheck(false); } });
-document.addEventListener('visibilitychange',()=>{
-  if(!clOn()) return;
-  if(document.visibilityState==='hidden'){ clearTimeout(clPollTimer); if(clTimer||clDirty()) clPush(false); }
-  else clCheck(false);
 });
 
 /* ============================================================
@@ -6781,13 +6158,12 @@ function buildProgram(o){
 }
 function programTitle(){
   const pr=S.profile.program;
-  if(pr&&pr.src==='claude'){const n=days().length;return 'От Claude · '+n+' '+plural(n,'день','дня','дней')+' в неделю';}
   if(!pr||!S.planDays||!SPLITS[pr.split]) return 'Сплит на 3 дня · через день отдых';
   const n=S.planDays.length;
   return SPLITS[pr.split].name+' · '+n+' '+plural(n,'день','дня','дней')+' в неделю';
 }
 function applyProgram(o,silent){
-  o={...o}; delete o.src;   // a program built here is no longer Claude's
+  o={...o};
   // TR-07, tables.volume.startWeeks: two lighter weeks for a new program, unless rebuilt from the same one
   const prev=S.profile.program;
   if(o.exp==='reg') {delete o.phase;delete o.phaseUntil;}
@@ -8163,7 +7539,6 @@ switchTab=function(name){
 
 function init(){
   acctLoad();
-  clLoad();
   load();
 
   // Restore WIP day
@@ -8191,7 +7566,6 @@ function init(){
   try{localStorage.removeItem('gymtracker_ai_v1');}catch(e){}   // the AI food counter was removed
   setTimeout(foodDataLoad,1500);   // the big base and the dishes, so search and the menu are ready offline
   pullSync(false); // take a newer copy from the account, or send ours
-  clStart();       // the copy for Claude, and changes Claude left
   if(!S.profile.onboarded) obOpen(false);
   checkWorkoutNotification();
   fxNav('today'); requestAnimationFrame(()=>fxReveal($('tab-today')));
