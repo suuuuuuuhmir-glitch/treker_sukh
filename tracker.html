@@ -1353,6 +1353,13 @@ body.nonum .food-entry .kc{display:none}
   </div>
 
   <div class="fold-group">Другое</div>
+  <div class="card set-list">
+    <button class="set-item" id="setPlanCode" onclick="pcOpen()">
+      <span class="ico o"><svg class="i" viewBox="0 0 24 24"><use href="#i-spark"/></svg></span>
+      <span class="set-t"><small>Код от Claude</small><b>Вставить план</b></span>
+      <span class="set-go">Открыть</span>
+    </button>
+  </div>
   <details class="fold">
     <summary><span class="ico"><svg class="i" viewBox="0 0 24 24"><use href="#i-alert"/></svg></span>Сброс<span class="s-sub"></span></summary>
     <div class="fold-body">
@@ -1423,6 +1430,18 @@ body.nonum .food-entry .kc{display:none}
       </div>
       <button class="btn" onclick="addExercise()">+ Добавить</button>
     </div>
+  </div>
+</div>
+
+<!-- ==================== PLAN CODE MODAL ==================== -->
+<div class="modal-bg" id="pcModal" onclick="if(event.target===this)pcClose()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="row between" style="margin-bottom:14px">
+      <h3 class="modal-title" style="margin-bottom:0">Вставить план</h3>
+      <button class="btn ghost sm" onclick="pcClose()">Закрыть</button>
+    </div>
+    <div id="pcBody"></div>
   </div>
 </div>
 
@@ -2518,25 +2537,32 @@ function fmtMl(ml){return ml>=1000?(Math.round(ml/50)*50/1000).toLocaleString('r
 // Weight the norm is counted from: above BMI 25 the extra kilos count at 40 %
 function waterRefW(x){const w25=25*Math.pow(x.h/100,2);return x.w>w25?w25+0.4*(x.w-w25):x.w;}
 function waterTrainMl(x){return round50(Math.min(750,Math.max(250,500*x.min/60)));}
+// The ordinary-day norm from a plan Claude made («Вставить план»), 0 when there is none
+function waterOwn(){const t=Math.round(+(S.profile&&S.profile.waterTarget)||0);return t>=1500&&t<=4000?t:0;}
 function waterNorm(d){
   d=d||todayKey();
-  const x=pzX(), q=x.q, s=pzSafety(x), n=S.nutrition[d]||{}, parts=[];
-  // Base: an ordinary day without sport
-  const perKg=x.age<18?35:30, refW=waterRefW(x), min=x.sex==='f'?1500:1800, raw=refW*perKg;
-  const base=round50(Math.min(3000,Math.max(min,raw)));
-  parts.push({k:'base',n:'Вес '+Math.round(x.w)+' кг',ml:base,
-    d:raw<min?'Меньше '+fmtMl(min)+' в день не ставим':perKg+' мл на кг в обычный день'+(refW<x.w-0.5?', лишний вес считаем частично':'')});
-  // A physical job; sitting and standing days are inside the base
-  const wkKey=PZ_WORK[q.work]?q.work:'sitting', wk=PZ_WORK[wkKey];
-  if(wkKey==='physical') parts.push({k:'work',n:wk.n,d:'За смену теряешь больше воды',ml:400});
-  // Only a lot of walking adds: ordinary steps are inside the base
-  const steps=pzSteps(q), stepFrom=Math.max(6000,wk.base), stepAdd=Math.min(300,Math.floor(Math.max(0,steps-stepFrom)/3000)*100);
-  if(stepAdd) parts.push({k:'steps',n:'~'+(Math.round(steps/500)*500).toLocaleString('ru-RU')+' шагов',d:'+100 мл на каждые 3000 шагов сверх '+stepFrom.toLocaleString('ru-RU'),ml:stepAdd});
+  const x=pzX(), q=x.q, s=pzSafety(x), n=S.nutrition[d]||{}, parts=[], own=waterOwn();
+  if(own){
+    // The plan's own number replaces the everyday part (weight, job, steps, other sport); the day's workout and heat still add
+    parts.push({k:'plan',n:'Норма из плана Claude',d:'Обычный день, без тренировки',ml:own});
+  } else {
+    // Base: an ordinary day without sport
+    const perKg=x.age<18?35:30, refW=waterRefW(x), min=x.sex==='f'?1500:1800, raw=refW*perKg;
+    const base=round50(Math.min(3000,Math.max(min,raw)));
+    parts.push({k:'base',n:'Вес '+Math.round(x.w)+' кг',ml:base,
+      d:raw<min?'Меньше '+fmtMl(min)+' в день не ставим':perKg+' мл на кг в обычный день'+(refW<x.w-0.5?', лишний вес считаем частично':'')});
+    // A physical job; sitting and standing days are inside the base
+    const wkKey=PZ_WORK[q.work]?q.work:'sitting', wk=PZ_WORK[wkKey];
+    if(wkKey==='physical') parts.push({k:'work',n:wk.n,d:'За смену теряешь больше воды',ml:400});
+    // Only a lot of walking adds: ordinary steps are inside the base
+    const steps=pzSteps(q), stepFrom=Math.max(6000,wk.base), stepAdd=Math.min(300,Math.floor(Math.max(0,steps-stepFrom)/3000)*100);
+    if(stepAdd) parts.push({k:'steps',n:'~'+(Math.round(steps/500)*500).toLocaleString('ru-RU')+' шагов',d:'+100 мл на каждые 3000 шагов сверх '+stepFrom.toLocaleString('ru-RU'),ml:stepAdd});
+  }
   // The workout of the day
   const td=waterTrainDay(d), trained=td==='done', planned=td==='plan'||td==='mark';
   if(td) parts.push({k:'train',n:trained?'Тренировка сегодня':'День тренировки',d:'~500 мл на час: до, во время и после',ml:waterTrainMl(x)});
   // Other sport, averaged over the week
-  if(q.sport&&PZ_MET[q.sport]&&+q.sportHours){
+  if(!own&&q.sport&&PZ_MET[q.sport]&&+q.sportHours){
     const ml=round50(500*(+q.sportHours)/7);
     if(ml) parts.push({k:'sport',n:'Другой спорт',d:String(+q.sportHours).replace('.',',')+' ч в неделю, в среднем на день',ml});
   }
@@ -2545,7 +2571,7 @@ function waterNorm(d){
   if(n.hot) parts.push({k:'hot',n:'Жарко или душно',d:'Отметка на сегодня',ml:500});
   let total=parts.reduce((a,p)=>a+p.ml,0);
   const capped=total>WATER_CAP; if(capped) total=WATER_CAP;
-  return {ml:round50(total),parts,capped,trained,planned,td,doctor:(x.health||[]).some(h=>h==='heart'||h==='chronic')};
+  return {ml:round50(total),parts,capped,trained,planned,td,own,doctor:(x.health||[]).some(h=>h==='heart'||h==='chronic')};
 }
 function waterCardHtml(d){
   const nr=waterNorm(d), got=waterTotal(d), pct=Math.min(100,got/nr.ml*100), left=Math.max(0,nr.ml-got);
@@ -2606,14 +2632,22 @@ function waterInfoOpen(d,focus){
   if(focus) setTimeout(()=>{const i=$('waterCustomMl'); if(i) i.focus();},250);
 }
 function waterInfoClose(){$('waterModal').classList.remove('active');}
+// Back to the norm from weight: takes away the number a plan code set
+function waterOwnOff(){
+  delete S.profile.waterTarget;
+  save(); renderAll();
+  if($('waterModal').classList.contains('active')) waterInfoRender();
+  toast('Норма воды снова считается от веса','ok');
+}
 function waterInfoRender(){
   const d=waterD, nr=waterNorm(d), n=S.nutrition[d]||{}, got=waterTotal(d), dj=JSON.stringify(d);
   const gl=Math.round(nr.ml/WATER_GLASS), log=waterLog(d);
   $('waterModalBody').innerHTML=`
     <div class="wtr-big">${fmtInt(nr.ml)}<small>мл в день · ${gl} ${plural(gl,'стакан','стакана','стаканов')} по 250</small></div>
-    <p class="sub">Столько стоит выпить за день: вода и другие напитки. Основа считается от веса, а добавляет только то, от чего правда потеешь: тренировка, спорт, физическая работа, жара.</p>
+    <p class="sub">${nr.own?'Столько стоит выпить за день: вода и другие напитки. Основа взята из плана Claude, а добавляет только то, от чего правда потеешь: тренировка и жара.':'Столько стоит выпить за день: вода и другие напитки. Основа считается от веса, а добавляет только то, от чего правда потеешь: тренировка, спорт, физическая работа, жара.'}</p>
     <div class="section-lbl">Из чего складывается</div>
     <div style="margin-bottom:14px">${nr.parts.map(p=>`<div class="wtr-part"><span>${esc(p.n)}<span class="muted">${esc(p.d)}</span></span><b>+${fmtInt(p.ml)} мл</b></div>`).join('')}</div>
+    ${nr.own?`<div class="info" id="waterOwnInfo" style="margin-bottom:14px"><b>Норма из плана Claude:</b> ${fmtMl(nr.own)} в обычный день, её поставил код плана. Чтобы снова считать от веса, убери её.<button class="btn ghost sm" style="width:100%;margin-top:10px" onclick="waterOwnOff()">Убрать норму из плана</button></div>`:''}
     ${nr.capped?`<div class="info" style="margin-bottom:14px">Сумма вышла больше 4 л, поэтому мы остановились на этом: пить больше за день без надобности не стоит.</div>`:''}
     ${nr.doctor?`<div class="info" style="margin-bottom:14px">Если врач ограничил тебе жидкость (сердце, почки, давление), ориентируйся на его цифру, а не на эту.</div>`:''}
     <div class="section-lbl">Сегодня</div>
@@ -5344,10 +5378,10 @@ function renderPzCard(){
   el.innerHTML=h;
 }
 async function pzDoctorOk(){
-  const ok=await showConfirm('Врач разрешил тренироваться без ограничений? Тогда уберём умеренный режим и пересоберём программу.','Да, разрешил');
+  const ok=await showConfirm('Врач разрешил тренироваться без ограничений? Тогда уберём умеренный режим'+(progAuto()?' и пересоберём программу':'')+'.','Да, разрешил');
   if(!ok) return;
   pzCleared();
-  if(S.profile.programSet&&S.profile.program) applyProgram(S.profile.program,true);
+  if(progAuto()) applyProgram(S.profile.program,true);
   save(); setSegs(curDay); renderAll(); renderSettings();
   toast('Умеренный режим выключен ✓','ok');
 }
@@ -5548,7 +5582,7 @@ function obResultHtml(){
       <p class="ob-note">Расход около <b>${round50(e.tdee)} ккал</b>: обмен ${Math.round(e.bmr)}${pl.src==='bc'?' по составу тела':''}, ${esc(wk.n.toLowerCase())}, ~${(Math.round(e.steps/500)*500).toLocaleString('ru-RU')} шагов, ${x.days} ${plural(x.days,'тренировка','тренировки','тренировок')} в неделю${e.sportKcal?', спорт':''}. ${Math.abs(pl.rate)<0.01?'Вес держим.':`Темп: ${fmtKg(rateKg)} в неделю (${String(Math.abs(pl.rate)).replace('.',',')} % веса).`} Через пару недель трекер сверит это с весом и поправит.</p>`;
   }
   pl.notes.forEach(([c,t])=>{h+=`<div class="pz-note${c?' '+c:''}">${esc(t)}</div>`;});
-  if(ob.mode==='core'&&S.profile.programSet) h+=`<label class="pz-check"><input type="checkbox" ${ob.rebuild?'checked':''} onchange="ob.rebuild=this.checked"> Пересобрать программу тренировок под ответы</label>`;
+  if(ob.mode==='core'&&progAuto()) h+=`<label class="pz-check"><input type="checkbox" ${ob.rebuild?'checked':''} onchange="ob.rebuild=this.checked"> Пересобрать программу тренировок под ответы</label>`;
   if(ob.mode==='edit') h+='<p class="ob-note">Вся история тренировок, веса и еды сохранится.</p>';
   return h;
 }
@@ -5596,7 +5630,7 @@ function obFinish(keepNums){
   }
   if((pl.s.ed||pl.s.under16)&&!S.settings.noNumbers) S.settings.noNumbers='auto';
   p.onboarded=true; if(!keepNums) p.pzModel=PZ_MODEL;
-  const rebuild=mode==='core'&&ob.rebuild&&p.programSet&&p.program;
+  const rebuild=mode==='core'&&ob.rebuild&&progAuto();
   if(rebuild) applyProgram(p.program,true);
   save(); obClose(); renderAll();
   if($('tab-more').classList.contains('active')) renderSettings();
@@ -6158,12 +6192,13 @@ function buildProgram(o){
 }
 function programTitle(){
   const pr=S.profile.program;
+  if(pr&&pr.src==='claude'&&S.planDays){const n=S.planDays.length;return 'План Claude · '+n+' '+plural(n,'день','дня','дней')+' в неделю';}
   if(!pr||!S.planDays||!SPLITS[pr.split]) return 'Сплит на 3 дня · через день отдых';
   const n=S.planDays.length;
   return SPLITS[pr.split].name+' · '+n+' '+plural(n,'день','дня','дней')+' в неделю';
 }
 function applyProgram(o,silent){
-  o={...o};
+  o={...o}; delete o.src;
   // TR-07, tables.volume.startWeeks: two lighter weeks for a new program, unless rebuilt from the same one
   const prev=S.profile.program;
   if(o.exp==='reg') {delete o.phase;delete o.phaseUntil;}
@@ -6203,12 +6238,322 @@ async function programUndo(){
   save(); setSegs(curDay); renderAll(); renderSettings();
   toast('Прошлая программа возвращена','ok');
 }
+// The program came from the questionnaire, so answers and health changes may rebuild it; a plan pasted from a code stays as it is
+function progAuto(){const p=S.profile;return !!(p.programSet&&p.program&&p.program.src!=='claude');}
 // After the two technique weeks: same exercises, working volume
 function pzPhaseUp(yes){
   const pr=S.profile.program; if(!pr) return;
   if(yes){applyProgram({...pr,phase:'target',phaseUntil:undefined},true);toast('Рабочий объём включён 💪','ok');}
   else pr.phaseUntil=shiftKey(todayKey(),7);
   save(); setSegs(curDay); renderAll();
+}
+
+/* ============================================================
+   PLAN CODE («Ещё» → «Вставить план»)
+   A plan Claude made, pasted as one line: "MFPLAN1:" + base64url(JSON in UTF-8). Plain JSON works too.
+   {"v":1,"note":"…","kcal":2800,"protein":110,"water":2500,"rate":0.65,
+    "days":[{"key":"A","label":"Всё тело А","short":"Тело А","desc":"…","weekday":0,
+      "ex":[{"name":"Жим штанги лёжа","muscles":"Грудь · трицепс","sets":3,"repsMin":6,"repsMax":10,
+             "cues":["Лопатки сведены"],"base":true}]}]}
+   - Every field but v may be left out: that part stays as it is. Unknown fields are ignored.
+   - A wrong value stops the whole code with a plain error, so a plan never half-applies.
+   - kcal 1000–6000 a day, never below kcalFloor(); protein 30–400 g; water 1500–4000 ml for an ordinary
+     day (S.profile.waterTarget; the day's workout and heat still add); rate: the planned change in % of
+     weight a week, +0.1…+1 for gain, −1…−0.1 for a cut (S.profile.rate, read by the weekly check-in).
+   - days: 1–7, each with 1–15 exercises, sets 1–10, reps 1–30; key is one letter A–Z (in order when
+     left out); weekday 0 = Sunday … 6 = Saturday, for every day or for none: it sets S.profile.schedule.
+   - An exercise named like one in this program or an older one keeps its id and settings, so history,
+     last weights and charts stay. base:true puts a main lift on the strength chart.
+   - The old program goes to S.planPrev, so «Вернуть прошлую программу» undoes the change.
+   - In the «без цифр» mode only the program is applied, and no numbers are shown.
+   ============================================================ */
+const PC_PREFIX='MFPLAN1:', PC_KEYS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const PC_DOW=['вс','пн','вт','ср','чт','пт','сб'], PC_DOW_ON=['воскресенье','понедельник','вторник','среду','четверг','пятницу','субботу'];
+const PC_BROKEN='Код повреждён или обрезан. Скопируй его целиком, от MFPLAN1: до последнего символа.';
+const PC_AGAIN=' Попроси Claude прислать код заново.';
+let pc=null;   // {code, plan, err} while the window is open
+function pcErr(m){const e=new Error(m);e.pc=true;return e;}
+function pcHas(v){return v!==undefined&&v!==null;}
+function pcShow(v){let t;try{t=typeof v==='string'?v:JSON.stringify(v);}catch(e){t='?';}t=String(t);return t.length>24?t.slice(0,24)+'…':t;}
+function pcN(v){return String(v).replace('.',',');}
+function pcNum(v,lo,hi,what,unit,int){
+  if(typeof v==='string'&&/^\s*[-+]?\d+(?:[.,]\d+)?\s*$/.test(v)) v=+v.trim().replace(',','.');
+  if(typeof v!=='number'||!isFinite(v)) throw pcErr(what+': нужно число, а в коде «'+pcShow(v)+'».');
+  if(int&&!Number.isInteger(v)) throw pcErr(what+': нужно целое число, а в коде '+pcN(v)+'.');
+  if(v<lo||v>hi) throw pcErr(what+': можно от '+pcN(lo)+' до '+pcN(hi)+(unit||'')+', а в коде '+pcN(v)+'.');
+  return v;
+}
+function pcText(v,max,what){
+  if(typeof v!=='string') throw pcErr(what+': нужен текст, а в коде «'+pcShow(v)+'».');
+  const t=v.replace(/\s+/g,' ').trim();
+  return t.length>max?t.slice(0,max-1).trim()+'…':t;
+}
+// The same exercise however it is spelled: case, ё, quotes, brackets and extra spaces do not matter
+function pcExKey(n){return String(n||'').toLowerCase().replace(/ё/g,'е').replace(/[«»"“”„'`()[\].,:;!?]/g,' ').replace(/\s+/g,' ').trim();}
+function pcWdSort(a){return (a||[]).slice().sort((x,y)=>(x+6)%7-(y+6)%7);}   // Monday first
+function pcWdTxt(a){return pcWdSort(a).map(x=>PC_DOW[x]).join(', ')||'не выбраны';}
+function pcExLine(e){return e.name+' · '+e.sets+'×'+e.repsMin+(e.repsMax!==e.repsMin?'–'+e.repsMax:'');}
+
+// Text from the field -> the plan object. A code copied from a chat may come with quotes, spaces or line breaks.
+function pcDecode(raw){
+  const s=String(raw||'').trim().replace(/^[\s`'"«“„]+|[\s`'"»”]+$/g,'');
+  if(!s) throw pcErr('Вставь код плана в поле выше.');
+  let txt=s;
+  if(/^mfplan1:/i.test(s)){
+    const b=s.slice(PC_PREFIX.length).replace(/\s+/g,'').replace(/=+$/,'');
+    if(!b) throw pcErr('После MFPLAN1: ничего нет. Скопируй код целиком.');
+    if(/[^A-Za-z0-9_+/-]/.test(b)||b.length%4===1) throw pcErr(PC_BROKEN);
+    let bin;
+    try{bin=atob(b.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((b.length+3)%4));}catch(e){throw pcErr(PC_BROKEN);}
+    try{txt=new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(bin,c=>c.charCodeAt(0)));}catch(e){throw pcErr(PC_BROKEN);}
+  } else if(s[0]!=='{') throw pcErr('Это не код плана: он начинается с MFPLAN1:. Скопируй его целиком.');
+  try{return JSON.parse(txt);}
+  catch(e){throw pcErr(txt===s?'В JSON ошибка, план не прочитался.'+PC_AGAIN:PC_BROKEN);}
+}
+function pcParse(j){
+  if(!j||typeof j!=='object'||Array.isArray(j)) throw pcErr('В коде нет плана.'+PC_AGAIN);
+  if(!pcHas(j.v)) throw pcErr('В коде не указана версия (v).'+PC_AGAIN);
+  const v=+j.v;
+  if(v!==1) throw pcErr(v>1?'Этот код для более новой версии трекера. Закрой приложение и открой снова, чтобы оно обновилось.':'Версия кода «'+pcShow(j.v)+'» не подходит.'+PC_AGAIN);
+  const o={};
+  if(pcHas(j.note)) o.note=pcText(j.note,300,'Заметка');
+  if(pcHas(j.kcal)) o.kcal=Math.round(pcNum(j.kcal,1000,6000,'Калории',' ккал'));
+  if(pcHas(j.protein)) o.protein=Math.round(pcNum(j.protein,30,400,'Белок',' г'));
+  if(pcHas(j.water)) o.water=Math.round(pcNum(j.water,1500,4000,'Вода',' мл'));
+  if(pcHas(j.rate)){
+    const r=Math.round(pcNum(j.rate,-1,1,'Темп',' % веса в неделю')*100)/100, g=goalKey();
+    if(g==='gain'&&r<0.1) throw pcErr('Темп: для набора нужно от 0,1 до 1 % веса в неделю, а в коде '+pcN(r)+'.');
+    if(g==='cut'&&r>-0.1) throw pcErr('Темп: для похудения нужно от −1 до −0,1 % веса в неделю, а в коде '+pcN(r)+'.');
+    if(g!=='gain'&&g!=='cut') throw pcErr('В коде темп набора или похудения, а цель в трекере — «'+GOALS[g].name+'». Поменяй цель в «Ещё» или попроси Claude код без темпа.');
+    o.rate=r;
+  }
+  if(pcHas(j.days)) o.days=pcDays(j.days);
+  return o;
+}
+function pcDays(arr){
+  if(!Array.isArray(arr)) throw pcErr('Программа (days) должна быть списком дней.'+PC_AGAIN);
+  if(!arr.length||arr.length>7) throw pcErr('В программе можно от 1 до 7 дней, а в коде '+arr.length+'.');
+  const used=new Set();
+  arr.forEach((d,i)=>{
+    if(!d||typeof d!=='object'||Array.isArray(d)) throw pcErr('День '+(i+1)+' в коде пустой.'+PC_AGAIN);
+    if(!pcHas(d.key)) return;
+    const k=typeof d.key==='string'?d.key.trim().toUpperCase():'';
+    if(!/^[A-Z]$/.test(k)) throw pcErr('День '+(i+1)+': ключ «'+pcShow(d.key)+'» не подходит, нужна одна латинская буква: A, B, C…');
+    if(used.has(k)) throw pcErr('Два дня с одной буквой '+k+'.'+PC_AGAIN);
+    used.add(k);
+  });
+  const out=arr.map((d,i)=>{
+    let k;
+    if(pcHas(d.key)) k=d.key.trim().toUpperCase();
+    else {k=[...PC_KEYS].find(x=>!used.has(x));used.add(k);}
+    const label=pcHas(d.label)?pcText(d.label,40,'День '+k+': название'):'';
+    const nm=label?'«'+label+'»':'День '+k;
+    const short=pcHas(d.short)?pcText(d.short,16,nm+': короткое название'):'';
+    const desc=pcHas(d.desc)?pcText(d.desc,140,nm+': описание'):'';
+    let wd=null;
+    if(pcHas(d.weekday)) wd=pcNum(d.weekday===7||d.weekday==='7'?0:d.weekday,0,6,nm+': день недели (0 — воскресенье, 6 — суббота)','',true);
+    if(!Array.isArray(d.ex)||!d.ex.length) throw pcErr(nm+': нет упражнений.'+PC_AGAIN);
+    if(d.ex.length>15) throw pcErr(nm+': '+d.ex.length+' упражнений, а можно до 15.');
+    const seen=new Set();
+    const ex=d.ex.map((e,j)=>{
+      const at=nm+', упражнение '+(j+1);
+      if(!e||typeof e!=='object'||Array.isArray(e)) throw pcErr(at+': пустое.'+PC_AGAIN);
+      const name=pcHas(e.name)?pcText(e.name,80,at+': название'):'';
+      if(!name) throw pcErr(at+': нет названия.'+PC_AGAIN);
+      const w=nm+', «'+name+'»', key=pcExKey(name);
+      if(seen.has(key)) throw pcErr(w+' стоит в этом дне два раза.'+PC_AGAIN);
+      seen.add(key);
+      const x={name};
+      if(pcHas(e.muscles)) x.muscles=pcText(e.muscles,60,w+': мышцы');
+      if(pcHas(e.sets)) x.sets=pcNum(e.sets,1,10,w+': подходы','',true);
+      if(pcHas(e.repsMin)) x.repsMin=pcNum(e.repsMin,1,30,w+': повторы «от»','',true);
+      if(pcHas(e.repsMax)) x.repsMax=pcNum(e.repsMax,1,30,w+': повторы «до»','',true);
+      if(x.repsMin!=null&&x.repsMax!=null&&x.repsMin>x.repsMax) throw pcErr(w+': повторов «от» больше, чем «до» ('+x.repsMin+' и '+x.repsMax+').');
+      if(pcHas(e.cues)){
+        if(!Array.isArray(e.cues)||e.cues.some(c=>typeof c!=='string')) throw pcErr(w+': подсказки (cues) должны быть списком строк.');
+        x.cues=e.cues.map(c=>c.replace(/\s+/g,' ').trim().slice(0,160)).filter(Boolean).slice(0,6);
+      }
+      if(pcHas(e.base)){
+        if(typeof e.base!=='boolean') throw pcErr(w+': base — это true или false.');
+        x.base=e.base;
+      }
+      return x;
+    });
+    return {key:k,label,short,desc,wd,ex};
+  });
+  const withWd=out.filter(d=>d.wd!=null), wds=new Set();
+  if(withWd.length&&withWd.length<out.length) throw pcErr('День недели указан не у всех дней программы.'+PC_AGAIN);
+  withWd.forEach(d=>{if(wds.has(d.wd)) throw pcErr('Два дня программы стоят на '+PC_DOW_ON[d.wd]+'.'+PC_AGAIN);wds.add(d.wd);});
+  return out;
+}
+// The program from the code against what the person has now
+function pcBuild(D){
+  // Exercises the person already has, by name: the same day of this program first, then any day, then older programs
+  const byDay={}, known=new Map(), ids=new Set(), fresh=new Map(), kept=new Set();
+  const add=(m,e)=>{const k=e&&e.id?pcExKey(e.name):'';if(k&&!m.has(k))m.set(k,e);};
+  days().forEach(k=>{const m=new Map();(S.plan[k]||[]).forEach(e=>add(m,e));byDay[k]=m;});
+  allPlanEx().forEach(e=>{if(e&&e.id){ids.add(e.id);add(known,e);}});
+  S.sessions.forEach(s=>Object.keys(s.ex||{}).forEach(id=>ids.add(id)));
+  const plan={}, meta={};
+  D.forEach(d=>{
+    const inDay=new Set();
+    plan[d.key]=d.ex.map(x=>{
+      const k=pcExKey(x.name), old=(byDay[d.key]&&byDay[d.key].get(k))||known.get(k);
+      let base=old;
+      if(old) kept.add(old.id);
+      else {
+        if(!fresh.has(k)){
+          let id; do{id='mf'+Math.random().toString(36).slice(2,8);}while(ids.has(id)||id.length<5);
+          ids.add(id);
+          fresh.set(k,{id,name:x.name,muscles:'',sets:3,repsMin:8,repsMax:12,isBase:false,cues:[],yt:x.name});
+        }
+        base=fresh.get(k);   // the same new exercise on two days shares one id
+      }
+      // The same exercise keeps its id, cues, rest and the rest of its settings; the code sets what it names
+      const ex=JSON.parse(JSON.stringify(base));
+      delete ex.ss; delete ex.ssFirst;
+      ex.name=x.name;
+      if(x.muscles!==undefined) ex.muscles=x.muscles;
+      if(x.sets!=null) ex.sets=x.sets; else if(!(ex.sets>=1&&ex.sets<=10)) ex.sets=3;
+      if(x.repsMin!=null||x.repsMax!=null){
+        const lo=x.repsMin!=null?x.repsMin:Math.min(x.repsMax,ex.repsMin||x.repsMax);
+        const hi=x.repsMax!=null?x.repsMax:Math.max(x.repsMin,ex.repsMax||x.repsMin);
+        ex.repsMin=lo; ex.repsMax=Math.max(lo,hi);
+      }
+      if(x.cues) ex.cues=x.cues;
+      if(!Array.isArray(ex.cues)) ex.cues=[];
+      if(x.base!=null) ex.isBase=x.base;
+      if(!ex.yt) ex.yt=ex.name;
+      if(inDay.has(ex.id)) throw pcErr('«'+x.name+'» в дне «'+(d.label||d.key)+'» повторяет другое упражнение этого дня.'+PC_AGAIN);
+      inDay.add(ex.id);
+      return ex;
+    });
+    const label=d.label||'День '+d.key;
+    meta[d.key]={label,short:d.short||(label.length<=14?label:'День '+d.key),desc:d.desc,hint:'Жми на упражнение, чтобы увидеть технику.'};
+  });
+  const wd=D.filter(d=>d.wd!=null).map(d=>d.wd);
+  return {plan,planDays:D.map(d=>d.key),meta,schedule:wd.length?pcWdSort(wd):null,kept:kept.size,total:kept.size+fresh.size};
+}
+// What the code changes: rows for the preview and the values «Применить» writes
+function pcDiff(o){
+  const nn=pzNoNum(), p=S.profile, nums=[], ap={};
+  if(!nn){
+    if(o.kcal!=null){
+      const floor=kcalFloor(), to=Math.max(o.kcal,floor), from=kcalTarget();
+      nums.push({n:'Калории в день',from:fmtInt(from),to:fmtInt(to)+' ккал',same:to===from,
+        d:to>o.kcal?'В плане '+fmtInt(o.kcal)+', но ниже '+fmtInt(floor)+' не ставим':''});
+      if(to!==from) ap.kcal=to;
+    }
+    if(o.protein!=null){
+      const from=protTarget();
+      nums.push({n:'Белок в день',from:String(from),to:o.protein+' г',same:from===o.protein});
+      if(from!==o.protein) ap.protein=o.protein;
+    }
+    if(o.rate!=null){
+      const from=Math.round(goalRate()*10000)/100, kg=Math.abs(o.rate)/100*latestWeight();
+      nums.push({n:goalKey()==='gain'?'Темп набора':'Темп похудения',d:'% веса в неделю, ~'+pcN(kg.toFixed(2))+' кг',
+        from:pcN(Math.abs(from)),to:pcN(Math.abs(o.rate))+' %',same:Math.abs(from-o.rate)<0.005});
+      if(Math.abs(from-o.rate)>=0.005||!(p.rate&&p.rate.goal===goalKey())) ap.rate=o.rate;
+    }
+    if(o.water!=null){
+      const own=waterOwn(), nr=waterNorm(todayKey());
+      const from=own||Math.min(WATER_CAP,round50(nr.parts.filter(x=>x.k!=='train'&&x.k!=='hot').reduce((a,x)=>a+x.ml,0)));
+      nums.push({n:'Вода в обычный день',d:(own?'':'Сейчас считается от веса. ')+'Тренировка и жара добавятся сверху',from:fmtMl(from),to:fmtMl(o.water),same:own===o.water});
+      if(own!==o.water) ap.water=o.water;
+    }
+  }
+  let prog=null;
+  if(o.days){
+    const b=pcBuild(o.days), n=b.planDays.length, sch=pcWdSort(p.schedule);
+    const same=JSON.stringify(S.plan)===JSON.stringify(b.plan)&&JSON.stringify(S.planDays||null)===JSON.stringify(b.planDays)
+      &&JSON.stringify(S.planMeta||null)===JSON.stringify(b.meta)&&(!b.schedule||JSON.stringify(sch)===JSON.stringify(b.schedule))
+      &&!!(p.program&&p.program.src==='claude');
+    prog={b,same,from:programTitle(),to:'План Claude · '+n+' '+plural(n,'день','дня','дней')+' в неделю',
+      schFrom:pcWdTxt(sch),schTo:b.schedule?pcWdTxt(b.schedule):null,
+      wip:Object.values(wip||{}).some(sets=>Array.isArray(sets)&&sets.some(s=>s&&(s.w||s.r||s.done)))};
+  }
+  return {nn,nums,prog,ap,any:Object.keys(ap).length>0||!!(prog&&!prog.same)};
+}
+function pcOpen(){
+  pc={code:'',plan:null,err:''};
+  pcRender();
+  $('pcModal').classList.add('active');
+}
+function pcClose(){$('pcModal').classList.remove('active');pc=null;}
+function pcBack(){if(!pc)return;pc.plan=null;pc.err='';pcRender();}
+function pcCheck(){
+  const ta=$('pcCode'); if(!pc||!ta) return;
+  pc.code=ta.value; pc.err=''; pc.plan=null;
+  try{const o=pcParse(pcDecode(pc.code));pcDiff(o);pc.plan=o;}
+  catch(e){
+    pc.err=e&&e.pc?e.message:'Не получилось прочитать код.'+PC_AGAIN;
+    if(!(e&&e.pc)) console.error(e);
+  }
+  pcRender();
+}
+function pcRender(){
+  const el=$('pcBody'); if(!el) return;
+  if(!pc){el.innerHTML='';return;}
+  if(!pc.plan){
+    el.innerHTML=`<p class="sub">Вставь код, который прислал Claude: он начинается с MFPLAN1:. Сначала покажу, что изменится, и только потом применю.</p>
+      <textarea class="food-in" id="pcCode" rows="5" aria-label="Код плана" placeholder="MFPLAN1:…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="if(pc)pc.code=this.value" style="word-break:break-all">${esc(pc.code)}</textarea>
+      ${pc.err?`<div class="pz-note warn" id="pcErr" role="alert" style="margin:10px 0 0">${esc(pc.err)}</div>`:''}
+      <button class="btn" id="pcCheckBtn" style="margin-top:14px" onclick="pcCheck()">Проверить</button>`;
+    return;
+  }
+  let r;
+  try{r=pcDiff(pc.plan);}catch(e){pc.plan=null;pc.err=e&&e.pc?e.message:'Не получилось прочитать код.'+PC_AGAIN;if(!(e&&e.pc))console.error(e);pcRender();return;}
+  const row=(n,d,v)=>`<div class="wtr-part"><span>${esc(n)}${d?`<span class="muted">${esc(d)}</span>`:''}</span>${v!=null?`<b>${esc(v)}</b>`:''}</div>`;
+  let h=pc.plan.note&&!r.nn?`<div class="info">${esc(pc.plan.note)}</div>`:'';   // a note can carry numbers
+  if(r.nums.length) h+=`<div class="section-lbl">Питание и вода</div><div style="margin-bottom:14px">${r.nums.map(x=>row(x.n,x.d,x.same?'без изменений':x.from+' → '+x.to)).join('')}</div>`;
+  if(r.prog){
+    const P=r.prog, b=P.b;
+    h+=`<div class="section-lbl">Программа</div><div style="margin-bottom:10px">
+      ${P.same?row('Программа','Уже стоит в трекере','без изменений'):row(P.to,'Сейчас: '+P.from)}
+      ${P.schTo?row('Дни тренировок','',P.schTo===P.schFrom?'без изменений':P.schFrom+' → '+P.schTo):row('Дни тренировок','В коде не указаны, остаются как есть',P.schFrom)}</div>`;
+    if(!P.same) h+=b.planDays.map(k=>{const m=b.meta[k];
+      return `<div class="pz-note"><b>${esc(m.label)}</b>${m.desc?' · '+esc(m.desc):''}<div style="margin-top:6px">${b.plan[k].map(e=>esc(pcExLine(e))).join('<br>')}</div></div>`;}).join('');
+    if(!P.same&&b.kept) h+=`<p class="ob-note" style="margin:10px 0 0">Упражнения, которые уже были у тебя (${b.kept} из ${b.total}), сохранят историю и графики.</p>`;
+    if(!P.same&&P.wip) h+=`<div class="pz-note warn" style="margin-top:10px">Сейчас заполнена тренировка. Незаписанные подходы сбросятся: если хочешь их сохранить, сначала заверши тренировку.</div>`;
+    if(!P.same) h+=`<p class="ob-note" style="margin:10px 0 0">Прошлую программу можно будет вернуть: «Ещё» → «Вернуть прошлую программу».</p>`;
+  }
+  if(r.nn) h+=`<p class="ob-note" style="margin:10px 0 0">В режиме «без цифр» применяется только программа тренировок.</p>`;
+  if(r.any) h+=`<div class="row" style="gap:10px;margin-top:16px"><button class="btn ghost" style="flex:1" onclick="pcClose()">Отмена</button><button class="btn" id="pcApplyBtn" style="flex:1" onclick="pcApply()">Применить</button></div>`;
+  else h+=`<div class="info" style="margin-top:14px">${r.prog||r.nums.length?'Всё из этого кода уже стоит в трекере.':r.nn&&!r.prog?'В коде нет программы тренировок, а в режиме «без цифр» применяется только она.':'В коде нет изменений для трекера.'}</div>
+    <button class="btn ghost" style="margin-top:4px" onclick="pcBack()">Вставить другой код</button>`;
+  el.innerHTML=h;
+}
+function pcApply(){
+  if(!pc||!pc.plan) return;
+  let r;
+  try{r=pcDiff(pc.plan);}catch(e){pc.plan=null;pc.err=e&&e.pc?e.message:'Не получилось прочитать код.'+PC_AGAIN;if(!(e&&e.pc))console.error(e);pcRender();return;}
+  if(!r.any){pcRender();return;}
+  const p=S.profile, a=r.ap;
+  if(a.kcal!=null){p.kcalTarget=a.kcal;p.kcalSrc='claude';p.kcalAt=todayKey();}
+  if(a.protein!=null){p.proteinTarget=a.protein;if(p.kcalSrc==='pz')p.kcalSrc='claude';}   // no recount from the questionnaire over it
+  if(a.rate!=null) p.rate={goal:goalKey(),pct:a.rate,src:'claude'};
+  if(a.water!=null) p.waterTarget=a.water;
+  if(r.prog&&!r.prog.same) pcSetProgram(r.prog.b);
+  save();
+  pcClose();
+  setSegs(curDay); renderAll(); renderSettings();
+  toast('План применён ✓','ok');
+}
+function pcSetProgram(b){
+  const p=S.profile, prev=p.program;
+  // As applyProgram does: the old program can come back, and its exercises stay known to history
+  S.planPrev={plan:S.plan,planDays:S.planDays||null,planMeta:S.planMeta||null,program:prev||null,schedule:p.schedule,planSince:S.planSince};
+  const old=allPlanEx(), seen=new Set();
+  S.planOld={prev:old.filter(e=>e&&!seen.has(e.id)&&seen.add(e.id))};
+  S.plan=b.plan; S.planDays=b.planDays; S.planMeta=b.meta; S.planSince=todayKey();
+  if(b.schedule) p.schedule=b.schedule;
+  p.programSet=true;
+  // The plan sets its own volume: no «two weeks of technique» step and no rebuild from the questionnaire (progAuto)
+  p.program={...(prev||{}),src:'claude',days:(b.schedule||b.planDays).length};
+  delete p.program.phase; delete p.program.phaseUntil;
+  delete p.bcEmphasis;
+  wip={}; clearWip(); curDay=suggestedDay();
+  const wi=$('wipIndicator'); if(wi) wi.style.display='none';
 }
 
 /* ---------- Program questionnaire (first visit to «Тренировка», or from «Ещё») ---------- */
