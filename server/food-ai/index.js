@@ -45,7 +45,7 @@ function cors(origin) {
   return {
     'Access-Control-Allow-Origin': ok ? origin : ORIGINS[0],
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Mf-Token',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -59,10 +59,12 @@ class Fail extends Error { constructor(status, message) { super(message); this.s
 
 /* ---------- кто спрашивает ---------- */
 const seen = new Map();   // idToken -> {uid, until}
-async function whoIs(authHeader) {
+// Яндекс вырезает заголовок Authorization до того, как запрос попадёт в функцию,
+// поэтому трекер кладёт токен аккаунта в тело запроса (поле token).
+async function whoIs(token) {
   const key = env('FIREBASE_API_KEY');
   if (!key) return 'open';
-  const t = String(authHeader || '').replace(/^Bearer\s+/i, '');
+  const t = String(token || '').replace(/^Bearer\s+/i, '').trim();
   if (!t) throw new Fail(401, 'Войди в аккаунт, чтобы считать еду по фото');
   const c = seen.get(t);
   if (c && c.until > Date.now()) return c.uid;
@@ -141,6 +143,7 @@ async function askYandex(b64, text, goal, context) {
       'Content-Type': 'application/json',
       Authorization: key ? 'Api-Key ' + key : 'Bearer ' + iam,
       'OpenAI-Project': folder,
+      'x-folder-id': folder,
     },
     body: JSON.stringify({
       model: model.startsWith('gpt://') ? model : `gpt://${folder}/${model}`,
@@ -258,15 +261,20 @@ module.exports.handler = async function (event, context) {
   if (method !== 'POST') return reply(origin, 405, { error: 'Только POST' });
   let spent = null;
   try {
-    let raw = (event && event.body) || '';
-    if (event && event.isBase64Encoded) raw = Buffer.from(raw, 'base64').toString('utf8');
-    let q;
-    try { q = JSON.parse(raw); } catch (e) { throw new Fail(400, 'Плохой запрос'); }
+    // Трекер шлёт JSON как text/plain (так браузер не делает лишний запрос OPTIONS).
+    // Яндекс может отдать тело строкой, строкой в base64 или уже готовым объектом.
+    let q = event && event.body;
+    if (typeof q === 'string' || !q) {
+      let raw = q || '';
+      if (event && event.isBase64Encoded) raw = Buffer.from(raw, 'base64').toString('utf8');
+      try { q = JSON.parse(raw); } catch (e) { throw new Fail(400, 'Плохой запрос'); }
+    }
+    if (!q || typeof q !== 'object') throw new Fail(400, 'Плохой запрос');
     const b64 = String(q.image || '').replace(/^data:image\/\w+;base64,/, '');
     if (!b64) throw new Fail(400, 'Нет фото');
     if (b64.length > MAX_B64) throw new Fail(413, 'Фото слишком большое');
     if (!/^[A-Za-z0-9+/=\s]+$/.test(b64.slice(0, 2000))) throw new Fail(400, 'Фото повреждено');
-    const uid = await whoIs(h.authorization);
+    const uid = await whoIs(q.token || h['x-mf-token'] || h.authorization);
     spend(uid); spent = uid;
     const goal = String(q.goal || '').slice(0, 120);
     const text = String(q.text || '').slice(0, 300);

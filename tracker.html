@@ -4070,8 +4070,10 @@ async function foodAiRun(b64){
     const send=async()=>{
       const t=await cloud.idToken(acct.sess);
       let r;
-      try{r=await fetch(FOOD_AI,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+t},
-        body:JSON.stringify({image:b64,text,goal:goal().ai})});}
+      // text/plain and the token in the body: a "simple" request, so the browser sends no
+      // OPTIONS preflight, and Yandex strips the Authorization header before the function anyway.
+      try{r=await fetch(FOOD_AI,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},
+        body:JSON.stringify({image:b64,text,goal:goal().ai,token:t})});}
       catch(e){throw new Error('Нет связи. Проверь интернет');}
       const j=await r.json().catch(()=>({}));
       return {r,j};
